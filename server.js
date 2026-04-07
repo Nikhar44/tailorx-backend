@@ -8,6 +8,21 @@ const { Pool } = require('pg');
 const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 const cors     = require('cors');
+const crypto   = require('crypto');
+
+// Resend email client (only if API key is set)
+let resendClient = null;
+try {
+  if (process.env.RESEND_API_KEY) {
+    const { Resend } = require('resend');
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+    console.log('✅ Resend email client ready');
+  } else {
+    console.log('⚠️  No RESEND_API_KEY — forgot password emails disabled');
+  }
+} catch(e) {
+  console.log('⚠️  Resend not installed:', e.message);
+}
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -131,6 +146,104 @@ app.put('/api/auth/me', auth, async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Forgot password — sends reset email
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+
+    // Check if email exists
+    const result = await db.query('SELECT id, name FROM boutiques WHERE email = $1', [email]);
+
+    // Always return success (security — don't reveal if email exists)
+    if (!result.rows.length) {
+      return res.json({ message: 'If this email is registered, a reset link has been sent.' });
+    }
+
+    const boutique = result.rows[0];
+
+    // Generate a secure reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+
+    // Save token to database
+    await db.query(
+      `UPDATE boutiques SET reset_token=$1, reset_token_expiry=$2 WHERE id=$3`,
+      [resetToken, resetExpiry, boutique.id]
+    );
+
+    // Build reset link — uses your frontend URL
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetLink = `${frontendUrl}?reset_token=${resetToken}`;
+
+    // Send email via Resend
+    if (resendClient) {
+      await resendClient.emails.send({
+        from: 'TailorX <noreply@tailorx.in>',
+        to: email,
+        subject: 'Reset Your TailorX Password',
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
+            <h2 style="color:#1C1C1C;font-family:Georgia,serif;font-weight:300;letter-spacing:2px;">TAILOR<span style="color:#B8975A;">X</span></h2>
+            <hr style="border:1px solid #E2DDD7;margin:20px 0;">
+            <p style="color:#3D3D3D;">Hello ${boutique.name},</p>
+            <p style="color:#3D3D3D;">We received a request to reset your TailorX password.</p>
+            <p style="color:#3D3D3D;">Click the button below to reset your password. This link expires in <strong>1 hour</strong>.</p>
+            <div style="text-align:center;margin:30px 0;">
+              <a href="${resetLink}" style="background:#1C1C1C;color:#FFFFFF;padding:14px 32px;text-decoration:none;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Reset Password →</a>
+            </div>
+            <p style="color:#8A8680;font-size:12px;">If you did not request this, please ignore this email. Your password will remain unchanged.</p>
+            <p style="color:#8A8680;font-size:12px;">This link will expire in 1 hour.</p>
+            <hr style="border:1px solid #E2DDD7;margin:20px 0;">
+            <p style="color:#C8C4BC;font-size:11px;text-align:center;">TailorX — Boutique Management</p>
+          </div>
+        `,
+      });
+    } else {
+      // If no Resend key — log the reset link to console for testing
+      console.log(`🔑 Password reset link for ${email}: ${resetLink}`);
+    }
+
+    res.json({ message: 'If this email is registered, a reset link has been sent.' });
+  } catch (e) {
+    console.error('Forgot password error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Reset password — using token from email link
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password required' });
+    if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+
+    // Find boutique with valid token
+    const result = await db.query(
+      `SELECT id, email FROM boutiques WHERE reset_token=$1 AND reset_token_expiry > NOW()`,
+      [token]
+    );
+
+    if (!result.rows.length) {
+      return res.status(400).json({ error: 'Reset link is invalid or has expired. Please request a new one.' });
+    }
+
+    const boutique = result.rows[0];
+
+    // Hash new password and clear reset token
+    const hash = await bcrypt.hash(newPassword, 12);
+    await db.query(
+      `UPDATE boutiques SET password=$1, reset_token=NULL, reset_token_expiry=NULL, updated_at=NOW() WHERE id=$2`,
+      [hash, boutique.id]
+    );
+
+    res.json({ message: 'Password reset successfully! You can now login with your new password.' });
+  } catch (e) {
+    console.error('Reset password error:', e);
     res.status(500).json({ error: 'Server error' });
   }
 });
