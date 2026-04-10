@@ -1,620 +1,67 @@
-// TailorX Backend — server.js
-// Express + PostgreSQL REST API
-// Run: node server.js
-
-require('dotenv').config();
-const express  = require('express');
+const express = require('express');
 const { Pool } = require('pg');
-const bcrypt   = require('bcryptjs');
-const jwt      = require('jsonwebtoken');
-const cors     = require('cors');
-const crypto   = require('crypto');
-
-// Resend email client (only if API key is set)
-let resendClient = null;
-try {
-  if (process.env.RESEND_API_KEY) {
-    const { Resend } = require('resend');
-    resendClient = new Resend(process.env.RESEND_API_KEY);
-    console.log('✅ Resend email client ready');
-  } else {
-    console.log('⚠️  No RESEND_API_KEY — forgot password emails disabled');
-  }
-} catch(e) {
-  console.log('⚠️  Resend not installed:', e.message);
-}
-
-const app  = express();
-const PORT = process.env.PORT || 3000;
-
-// ─────────────────────────────────────────────
-//  DATABASE
-// ─────────────────────────────────────────────
-const pool = new Pool(
-  process.env.DATABASE_URL
-    ? { connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } }
-    : {
-        host:     process.env.DB_HOST     || 'localhost',
-        port:     parseInt(process.env.DB_PORT || '5432'),
-        database: process.env.DB_NAME     || 'tailorx_db',
-        user:     process.env.DB_USER     || 'postgres',
-        password: process.env.DB_PASSWORD || '',
-      }
-);
-
-pool.connect().then(() => console.log('✅ PostgreSQL connected')).catch(e => console.error('❌ DB error:', e.message));
-
-const db = {
-  query: (text, params) => pool.query(text, params),
-};
-
-// ─────────────────────────────────────────────
-//  MIDDLEWARE
-// ─────────────────────────────────────────────
-app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true,
-}));
+const crypto = require('crypto');
+const cors = require('cors');
+const app = express();
 app.use(express.json());
+app.use(cors());
 
-// Auth middleware — verify JWT and attach boutique_id
-function auth(req, res, next) {
-  const header = req.headers['authorization'];
-  const token  = header && header.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'No token' });
-  try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret');
-    req.boutiqueId = payload.boutiqueId;
-    next();
-  } catch {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-}
+const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+const JWT_SECRET = process.env.JWT_SECRET || 'tailorx-secret-change-in-prod';
 
-// ─────────────────────────────────────────────
-//  AUTH ROUTES
-// ─────────────────────────────────────────────
+function hash(pw) { return crypto.createHash('sha256').update(pw).digest('hex'); }
+function mkToken(p, exp = 86400000) { const d = Buffer.from(JSON.stringify({ ...p, exp: Date.now() + exp })).toString('base64'); return `${d}.${crypto.createHmac('sha256', JWT_SECRET).update(d).digest('hex')}`; }
+function chkToken(t) { if (!t) return null; t = t.replace('Bearer ', ''); const [d, s] = t.split('.'); if (!d || !s || s !== crypto.createHmac('sha256', JWT_SECRET).update(d).digest('hex')) return null; try { const p = JSON.parse(Buffer.from(d, 'base64').toString()); return p.exp > Date.now() ? p : null; } catch { return null; } }
+function auth(req, res, next) { const u = chkToken(req.headers.authorization); if (!u) return res.status(401).json({ error: 'Unauthorized' }); req.user = u; next(); }
+function adminAuth(req, res, next) { const u = chkToken(req.headers.authorization); if (!u || u.role !== 'admin') return res.status(401).json({ error: 'Admin required' }); req.admin = u; next(); }
+function genKey() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let k = ''; for (let i = 0; i < 16; i++) { if (i > 0 && i % 4 === 0) k += '-'; k += c[Math.floor(Math.random() * c.length)]; } return k; }
 
-// Register new boutique
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { name, ownerName, email, password, phone, city, address } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password required' });
+// Health
+app.get('/api/health', (_, res) => res.json({ status: 'ok', v: '2.0.0' }));
 
-    const exists = await db.query('SELECT id FROM boutiques WHERE email = $1', [email]);
-    if (exists.rows.length) return res.status(409).json({ error: 'Email already registered' });
+// License verify
+app.post('/api/license/verify', async (req, res) => { try { const { license_key } = req.body; if (!license_key) return res.json({ status: 'invalid' }); const r = await pool.query('SELECT * FROM licenses WHERE license_key=$1', [license_key]); if (!r.rows.length) return res.json({ status: 'invalid' }); const l = r.rows[0]; if (l.expires_at && new Date(l.expires_at) < new Date()) { await pool.query("UPDATE licenses SET status='expired',updated_at=NOW() WHERE id=$1", [l.id]); return res.json({ status: 'expired' }); } res.json({ status: l.status, boutique_name: l.boutique_name, plan: l.plan, expires_at: l.expires_at }); } catch (e) { res.json({ status: 'error' }); } });
 
-    const hash = await bcrypt.hash(password, 12);
-    const result = await db.query(
-      `INSERT INTO boutiques (name, owner_name, email, password, phone, city, address)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, name, owner_name, email, phone, city, address, plan`,
-      [name, ownerName || '', email, hash, phone || '', city || 'Surat', address || '']
-    );
-    const boutique = result.rows[0];
-    const token = jwt.sign({ boutiqueId: boutique.id }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '30d' });
-    res.status(201).json({ token, boutique });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+// Auth
+app.post('/api/auth/register', async (req, res) => { try { const { license_key, name, owner_name, email, password, phone, address } = req.body; if (!license_key) return res.status(400).json({ error: 'License key required' }); const lr = await pool.query('SELECT * FROM licenses WHERE license_key=$1', [license_key]); if (!lr.rows.length) return res.status(400).json({ error: 'Invalid license key' }); const l = lr.rows[0]; if (l.status !== 'active') return res.status(403).json({ error: `License ${l.status}` }); if (l.expires_at && new Date(l.expires_at) < new Date()) return res.status(403).json({ error: 'License expired' }); const ex = await pool.query('SELECT id FROM boutiques WHERE email=$1', [email]); if (ex.rows.length) return res.status(400).json({ error: 'Email already registered' }); const r = await pool.query('INSERT INTO boutiques(license_id,name,owner_name,email,password,phone,address) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING id,name,owner_name,email', [l.id, name, owner_name, email, hash(password), phone || '', address || '']); const b = r.rows[0]; res.json({ token: mkToken({ id: b.id, email: b.email, name: b.name, license_id: l.id }), boutique: b }); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-// Login
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+app.post('/api/auth/login', async (req, res) => { try { const { email, password } = req.body; const r = await pool.query('SELECT b.*,l.status as ls,l.expires_at as le FROM boutiques b JOIN licenses l ON b.license_id=l.id WHERE b.email=$1', [email]); if (!r.rows.length) return res.status(401).json({ error: 'Invalid credentials' }); const b = r.rows[0]; if (b.password !== hash(password)) return res.status(401).json({ error: 'Invalid credentials' }); if (b.ls === 'hold') return res.status(403).json({ error: 'Account on hold. Contact support.' }); if (b.ls === 'expired' || (b.le && new Date(b.le) < new Date())) return res.status(403).json({ error: 'Subscription expired.' }); res.json({ token: mkToken({ id: b.id, email: b.email, name: b.name, license_id: b.license_id }), boutique: { id: b.id, name: b.name, owner_name: b.owner_name, email: b.email } }); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-    const result = await db.query('SELECT * FROM boutiques WHERE email = $1', [email]);
-    if (!result.rows.length) return res.status(401).json({ error: 'Invalid email or password' });
+// Dashboard
+app.get('/api/dashboard', auth, async (req, res) => { try { const id = req.user.id; const [c, o, p, r, ro, n] = await Promise.all([pool.query('SELECT COUNT(*)::int as c FROM customers WHERE boutique_id=$1', [id]), pool.query('SELECT COUNT(*)::int as c FROM orders WHERE boutique_id=$1', [id]), pool.query("SELECT COUNT(*)::int as c FROM orders WHERE boutique_id=$1 AND status='pending'", [id]), pool.query('SELECT COALESCE(SUM(total_amount),0)::float as t FROM orders WHERE boutique_id=$1', [id]), pool.query('SELECT o.*,c.name as customer_name FROM orders o JOIN customers c ON o.customer_id=c.id WHERE o.boutique_id=$1 ORDER BY o.created_at DESC LIMIT 5', [id]), pool.query('SELECT * FROM notifications WHERE boutique_id=$1 AND is_read=false ORDER BY created_at DESC LIMIT 10', [id])]); res.json({ stats: { totalCustomers: c.rows[0].c, totalOrders: o.rows[0].c, pendingOrders: p.rows[0].c, totalRevenue: r.rows[0].t }, recentOrders: ro.rows, notifications: n.rows }); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-    const boutique = result.rows[0];
-    const valid = await bcrypt.compare(password, boutique.password);
-    if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
+// Customers CRUD
+app.get('/api/customers', auth, async (req, res) => { try { res.json((await pool.query('SELECT * FROM customers WHERE boutique_id=$1 ORDER BY created_at DESC', [req.user.id])).rows); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get('/api/customers/:id', auth, async (req, res) => { try { const r = await pool.query('SELECT * FROM customers WHERE id=$1 AND boutique_id=$2', [req.params.id, req.user.id]); r.rows.length ? res.json(r.rows[0]) : res.status(404).json({ error: 'Not found' }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/customers', auth, async (req, res) => { try { const { name, phone, email, address, measurements, notes } = req.body; const r = await pool.query('INSERT INTO customers(boutique_id,name,phone,email,address,measurements,notes) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *', [req.user.id, name, phone || '', email || '', address || '', measurements || '', notes || '']); await pool.query('INSERT INTO notifications(boutique_id,type,title,message) VALUES($1,$2,$3,$4)', [req.user.id, 'customer', 'New Customer', `${name} added.`]); res.json(r.rows[0]); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.put('/api/customers/:id', auth, async (req, res) => { try { const { name, phone, email, address, measurements, notes } = req.body; const r = await pool.query('UPDATE customers SET name=$1,phone=$2,email=$3,address=$4,measurements=$5,notes=$6,updated_at=NOW() WHERE id=$7 AND boutique_id=$8 RETURNING *', [name, phone || '', email || '', address || '', measurements || '', notes || '', req.params.id, req.user.id]); res.json(r.rows[0]); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.delete('/api/customers/:id', auth, async (req, res) => { try { await pool.query('DELETE FROM customers WHERE id=$1 AND boutique_id=$2', [req.params.id, req.user.id]); res.json({ message: 'Deleted' }); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-    const token = jwt.sign({ boutiqueId: boutique.id }, process.env.JWT_SECRET || 'dev_secret', { expiresIn: '30d' });
-    delete boutique.password;
-    res.json({ token, boutique });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+// Orders CRUD
+app.get('/api/orders', auth, async (req, res) => { try { res.json((await pool.query('SELECT o.*,c.name as customer_name FROM orders o JOIN customers c ON o.customer_id=c.id WHERE o.boutique_id=$1 ORDER BY o.created_at DESC', [req.user.id])).rows); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/orders', auth, async (req, res) => { try { const { customer_id, items, total_amount, advance_paid, delivery_date, notes } = req.body; const cnt = (await pool.query('SELECT COUNT(*)::int as c FROM orders WHERE boutique_id=$1', [req.user.id])).rows[0].c; const on = `ORD-${String(cnt + 1).padStart(4, '0')}`; const bal = (total_amount || 0) - (advance_paid || 0); const r = await pool.query("INSERT INTO orders(boutique_id,customer_id,order_number,items,total_amount,advance_paid,balance_due,status,delivery_date,notes) VALUES($1,$2,$3,$4,$5,$6,$7,'pending',$8,$9) RETURNING *", [req.user.id, customer_id, on, JSON.stringify(items || []), total_amount || 0, advance_paid || 0, bal, delivery_date || null, notes || '']); const cn = (await pool.query('SELECT name FROM customers WHERE id=$1', [customer_id])).rows[0]?.name; await pool.query('INSERT INTO notifications(boutique_id,type,title,message) VALUES($1,$2,$3,$4)', [req.user.id, 'order', 'New Order', `${on} for ${cn || 'customer'}`]); const f = await pool.query('SELECT o.*,c.name as customer_name FROM orders o JOIN customers c ON o.customer_id=c.id WHERE o.id=$1', [r.rows[0].id]); res.json(f.rows[0]); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.put('/api/orders/:id', auth, async (req, res) => { try { const { items, total_amount, advance_paid, status, delivery_date, notes } = req.body; const bal = (total_amount || 0) - (advance_paid || 0); await pool.query('UPDATE orders SET items=$1,total_amount=$2,advance_paid=$3,balance_due=$4,status=$5,delivery_date=$6,notes=$7,updated_at=NOW() WHERE id=$8 AND boutique_id=$9', [JSON.stringify(items || []), total_amount || 0, advance_paid || 0, bal, status || 'pending', delivery_date || null, notes || '', req.params.id, req.user.id]); const r = await pool.query('SELECT o.*,c.name as customer_name FROM orders o JOIN customers c ON o.customer_id=c.id WHERE o.id=$1', [req.params.id]); res.json(r.rows[0]); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-// Get current boutique profile
-app.get('/api/auth/me', auth, async (req, res) => {
-  try {
-    const result = await db.query(
-      'SELECT id, name, owner_name, email, phone, city, address, gstin, plan, created_at FROM boutiques WHERE id = $1',
-      [req.boutiqueId]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+// Invoices CRUD
+app.get('/api/invoices', auth, async (req, res) => { try { res.json((await pool.query('SELECT i.*,c.name as customer_name,o.order_number FROM invoices i JOIN customers c ON i.customer_id=c.id JOIN orders o ON i.order_id=o.id WHERE i.boutique_id=$1 ORDER BY i.created_at DESC', [req.user.id])).rows); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/invoices', auth, async (req, res) => { try { const { order_id, customer_id, amount, tax, due_date, notes } = req.body; const cnt = (await pool.query('SELECT COUNT(*)::int as c FROM invoices WHERE boutique_id=$1', [req.user.id])).rows[0].c; const in_ = `INV-${String(cnt + 1).padStart(4, '0')}`; const tot = (amount || 0) + (tax || 0); const r = await pool.query("INSERT INTO invoices(boutique_id,order_id,customer_id,invoice_number,amount,tax,total,status,due_date,notes) VALUES($1,$2,$3,$4,$5,$6,$7,'unpaid',$8,$9) RETURNING *", [req.user.id, order_id, customer_id, in_, amount || 0, tax || 0, tot, due_date || null, notes || '']); await pool.query('INSERT INTO notifications(boutique_id,type,title,message) VALUES($1,$2,$3,$4)', [req.user.id, 'invoice', 'Invoice Created', `${in_} generated.`]); const f = await pool.query('SELECT i.*,c.name as customer_name,o.order_number FROM invoices i JOIN customers c ON i.customer_id=c.id JOIN orders o ON i.order_id=o.id WHERE i.id=$1', [r.rows[0].id]); res.json(f.rows[0]); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.put('/api/invoices/:id', auth, async (req, res) => { try { const { amount, tax, status, due_date, notes } = req.body; const tot = (amount || 0) + (tax || 0); await pool.query('UPDATE invoices SET amount=$1,tax=$2,total=$3,status=$4,due_date=$5,notes=$6,updated_at=NOW() WHERE id=$7 AND boutique_id=$8', [amount || 0, tax || 0, tot, status || 'unpaid', due_date || null, notes || '', req.params.id, req.user.id]); const r = await pool.query('SELECT i.*,c.name as customer_name,o.order_number FROM invoices i JOIN customers c ON i.customer_id=c.id JOIN orders o ON i.order_id=o.id WHERE i.id=$1', [req.params.id]); res.json(r.rows[0]); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-// Update boutique settings
-app.put('/api/auth/me', auth, async (req, res) => {
-  try {
-    const { name, ownerName, phone, city, address, gstin } = req.body;
-    const result = await db.query(
-      `UPDATE boutiques SET name=$1, owner_name=$2, phone=$3, city=$4, address=$5, gstin=$6, updated_at=NOW()
-       WHERE id=$7 RETURNING id, name, owner_name, email, phone, city, address, gstin, plan`,
-      [name, ownerName, phone, city, address, gstin, req.boutiqueId]
-    );
-    res.json(result.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+// Notifications
+app.get('/api/notifications', auth, async (req, res) => { try { res.json((await pool.query('SELECT * FROM notifications WHERE boutique_id=$1 ORDER BY created_at DESC LIMIT 50', [req.user.id])).rows); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.put('/api/notifications/:id/read', auth, async (req, res) => { try { await pool.query('UPDATE notifications SET is_read=true WHERE id=$1 AND boutique_id=$2', [req.params.id, req.user.id]); res.json({ message: 'Read' }); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-// Forgot password — sends reset email
-app.post('/api/auth/forgot-password', async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ error: 'Email required' });
+// Bill
+app.post('/api/send-bill', auth, async (req, res) => { await pool.query('INSERT INTO notifications(boutique_id,type,title,message) VALUES($1,$2,$3,$4)', [req.user.id, 'bill', 'Bill Delivery', `Bill queued via ${req.body.method}`]); res.json({ message: `Queued for ${req.body.method}` }); });
 
-    // Check if email exists
-    const result = await db.query('SELECT id, name FROM boutiques WHERE email = $1', [email]);
+// Admin
+app.post('/api/admin/login', async (req, res) => { try { const { username, password } = req.body; const r = await pool.query('SELECT * FROM admin_users WHERE username=$1 AND password=$2', [username, password]); if (!r.rows.length) return res.status(401).json({ error: 'Invalid credentials' }); res.json({ token: mkToken({ role: 'admin', username }) }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get('/api/admin/licenses', adminAuth, async (_, res) => { try { res.json((await pool.query('SELECT * FROM licenses ORDER BY created_at DESC')).rows); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/admin/licenses', adminAuth, async (req, res) => { try { const { boutique_name, owner_name, email, phone, plan, notes } = req.body; const k = genKey(); let exp = null; if (plan === 'monthly') exp = new Date(Date.now() + 30 * 864e5); else if (plan === 'yearly') exp = new Date(Date.now() + 365 * 864e5); const r = await pool.query("INSERT INTO licenses(license_key,boutique_name,owner_name,email,phone,status,plan,expires_at,notes) VALUES($1,$2,$3,$4,$5,'active',$6,$7,$8) RETURNING *", [k, boutique_name || '', owner_name || '', email || '', phone || '', plan || 'monthly', exp, notes || '']); res.json(r.rows[0]); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.put('/api/admin/licenses/:id', adminAuth, async (req, res) => { try { const { status, plan, expires_at, notes } = req.body; const f = []; const v = []; let i = 1; if (status) { f.push(`status=$${i++}`); v.push(status); } if (plan) { f.push(`plan=$${i++}`); v.push(plan); } if (expires_at !== undefined) { f.push(`expires_at=$${i++}`); v.push(expires_at); } if (notes !== undefined) { f.push(`notes=$${i++}`); v.push(notes); } f.push('updated_at=NOW()'); v.push(req.params.id); const r = await pool.query(`UPDATE licenses SET ${f.join(',')} WHERE id=$${i} RETURNING *`, v); res.json(r.rows[0]); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.delete('/api/admin/licenses/:id', adminAuth, async (req, res) => { try { await pool.query('DELETE FROM licenses WHERE id=$1', [req.params.id]); res.json({ message: 'Deleted' }); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.post('/api/admin/licenses/:id/renew', adminAuth, async (req, res) => { try { const { plan } = req.body; let exp = null; if (plan === 'monthly') exp = new Date(Date.now() + 30 * 864e5); else if (plan === 'yearly') exp = new Date(Date.now() + 365 * 864e5); const r = await pool.query("UPDATE licenses SET status='active',plan=$1,expires_at=$2,updated_at=NOW() WHERE id=$3 RETURNING *", [plan || 'monthly', exp, req.params.id]); res.json(r.rows[0]); } catch (e) { res.status(500).json({ error: e.message }); } });
+app.get('/api/admin/boutiques', adminAuth, async (_, res) => { try { res.json((await pool.query("SELECT b.id,b.name,b.owner_name,b.email,b.phone,b.created_at,l.license_key,l.status as license_status,l.plan,(SELECT COUNT(*)::int FROM customers WHERE boutique_id=b.id) as customer_count,(SELECT COUNT(*)::int FROM orders WHERE boutique_id=b.id) as order_count FROM boutiques b JOIN licenses l ON b.license_id=l.id ORDER BY b.created_at DESC")).rows); } catch (e) { res.status(500).json({ error: e.message }); } });
 
-    // Always return success (security — don't reveal if email exists)
-    if (!result.rows.length) {
-      return res.json({ message: 'If this email is registered, a reset link has been sent.' });
-    }
-
-    const boutique = result.rows[0];
-
-    // Generate a secure reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
-
-    // Save token to database
-    await db.query(
-      `UPDATE boutiques SET reset_token=$1, reset_token_expiry=$2 WHERE id=$3`,
-      [resetToken, resetExpiry, boutique.id]
-    );
-
-    // Build reset link — uses your frontend URL
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const resetLink = `${frontendUrl}?reset_token=${resetToken}`;
-
-    // Send email via Resend
-    if (resendClient) {
-      await resendClient.emails.send({
-        from: 'TailorX <noreply@tailorx.in>',
-        to: email,
-        subject: 'Reset Your TailorX Password',
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px;">
-            <h2 style="color:#1C1C1C;font-family:Georgia,serif;font-weight:300;letter-spacing:2px;">TAILOR<span style="color:#B8975A;">X</span></h2>
-            <hr style="border:1px solid #E2DDD7;margin:20px 0;">
-            <p style="color:#3D3D3D;">Hello ${boutique.name},</p>
-            <p style="color:#3D3D3D;">We received a request to reset your TailorX password.</p>
-            <p style="color:#3D3D3D;">Click the button below to reset your password. This link expires in <strong>1 hour</strong>.</p>
-            <div style="text-align:center;margin:30px 0;">
-              <a href="${resetLink}" style="background:#1C1C1C;color:#FFFFFF;padding:14px 32px;text-decoration:none;font-size:13px;letter-spacing:2px;text-transform:uppercase;">Reset Password →</a>
-            </div>
-            <p style="color:#8A8680;font-size:12px;">If you did not request this, please ignore this email. Your password will remain unchanged.</p>
-            <p style="color:#8A8680;font-size:12px;">This link will expire in 1 hour.</p>
-            <hr style="border:1px solid #E2DDD7;margin:20px 0;">
-            <p style="color:#C8C4BC;font-size:11px;text-align:center;">TailorX — Boutique Management</p>
-          </div>
-        `,
-      });
-    } else {
-      // If no Resend key — log the reset link to console for testing
-      console.log(`🔑 Password reset link for ${email}: ${resetLink}`);
-    }
-
-    res.json({ message: 'If this email is registered, a reset link has been sent.' });
-  } catch (e) {
-    console.error('Forgot password error:', e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Reset password — using token from email link
-app.post('/api/auth/reset-password', async (req, res) => {
-  try {
-    const { token, newPassword } = req.body;
-    if (!token || !newPassword) return res.status(400).json({ error: 'Token and new password required' });
-    if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
-
-    // Find boutique with valid token
-    const result = await db.query(
-      `SELECT id, email FROM boutiques WHERE reset_token=$1 AND reset_token_expiry > NOW()`,
-      [token]
-    );
-
-    if (!result.rows.length) {
-      return res.status(400).json({ error: 'Reset link is invalid or has expired. Please request a new one.' });
-    }
-
-    const boutique = result.rows[0];
-
-    // Hash new password and clear reset token
-    const hash = await bcrypt.hash(newPassword, 12);
-    await db.query(
-      `UPDATE boutiques SET password=$1, reset_token=NULL, reset_token_expiry=NULL, updated_at=NOW() WHERE id=$2`,
-      [hash, boutique.id]
-    );
-
-    res.json({ message: 'Password reset successfully! You can now login with your new password.' });
-  } catch (e) {
-    console.error('Reset password error:', e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ─────────────────────────────────────────────
-//  CUSTOMERS
-// ─────────────────────────────────────────────
-
-// Get all customers (with search)
-app.get('/api/customers', auth, async (req, res) => {
-  try {
-    const { search, gender } = req.query;
-    let query = 'SELECT * FROM customers WHERE boutique_id = $1';
-    const params = [req.boutiqueId];
-    if (search) {
-      params.push(`%${search}%`);
-      query += ` AND (name ILIKE $${params.length} OR phone ILIKE $${params.length})`;
-    }
-    if (gender) {
-      params.push(gender);
-      query += ` AND gender = $${params.length}`;
-    }
-    query += ' ORDER BY created_at DESC';
-    const result = await db.query(query, params);
-    res.json(result.rows);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Get single customer
-app.get('/api/customers/:id', auth, async (req, res) => {
-  try {
-    const result = await db.query(
-      'SELECT * FROM customers WHERE id = $1 AND boutique_id = $2',
-      [req.params.id, req.boutiqueId]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Create customer
-app.post('/api/customers', auth, async (req, res) => {
-  try {
-    const { name, phone, email, city, gender, notify, notes, measurements_top, measurements_bottom } = req.body;
-    if (!name) return res.status(400).json({ error: 'Name required' });
-    const result = await db.query(
-      `INSERT INTO customers (boutique_id, name, phone, email, city, gender, notify, notes, measurements_top, measurements_bottom)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [req.boutiqueId, name, phone||'', email||'', city||'Surat', gender||'', notify||'WhatsApp', notes||'',
-       JSON.stringify(measurements_top||{}), JSON.stringify(measurements_bottom||{})]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Update customer
-app.put('/api/customers/:id', auth, async (req, res) => {
-  try {
-    const { name, phone, email, city, gender, notify, notes, measurements_top, measurements_bottom } = req.body;
-    const result = await db.query(
-      `UPDATE customers SET name=$1, phone=$2, email=$3, city=$4, gender=$5, notify=$6, notes=$7,
-       measurements_top=$8, measurements_bottom=$9, updated_at=NOW()
-       WHERE id=$10 AND boutique_id=$11 RETURNING *`,
-      [name, phone||'', email||'', city||'Surat', gender||'', notify||'WhatsApp', notes||'',
-       JSON.stringify(measurements_top||{}), JSON.stringify(measurements_bottom||{}),
-       req.params.id, req.boutiqueId]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ─────────────────────────────────────────────
-//  ORDERS
-// ─────────────────────────────────────────────
-
-app.get('/api/orders', auth, async (req, res) => {
-  try {
-    const { stage, search } = req.query;
-    let query = 'SELECT * FROM orders WHERE boutique_id = $1';
-    const params = [req.boutiqueId];
-    if (stage && stage !== 'all') {
-      params.push(stage);
-      query += ` AND stage = $${params.length}`;
-    }
-    if (search) {
-      params.push(`%${search}%`);
-      query += ` AND (customer_name ILIKE $${params.length} OR garment ILIKE $${params.length})`;
-    }
-    query += ' ORDER BY created_at DESC';
-    const result = await db.query(query, params);
-    res.json(result.rows);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.get('/api/orders/:id', auth, async (req, res) => {
-  try {
-    const result = await db.query('SELECT * FROM orders WHERE id = $1 AND boutique_id = $2', [req.params.id, req.boutiqueId]);
-    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.post('/api/orders', auth, async (req, res) => {
-  try {
-    const { customer_id, customer_name, garment, fabric, due_date, amount, advance, stage, notify, notes } = req.body;
-    if (!garment) return res.status(400).json({ error: 'Garment required' });
-    const bal = Math.max(0, (amount||0) - (advance||0));
-    const result = await db.query(
-      `INSERT INTO orders (boutique_id, customer_id, customer_name, garment, fabric, due_date, amount, advance, balance, stage, notify, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
-      [req.boutiqueId, customer_id||null, customer_name||'', garment, fabric||'',
-       due_date||null, amount||0, advance||0, bal, stage||'received', notify!==false, notes||'']
-    );
-    const order = result.rows[0];
-    // Auto notify if stage = ready
-    if (stage === 'ready' && notify !== false) {
-      await autoNotify(req.boutiqueId, order.customer_id, customer_name, garment);
-    }
-    res.status(201).json(order);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.put('/api/orders/:id', auth, async (req, res) => {
-  try {
-    const { customer_id, customer_name, garment, fabric, due_date, amount, advance, stage, notify, notes } = req.body;
-    const bal = Math.max(0, (amount||0) - (advance||0));
-
-    // Fetch old stage to detect stage change
-    const old = await db.query('SELECT stage, customer_id, customer_name, garment, notify FROM orders WHERE id=$1 AND boutique_id=$2', [req.params.id, req.boutiqueId]);
-    if (!old.rows.length) return res.status(404).json({ error: 'Not found' });
-
-    const result = await db.query(
-      `UPDATE orders SET customer_id=$1, customer_name=$2, garment=$3, fabric=$4, due_date=$5,
-       amount=$6, advance=$7, balance=$8, stage=$9, notify=$10, notes=$11, updated_at=NOW()
-       WHERE id=$12 AND boutique_id=$13 RETURNING *`,
-      [customer_id||null, customer_name||'', garment, fabric||'', due_date||null,
-       amount||0, advance||0, bal, stage||'received', notify!==false, notes||'',
-       req.params.id, req.boutiqueId]
-    );
-
-    const order = result.rows[0];
-    // If stage changed to ready → auto notify
-    if (old.rows[0].stage !== 'ready' && stage === 'ready' && old.rows[0].notify) {
-      await autoNotify(req.boutiqueId, old.rows[0].customer_id, old.rows[0].customer_name, old.rows[0].garment);
-    }
-    res.json(order);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Update only the stage
-app.patch('/api/orders/:id/stage', auth, async (req, res) => {
-  try {
-    const { stage } = req.body;
-    const old = await db.query('SELECT * FROM orders WHERE id=$1 AND boutique_id=$2', [req.params.id, req.boutiqueId]);
-    if (!old.rows.length) return res.status(404).json({ error: 'Not found' });
-    const order = old.rows[0];
-
-    await db.query('UPDATE orders SET stage=$1, updated_at=NOW() WHERE id=$2', [stage, req.params.id]);
-
-    if (order.stage !== 'ready' && stage === 'ready' && order.notify) {
-      await autoNotify(req.boutiqueId, order.customer_id, order.customer_name, order.garment);
-    }
-    res.json({ ...order, stage });
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ─────────────────────────────────────────────
-//  INVOICES
-// ─────────────────────────────────────────────
-
-app.get('/api/invoices', auth, async (req, res) => {
-  try {
-    const { status, search } = req.query;
-    let query = 'SELECT * FROM invoices WHERE boutique_id = $1';
-    const params = [req.boutiqueId];
-    if (status && status !== 'all') {
-      params.push(status);
-      query += ` AND status = $${params.length}`;
-    }
-    if (search) {
-      params.push(`%${search}%`);
-      query += ` AND (customer_name ILIKE $${params.length} OR garment ILIKE $${params.length})`;
-    }
-    query += ' ORDER BY created_at DESC';
-    const result = await db.query(query, params);
-    res.json(result.rows);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.get('/api/invoices/:id', auth, async (req, res) => {
-  try {
-    const result = await db.query('SELECT * FROM invoices WHERE id = $1 AND boutique_id = $2', [req.params.id, req.boutiqueId]);
-    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.post('/api/invoices', auth, async (req, res) => {
-  try {
-    const { customer_id, customer_name, customer_phone, order_id, garment, bill_date, items,
-            subtotal, discount_pct, discount_amt, total_amount, advance, due_amount, remarks } = req.body;
-    if (!customer_name || !garment) return res.status(400).json({ error: 'Customer and garment required' });
-    const status = (due_amount <= 0) ? 'paid' : 'pending';
-    const result = await db.query(
-      `INSERT INTO invoices (boutique_id, customer_id, customer_name, customer_phone, order_id, garment, bill_date,
-       items, subtotal, discount_pct, discount_amt, total_amount, advance, due_amount, remarks, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
-      [req.boutiqueId, customer_id||null, customer_name, customer_phone||'', order_id||null,
-       garment, bill_date||new Date(), JSON.stringify(items||[]),
-       subtotal||0, discount_pct||0, discount_amt||0, total_amount||0, advance||0, due_amount||0, remarks||'', status]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.patch('/api/invoices/:id/pay', auth, async (req, res) => {
-  try {
-    const result = await db.query(
-      'UPDATE invoices SET status=$1, due_amount=0, updated_at=NOW() WHERE id=$2 AND boutique_id=$3 RETURNING *',
-      ['paid', req.params.id, req.boutiqueId]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ─────────────────────────────────────────────
-//  NOTIFICATIONS
-// ─────────────────────────────────────────────
-
-app.get('/api/notifications', auth, async (req, res) => {
-  try {
-    const { type } = req.query;
-    let query = 'SELECT * FROM notifications WHERE boutique_id = $1';
-    const params = [req.boutiqueId];
-    if (type && type !== 'all') {
-      params.push(type);
-      query += ` AND type = $${params.length}`;
-    }
-    query += ' ORDER BY created_at DESC LIMIT 100';
-    const result = await db.query(query, params);
-    res.json(result.rows);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.post('/api/notifications', auth, async (req, res) => {
-  try {
-    const { type, title, msg } = req.body;
-    const result = await db.query(
-      'INSERT INTO notifications (boutique_id, type, title, msg) VALUES ($1,$2,$3,$4) RETURNING *',
-      [req.boutiqueId, type||'whatsapp', title||'', msg||'']
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.patch('/api/notifications/read-all', auth, async (req, res) => {
-  try {
-    await db.query('UPDATE notifications SET is_read=TRUE WHERE boutique_id=$1', [req.boutiqueId]);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-app.patch('/api/notifications/:id/read', auth, async (req, res) => {
-  try {
-    await db.query('UPDATE notifications SET is_read=TRUE WHERE id=$1 AND boutique_id=$2', [req.params.id, req.boutiqueId]);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ─────────────────────────────────────────────
-//  DASHBOARD SUMMARY
-// ─────────────────────────────────────────────
-app.get('/api/dashboard', auth, async (req, res) => {
-  try {
-    const bid = req.boutiqueId;
-    const [ordersRes, invoicesRes, customersRes, notifRes] = await Promise.all([
-      db.query('SELECT stage, COUNT(*) as count, SUM(amount) as total FROM orders WHERE boutique_id=$1 GROUP BY stage', [bid]),
-      db.query('SELECT status, COUNT(*) as count, SUM(due_amount) as pending_amt, SUM(total_amount) as total_amt FROM invoices WHERE boutique_id=$1 GROUP BY status', [bid]),
-      db.query('SELECT COUNT(*) as count FROM customers WHERE boutique_id=$1', [bid]),
-      db.query('SELECT COUNT(*) as count FROM notifications WHERE boutique_id=$1 AND is_read=FALSE', [bid]),
-    ]);
-
-    const stageCounts = {};
-    let totalOrders = 0;
-    ordersRes.rows.forEach(r => { stageCounts[r.stage] = parseInt(r.count); totalOrders += parseInt(r.count); });
-
-    let pendingAmt = 0, paidAmt = 0, pendingCount = 0;
-    invoicesRes.rows.forEach(r => {
-      if (r.status === 'pending') { pendingAmt = parseFloat(r.pending_amt||0); pendingCount = parseInt(r.count); }
-      if (r.status === 'paid')    { paidAmt = parseFloat(r.total_amt||0); }
-    });
-
-    res.json({
-      orders: { total: totalOrders, stages: stageCounts, active: totalOrders - (stageCounts.dispensed||0) },
-      invoices: { pendingAmt, pendingCount, paidAmt },
-      customers: parseInt(customersRes.rows[0].count),
-      unreadNotifications: parseInt(notifRes.rows[0].count),
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// ─────────────────────────────────────────────
-//  AUTO NOTIFY HELPER
-// ─────────────────────────────────────────────
-async function autoNotify(boutiqueId, customerId, customerName, garment) {
-  try {
-    let notifyChannel = 'whatsapp';
-    if (customerId) {
-      const cRes = await db.query('SELECT notify FROM customers WHERE id=$1', [customerId]);
-      if (cRes.rows.length) notifyChannel = (cRes.rows[0].notify||'WhatsApp').toLowerCase();
-    }
-    await db.query(
-      'INSERT INTO notifications (boutique_id, type, title, msg) VALUES ($1,$2,$3,$4)',
-      [boutiqueId, notifyChannel,
-       `Order Ready — ${customerName}`,
-       `Your ${garment} is ready for pickup at Riya Boutique. Please collect at your convenience.`]
-    );
-  } catch (e) {
-    console.error('Auto notify failed:', e.message);
-  }
-}
-
-// ─────────────────────────────────────────────
-//  HEALTH CHECK
-// ─────────────────────────────────────────────
-app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
-
-// ─────────────────────────────────────────────
-//  START
-// ─────────────────────────────────────────────
-app.listen(PORT, () => console.log(`🚀 TailorX API running on port ${PORT}`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`TailorX API on port ${PORT}`));
