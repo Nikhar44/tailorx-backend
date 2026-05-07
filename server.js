@@ -369,13 +369,14 @@ app.get('/admin', (req, res) => {
 
   /* ── Dashboard ── */
   #dashboard { display: none; padding: 24px; max-width: 960px; margin: 0 auto; }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
   .stat-card { background: linear-gradient(135deg, var(--dark), var(--mid)); border-radius: 16px;
     padding: 20px; text-align: center; color: #fff; }
   .stat-card .val { font-size: 36px; font-weight: 800; }
   .stat-card .lbl { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 1px; margin-top: 2px; }
   .stat-card.active .val { color: #5dcea8; }
   .stat-card.hold .val { color: #e87070; }
+  .stat-card.expired .val { color: #e09f3e; }
 
   .search-bar { margin-bottom: 16px; }
   .search-bar input { width: 100%; padding: 11px 16px; border: 1.5px solid var(--border);
@@ -400,10 +401,14 @@ app.get('/admin', (req, res) => {
   .info .meta { font-size: 12px; color: var(--text2); margin-top: 3px; }
   .info .tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
   .tag { padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
-  .tag.active { background: rgba(45,143,111,0.1); color: var(--success); border: 1px solid rgba(45,143,111,0.25); }
-  .tag.hold   { background: rgba(207,71,71,0.1);  color: var(--danger);  border: 1px solid rgba(207,71,71,0.25); }
-  .tag.plan   { background: rgba(212,165,116,0.1); color: #b8895a; border: 1px solid rgba(212,165,116,0.25); }
-  .tag.city   { background: rgba(107,107,123,0.08); color: var(--text2); border: 1px solid var(--border); }
+  .tag.active      { background: rgba(45,143,111,0.1);  color: var(--success); border: 1px solid rgba(45,143,111,0.25); }
+  .tag.hold        { background: rgba(207,71,71,0.1);   color: var(--danger);  border: 1px solid rgba(207,71,71,0.25); }
+  .tag.expired-tag { background: rgba(207,71,71,0.1);   color: var(--danger);  border: 1px solid rgba(207,71,71,0.25); }
+  .tag.expiring-tag{ background: rgba(224,159,62,0.1);  color: var(--warning); border: 1px solid rgba(224,159,62,0.25); }
+  .tag.expiry-ok-tag{ background: rgba(45,143,111,0.08); color: var(--success); border: 1px solid rgba(45,143,111,0.2); }
+  .tag.plan        { background: rgba(212,165,116,0.1); color: #b8895a; border: 1px solid rgba(212,165,116,0.25); }
+  .tag.city        { background: rgba(107,107,123,0.08); color: var(--text2); border: 1px solid var(--border); }
+  .hold-btn.renew-btn { background: rgba(74,127,193,0.1); color: #4a7fc1; border: 1px solid rgba(74,127,193,0.25); }
 
   .hold-btn {
     flex-shrink: 0; padding: 8px 14px; border: none; border-radius: 10px;
@@ -421,7 +426,7 @@ app.get('/admin', (req, res) => {
   @keyframes spin { to { transform: rotate(360deg); } }
 
   @media (max-width: 600px) {
-    .stats { grid-template-columns: repeat(3, 1fr); }
+    .stats { grid-template-columns: repeat(2, 1fr); }
     .stat-card { padding: 14px 10px; }
     .stat-card .val { font-size: 26px; }
     header h1 { font-size: 17px; }
@@ -452,6 +457,7 @@ app.get('/admin', (req, res) => {
     <div class="stat-card"><div class="val" id="stat-total">—</div><div class="lbl">TOTAL</div></div>
     <div class="stat-card active"><div class="val" id="stat-active">—</div><div class="lbl">ACTIVE</div></div>
     <div class="stat-card hold"><div class="val" id="stat-hold">—</div><div class="lbl">ON HOLD</div></div>
+    <div class="stat-card expired"><div class="val" id="stat-expired">—</div><div class="lbl">EXPIRED</div></div>
   </div>
   <div class="search-bar">
     <input type="text" id="search-input" placeholder="🔍  Search by name, email or city…" oninput="renderList()" />
@@ -497,12 +503,28 @@ async function fetchBoutiques() {
   }
 }
 
+function isExpired(b) {
+  return b.expires_at && new Date(b.expires_at) < new Date();
+}
+function expiryLabel(b) {
+  if (!b.expires_at) return null;
+  const d = new Date(b.expires_at);
+  const now = new Date();
+  const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+  const dateStr = d.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+  if (diff < 0) return { text: 'Expired ' + dateStr, cls: 'expired' };
+  if (diff <= 7) return { text: 'Expires in ' + diff + 'd (' + dateStr + ')', cls: 'expiring' };
+  return { text: 'Expires ' + dateStr, cls: 'expiry-ok' };
+}
+
 function updateStats() {
-  const active = boutiques.filter(b => b.is_active !== false).length;
-  const hold   = boutiques.filter(b => b.is_active === false).length;
-  document.getElementById('stat-total').textContent  = boutiques.length;
-  document.getElementById('stat-active').textContent = active;
-  document.getElementById('stat-hold').textContent   = hold;
+  const active  = boutiques.filter(b => b.is_active !== false && !isExpired(b)).length;
+  const hold    = boutiques.filter(b => b.is_active === false).length;
+  const expired = boutiques.filter(b => isExpired(b)).length;
+  document.getElementById('stat-total').textContent   = boutiques.length;
+  document.getElementById('stat-active').textContent  = active;
+  document.getElementById('stat-hold').textContent    = hold;
+  document.getElementById('stat-expired').textContent = expired;
   document.getElementById('header-count').textContent = boutiques.length + ' boutiques';
 }
 
@@ -518,29 +540,80 @@ function renderList() {
 
   list.innerHTML = filtered.map(b => {
     const isActive = b.is_active !== false;
+    const expired  = isExpired(b);
+    const expLbl   = expiryLabel(b);
     const initials = (b.name || '?').trim().split(' ').filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join('');
-    const joined = b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '';
+    const joined   = b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '';
+    const cardCls  = !isActive ? 'on-hold' : expired ? 'on-hold' : '';
+    const avatarCls= !isActive || expired ? 'hold' : 'active';
+    const statusTag = !isActive
+      ? '<span class="tag hold">⏸ ON HOLD</span>'
+      : expired
+        ? '<span class="tag expired-tag">⚠ EXPIRED</span>'
+        : '<span class="tag active">● ACTIVE</span>';
+    const expiryTag = expLbl
+      ? \`<span class="tag \${expLbl.cls === 'expired' ? 'expired-tag' : expLbl.cls === 'expiring' ? 'expiring-tag' : 'expiry-ok-tag'}">🗓 \${expLbl.text}</span>\`
+      : '<span class="tag city">🗓 No expiry set</span>';
     return \`
-      <div class="boutique-card \${isActive ? '' : 'on-hold'}" id="card-\${b.id}">
-        <div class="avatar \${isActive ? 'active' : 'hold'}">\${initials}</div>
+      <div class="boutique-card \${cardCls}" id="card-\${b.id}">
+        <div class="avatar \${avatarCls}">\${initials}</div>
         <div class="info">
           <div class="name">\${b.name || 'Unknown'}</div>
-          <div class="meta">\${b.email || ''}  \${b.phone ? '· ' + b.phone : ''}</div>
+          <div class="meta">\${b.email || ''} \${b.phone ? '· ' + b.phone : ''}</div>
           <div class="tags">
-            <span class="tag \${isActive ? 'active' : 'hold'}">\${isActive ? '● ACTIVE' : '⏸ ON HOLD'}</span>
+            \${statusTag}
             <span class="tag plan">\${(b.plan || 'free').toUpperCase()}</span>
             \${b.city ? '<span class="tag city">📍 ' + b.city + '</span>' : ''}
             \${joined ? '<span class="tag city">Since ' + joined + '</span>' : ''}
           </div>
+          <div class="tags" style="margin-top:4px">
+            \${expiryTag}
+          </div>
         </div>
-        <button class="hold-btn \${isActive ? 'do-hold' : 'do-lift'}" onclick="toggleHold(\${b.id}, \${isActive})">
-          \${isActive
-            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>HOLD'
-            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>LIFT'}
-        </button>
+        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
+          <button class="hold-btn \${isActive && !expired ? 'do-hold' : 'do-lift'}" onclick="toggleHold(\${b.id}, \${isActive && !expired})">
+            \${isActive && !expired
+              ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>HOLD'
+              : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>LIFT'}
+          </button>
+          <button class="hold-btn renew-btn" onclick="renewSubscription(\${b.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            RENEW
+          </button>
+        </div>
       </div>
     \`;
   }).join('');
+}
+
+async function renewSubscription(id) {
+  const b = boutiques.find(x => x.id === id);
+  const name = b ? b.name : 'this boutique';
+  const months = prompt('Renew "' + name + '" for how many months?\\n(Enter a number, e.g. 1, 3, 6, 12)', '1');
+  if (!months) return;
+  const m = parseInt(months);
+  if (!m || m < 1) { alert('Enter a valid number of months.'); return; }
+
+  try {
+    const res = await fetch('/api/admin/boutiques/' + id + '/renew', {
+      method: 'PATCH',
+      headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ months: m })
+    });
+    if (!res.ok) { alert('Failed to renew. Try again.'); return; }
+    const data = await res.json();
+    // Update local data
+    const idx = boutiques.findIndex(x => x.id === id);
+    if (idx !== -1) {
+      boutiques[idx].expires_at = data.boutique.expires_at;
+      boutiques[idx].is_active  = true;
+    }
+    updateStats();
+    renderList();
+    alert('✅ "' + name + '" renewed for ' + m + ' month(s)!');
+  } catch (e) {
+    alert('Connection error.');
+  }
 }
 
 async function toggleHold(id, currentlyActive) {
@@ -577,10 +650,35 @@ async function toggleHold(id, currentlyActive) {
 app.get('/api/admin/boutiques', adminAuth, async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT id, name, owner_name, email, phone, city, plan, is_active, created_at
+      `SELECT id, name, owner_name, email, phone, city, plan, is_active, expires_at, created_at
        FROM boutiques ORDER BY id ASC`
     );
     res.json(result.rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Renew subscription (admin)
+app.patch('/api/admin/boutiques/:id/renew', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { months } = req.body;
+    if (!months || months < 1) return res.status(400).json({ error: 'months required' });
+
+    // Extend from today or from current expiry (whichever is later)
+    const result = await db.query(
+      `UPDATE boutiques
+       SET expires_at = GREATEST(NOW(), COALESCE(expires_at, NOW())) + ($1 || ' months')::INTERVAL,
+           is_active  = true,
+           updated_at = NOW()
+       WHERE id = $2
+       RETURNING id, name, is_active, expires_at`,
+      [months, id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
+    res.json({ message: `Renewed for ${months} month(s)`, boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
