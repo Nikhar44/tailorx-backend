@@ -710,7 +710,6 @@ app.post('/api/customers', auth, async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
-
 app.put('/api/customers/:id', auth, async (req, res) => {
   try {
     const { name, phone, email, city, gender, dob, notify, notes, measurements,
