@@ -126,9 +126,9 @@ app.post('/api/auth/register', async (req, res) => {
 
     const hash = await bcrypt.hash(password, 12);
     const result = await db.query(
-      `INSERT INTO boutiques (name, owner_name, email, password, phone, city, address)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)
-       RETURNING id, name, owner_name, email, phone, city, address, plan`,
+      `INSERT INTO boutiques (name, owner_name, email, password, phone, city, address, plan, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'trial', NOW() + INTERVAL '15 days')
+       RETURNING id, name, owner_name, email, phone, city, address, plan, expires_at`,
       [name, ownerName || '', email, hash, phone || '', city || 'Surat', address || '']
     );
     const boutique = result.rows[0];
@@ -178,6 +178,18 @@ app.post('/api/auth/login', async (req, res) => {
     if (boutique.is_active === false) {
       return res.status(403).json({
         error: 'Your account has been put on hold. Please contact support to resolve this.'
+      });
+    }
+
+    // Subscription / trial expiry check
+    if (boutique.expires_at && new Date(boutique.expires_at) < new Date()) {
+      const isTrial = boutique.plan === 'trial';
+      return res.status(403).json({
+        error: isTrial
+          ? 'Your 15-day free trial has ended. Please subscribe to continue using TailorX.'
+          : 'Your subscription has expired. Please renew to continue using TailorX.',
+        expired: true,
+        plan: boutique.plan,
       });
     }
 
@@ -308,7 +320,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 //  Protected by ADMIN_SECRET env var (set in Render dashboard)
 // ─────────────────────────────────────────────
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'tailorx_admin_2025';
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'Admin@123';
 
 const adminAuth = (req, res, next) => {
   const secret = req.headers['x-admin-secret'];
@@ -369,7 +381,7 @@ app.get('/admin', (req, res) => {
 
   /* ── Dashboard ── */
   #dashboard { display: none; padding: 24px; max-width: 960px; margin: 0 auto; }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 24px; }
   .stat-card { background: linear-gradient(135deg, var(--dark), var(--mid)); border-radius: 16px;
     padding: 20px; text-align: center; color: #fff; }
   .stat-card .val { font-size: 36px; font-weight: 800; }
@@ -408,6 +420,7 @@ app.get('/admin', (req, res) => {
   .tag.expiry-ok-tag{ background: rgba(45,143,111,0.08); color: var(--success); border: 1px solid rgba(45,143,111,0.2); }
   .tag.plan        { background: rgba(212,165,116,0.1); color: #b8895a; border: 1px solid rgba(212,165,116,0.25); }
   .tag.city        { background: rgba(107,107,123,0.08); color: var(--text2); border: 1px solid var(--border); }
+  .tag.trial-tag   { background: rgba(167,139,250,0.1); color: #7c5cbf; border: 1px solid rgba(167,139,250,0.3); }
   .hold-btn.renew-btn { background: rgba(74,127,193,0.1); color: #4a7fc1; border: 1px solid rgba(74,127,193,0.25); }
 
   .hold-btn {
@@ -426,7 +439,7 @@ app.get('/admin', (req, res) => {
   @keyframes spin { to { transform: rotate(360deg); } }
 
   @media (max-width: 600px) {
-    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stats { grid-template-columns: repeat(3, 1fr); }
     .stat-card { padding: 14px 10px; }
     .stat-card .val { font-size: 26px; }
     header h1 { font-size: 17px; }
@@ -456,6 +469,7 @@ app.get('/admin', (req, res) => {
   <div class="stats">
     <div class="stat-card"><div class="val" id="stat-total">—</div><div class="lbl">TOTAL</div></div>
     <div class="stat-card active"><div class="val" id="stat-active">—</div><div class="lbl">ACTIVE</div></div>
+    <div class="stat-card" style="--c:#a78bfa"><div class="val" id="stat-trial" style="color:#a78bfa">—</div><div class="lbl">ON TRIAL</div></div>
     <div class="stat-card hold"><div class="val" id="stat-hold">—</div><div class="lbl">ON HOLD</div></div>
     <div class="stat-card expired"><div class="val" id="stat-expired">—</div><div class="lbl">EXPIRED</div></div>
   </div>
@@ -512,17 +526,21 @@ function expiryLabel(b) {
   const now = new Date();
   const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
   const dateStr = d.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
-  if (diff < 0) return { text: 'Expired ' + dateStr, cls: 'expired' };
-  if (diff <= 7) return { text: 'Expires in ' + diff + 'd (' + dateStr + ')', cls: 'expiring' };
-  return { text: 'Expires ' + dateStr, cls: 'expiry-ok' };
+  const isTrial = b.plan === 'trial';
+  if (diff < 0) return { text: (isTrial ? 'Trial ended ' : 'Expired ') + dateStr, cls: 'expired' };
+  if (diff <= 3) return { text: (isTrial ? 'Trial ends in ' : 'Expires in ') + diff + 'd!', cls: 'expiring' };
+  if (diff <= 7) return { text: (isTrial ? 'Trial: ' : '') + diff + ' days left (' + dateStr + ')', cls: 'expiring' };
+  return { text: (isTrial ? 'Trial until ' : 'Expires ') + dateStr, cls: 'expiry-ok' };
 }
 
 function updateStats() {
-  const active  = boutiques.filter(b => b.is_active !== false && !isExpired(b)).length;
+  const active  = boutiques.filter(b => b.is_active !== false && !isExpired(b) && b.plan !== 'trial').length;
+  const trial   = boutiques.filter(b => b.is_active !== false && !isExpired(b) && b.plan === 'trial').length;
   const hold    = boutiques.filter(b => b.is_active === false).length;
   const expired = boutiques.filter(b => isExpired(b)).length;
   document.getElementById('stat-total').textContent   = boutiques.length;
   document.getElementById('stat-active').textContent  = active;
+  document.getElementById('stat-trial').textContent   = trial;
   document.getElementById('stat-hold').textContent    = hold;
   document.getElementById('stat-expired').textContent = expired;
   document.getElementById('header-count').textContent = boutiques.length + ' boutiques';
@@ -546,11 +564,14 @@ function renderList() {
     const joined   = b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '';
     const cardCls  = !isActive ? 'on-hold' : expired ? 'on-hold' : '';
     const avatarCls= !isActive || expired ? 'hold' : 'active';
+    const isTrial = b.plan === 'trial';
     const statusTag = !isActive
       ? '<span class="tag hold">⏸ ON HOLD</span>'
       : expired
-        ? '<span class="tag expired-tag">⚠ EXPIRED</span>'
-        : '<span class="tag active">● ACTIVE</span>';
+        ? \`<span class="tag expired-tag">⚠ \${isTrial ? 'TRIAL ENDED' : 'EXPIRED'}</span>\`
+        : isTrial
+          ? '<span class="tag trial-tag">🆓 FREE TRIAL</span>'
+          : '<span class="tag active">● ACTIVE</span>';
     const expiryTag = expLbl
       ? \`<span class="tag \${expLbl.cls === 'expired' ? 'expired-tag' : expLbl.cls === 'expiring' ? 'expiring-tag' : 'expiry-ok-tag'}">🗓 \${expLbl.text}</span>\`
       : '<span class="tag city">🗓 No expiry set</span>';
@@ -579,6 +600,10 @@ function renderList() {
           <button class="hold-btn renew-btn" onclick="renewSubscription(\${b.id})">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
             RENEW
+          </button>
+          <button class="hold-btn" style="background:rgba(167,139,250,0.1);color:#7c5cbf;border:1px solid rgba(167,139,250,0.3)" onclick="resetPassword(\${b.id})">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            RESET PW
           </button>
         </div>
       </div>
@@ -611,6 +636,26 @@ async function renewSubscription(id) {
     updateStats();
     renderList();
     alert('✅ "' + name + '" renewed for ' + m + ' month(s)!');
+  } catch (e) {
+    alert('Connection error.');
+  }
+}
+
+async function resetPassword(id) {
+  const b = boutiques.find(x => x.id === id);
+  const name = b ? b.name : 'this boutique';
+  const newPass = prompt('Reset password for "' + name + '".\n\nEnter new password (min 8 characters):');
+  if (!newPass) return;
+  if (newPass.length < 8) { alert('Password must be at least 8 characters.'); return; }
+
+  try {
+    const res = await fetch('/api/admin/boutiques/' + id + '/reset-password', {
+      method: 'PATCH',
+      headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword: newPass })
+    });
+    if (!res.ok) { alert('Failed to reset password. Try again.'); return; }
+    alert('✅ Password for "' + name + '" has been reset successfully!');
   } catch (e) {
     alert('Connection error.');
   }
@@ -667,18 +712,42 @@ app.patch('/api/admin/boutiques/:id/renew', adminAuth, async (req, res) => {
     const { months } = req.body;
     if (!months || months < 1) return res.status(400).json({ error: 'months required' });
 
+    const plan = months >= 12 ? 'yearly' : 'monthly';
+
     // Extend from today or from current expiry (whichever is later)
     const result = await db.query(
       `UPDATE boutiques
        SET expires_at = GREATEST(NOW(), COALESCE(expires_at, NOW())) + ($1 || ' months')::INTERVAL,
            is_active  = true,
+           plan       = $3,
            updated_at = NOW()
        WHERE id = $2
-       RETURNING id, name, is_active, expires_at`,
-      [months, id]
+       RETURNING id, name, is_active, expires_at, plan`,
+      [months, id, plan]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
-    res.json({ message: `Renewed for ${months} month(s)`, boutique: result.rows[0] });
+    res.json({ message: `Renewed for ${months} month(s) (${plan})`, boutique: result.rows[0] });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Reset boutique password (admin)
+app.patch('/api/admin/boutiques/:id/reset-password', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 8)
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    const result = await db.query(
+      'UPDATE boutiques SET password=$1, updated_at=NOW() WHERE id=$2 RETURNING id, name',
+      [hash, id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
+    res.json({ message: 'Password reset successfully', boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
@@ -753,6 +822,21 @@ app.get('/api/dashboard', auth, async (req, res) => {
 
 // ─────────────────────────────────────────────
 //  CUSTOMERS
+//
+//  Measurement storage — both columns are JSONB (schema-agnostic):
+//
+//  measurements_top   — male:   { "Chest": 40, "Shoulder": 16, ... }
+//                     — female: { "blouse_Length": 16, "blouse_Chest 1": 36,
+//                                 "dress_Length": 42, "dress_Waist": 28, ... }
+//                       (prefix "blouse_" or "dress_" distinguishes garment type;
+//                        legacy unprefixed female keys are treated as blouse)
+//
+//  measurements_bottom — male:   { "Waist": 34, "Inseam": 30, ... }
+//                      — female: { "Salwar Length": 38, "Waist": 28, "Hip": 38,
+//                                  "Thigh": 22, "Knee": 16 }
+//
+//  No schema migration needed — add any custom field on the client and it
+//  persists transparently in the JSONB column.
 // ─────────────────────────────────────────────
 
 app.get('/api/customers', auth, async (req, res) => {
