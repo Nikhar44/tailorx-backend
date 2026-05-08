@@ -174,6 +174,9 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
 
+    // Track last login time
+    await db.query('UPDATE boutiques SET last_login_at=NOW() WHERE id=$1', [boutique.id]);
+
     // Account hold check
     if (boutique.is_active === false) {
       return res.status(403).json({
@@ -470,10 +473,28 @@ app.get('/admin', (req, res) => {
   .ab-renew  { background: rgba(74,127,193,0.06); color: #4a7fc1;        border-color: rgba(74,127,193,0.25); }
   .ab-pw     { background: rgba(167,139,250,0.06);color: #7c5cbf;        border-color: rgba(167,139,250,0.3); }
 
-  .renew-input-row { display: none; gap: 8px; align-items: center; padding: 0 0 4px; }
+  .renew-input-row { display: none; flex-direction: column; gap: 8px; padding: 0 0 4px; }
+  .renew-input-row .renew-fields { display: flex; gap: 8px; }
   .renew-input-row input { flex: 1; padding: 10px 12px; font-size: 14px; }
   .renew-input-row button { padding: 10px 18px; background: #4a7fc1; color: #fff; border: none;
     border-radius: 10px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+
+  /* Activity & Revenue */
+  .modal-section { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+  .modal-section h3 { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--text3); margin-bottom: 10px; }
+  .activity-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .act-item { background: var(--bg); border-radius: 10px; padding: 10px; text-align: center; }
+  .act-item .av { font-size: 20px; font-weight: 800; color: var(--text); }
+  .act-item .al { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: 0.5px; margin-top: 2px; }
+  .last-login { font-size: 12px; color: var(--text2); margin-top: 8px; }
+  .pay-total { display: flex; justify-content: space-between; align-items: center; background: var(--bg); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; }
+  .pay-total .pt-lbl { font-size: 12px; color: var(--text2); }
+  .pay-total .pt-val { font-size: 20px; font-weight: 800; color: var(--success); }
+  .pay-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
+  .pay-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--bg); border-radius: 8px; font-size: 13px; }
+  .pay-item .pi-amt { font-weight: 700; color: var(--success); }
+  .pay-item .pi-meta { font-size: 11px; color: var(--text3); }
+  .no-payments { text-align: center; color: var(--text3); font-size: 13px; padding: 16px; }
 
   .empty { text-align: center; padding: 48px; color: var(--text3); font-size: 15px; }
   .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent);
@@ -537,6 +558,26 @@ app.get('/admin', (req, res) => {
       <button class="modal-close" onclick="closeModalNow()">✕</button>
     </div>
     <div class="modal-details" id="m-details"></div>
+    <!-- Activity Section -->
+    <div class="modal-section">
+      <h3>ACCOUNT ACTIVITY</h3>
+      <div class="activity-grid" id="m-activity">
+        <div class="act-item"><div class="av">—</div><div class="al">CUSTOMERS</div></div>
+        <div class="act-item"><div class="av">—</div><div class="al">ORDERS</div></div>
+        <div class="act-item"><div class="av">—</div><div class="al">INVOICES</div></div>
+        <div class="act-item"><div class="av">—</div><div class="al">APP REVENUE</div></div>
+      </div>
+      <div class="last-login" id="m-last-login">Last login: loading...</div>
+    </div>
+    <!-- Revenue Section -->
+    <div class="modal-section">
+      <h3>SUBSCRIPTION REVENUE</h3>
+      <div class="pay-total">
+        <div class="pt-lbl">Total collected from this boutique</div>
+        <div class="pt-val" id="m-total-paid">₹0</div>
+      </div>
+      <div class="pay-list" id="m-pay-list"><div class="no-payments">Loading...</div></div>
+    </div>
     <div class="modal-actions">
       <h3>ACTIONS</h3>
       <button class="action-btn" id="btn-hold" onclick="doHold()">
@@ -548,8 +589,11 @@ app.get('/admin', (req, res) => {
         <div class="ab-text">Renew Subscription<span>Extend access by months</span></div>
       </button>
       <div class="renew-input-row" id="renew-row">
-        <input type="number" id="renew-months" placeholder="Months (e.g. 3)" min="1" max="24" />
-        <button onclick="doRenew()">RENEW</button>
+        <div class="renew-fields">
+          <input type="number" id="renew-months" placeholder="Months (e.g. 3)" min="1" max="24" />
+          <input type="number" id="renew-amount" placeholder="Amount paid (₹)" min="0" />
+          <button onclick="doRenew()">RENEW</button>
+        </div>
       </div>
       <button class="action-btn ab-pw" onclick="doResetPassword()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
@@ -709,9 +753,57 @@ function openModal(id) {
   // Reset renew input
   document.getElementById('renew-row').style.display = 'none';
   document.getElementById('renew-months').value = '';
+  document.getElementById('renew-amount').value = '';
 
   document.getElementById('modal-backdrop').classList.add('open');
   document.body.style.overflow = 'hidden';
+
+  // Load activity + payments async
+  loadActivity(id);
+  loadPayments(id);
+}
+
+async function loadActivity(id) {
+  try {
+    const res = await fetch('/api/admin/boutiques/' + id + '/stats', { headers: { 'x-admin-secret': secret } });
+    const d = await res.json();
+    const fmt = n => n >= 1000 ? (n/1000).toFixed(1) + 'k' : String(n);
+    const fmtRev = n => n >= 100000 ? (n/100000).toFixed(1) + 'L' : n >= 1000 ? (n/1000).toFixed(1) + 'k' : String(Math.round(n));
+    document.getElementById('m-activity').innerHTML =
+      '<div class="act-item"><div class="av">' + fmt(d.customers) + '</div><div class="al">CUSTOMERS</div></div>' +
+      '<div class="act-item"><div class="av">' + fmt(d.orders) + '</div><div class="al">ORDERS</div></div>' +
+      '<div class="act-item"><div class="av">' + fmt(d.invoices) + '</div><div class="al">INVOICES</div></div>' +
+      '<div class="act-item"><div class="av">₹' + fmtRev(d.app_revenue) + '</div><div class="al">APP REV</div></div>';
+    const ll = d.last_login_at
+      ? 'Last login: ' + new Date(d.last_login_at).toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+      : 'Last login: Never recorded';
+    document.getElementById('m-last-login').textContent = ll;
+  } catch(e) {
+    document.getElementById('m-last-login').textContent = 'Could not load activity.';
+  }
+}
+
+async function loadPayments(id) {
+  try {
+    const res = await fetch('/api/admin/boutiques/' + id + '/payments', { headers: { 'x-admin-secret': secret } });
+    const payments = await res.json();
+    const total = payments.reduce((s, p) => s + parseFloat(p.amount), 0);
+    document.getElementById('m-total-paid').textContent = '₹' + total.toLocaleString('en-IN');
+    if (!payments.length) {
+      document.getElementById('m-pay-list').innerHTML = '<div class="no-payments">No payments recorded yet</div>';
+      return;
+    }
+    document.getElementById('m-pay-list').innerHTML = payments.map(p => {
+      const date = new Date(p.paid_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+      return '<div class="pay-item">' +
+        '<div><div class="pi-amt">₹' + parseFloat(p.amount).toLocaleString('en-IN') + '</div>' +
+        '<div class="pi-meta">' + p.months + ' month(s) · ' + (p.plan || 'monthly').toUpperCase() + (p.notes ? ' · ' + p.notes : '') + '</div></div>' +
+        '<div class="pi-meta">' + date + '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    document.getElementById('m-pay-list').innerHTML = '<div class="no-payments">Could not load payments.</div>';
+  }
 }
 
 function closeModal(e) {
@@ -752,20 +844,21 @@ async function doHold() {
 
 async function doRenew() {
   const m = parseInt(document.getElementById('renew-months').value);
+  const amount = parseFloat(document.getElementById('renew-amount').value) || 0;
   if (!m || m < 1) { alert('Enter a valid number of months.'); return; }
   const b = boutiques.find(x => x.id === selectedId);
   try {
     const res = await fetch('/api/admin/boutiques/' + selectedId + '/renew', {
       method: 'PATCH',
       headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ months: m })
+      body: JSON.stringify({ months: m, amount: amount })
     });
     if (!res.ok) { alert('Failed. Try again.'); return; }
     const data = await res.json();
     const idx = boutiques.findIndex(x => x.id === selectedId);
     if (idx !== -1) { boutiques[idx].expires_at = data.boutique.expires_at; boutiques[idx].is_active = true; }
     updateStats(); renderList(); closeModalNow();
-    alert((b ? b.name : 'Boutique') + ' renewed for ' + m + ' month(s)!');
+    alert((b ? b.name : 'Boutique') + ' renewed for ' + m + ' month(s)!' + (amount > 0 ? ' Payment of ₹' + amount.toLocaleString('en-IN') + ' recorded.' : ''));
   } catch(e) { alert('Connection error.'); }
 }
 
@@ -810,12 +903,11 @@ app.get('/api/admin/boutiques', adminAuth, async (req, res) => {
 app.patch('/api/admin/boutiques/:id/renew', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { months } = req.body;
+    const { months, amount, notes } = req.body;
     if (!months || months < 1) return res.status(400).json({ error: 'months required' });
 
     const plan = months >= 12 ? 'yearly' : 'monthly';
 
-    // Extend from today or from current expiry (whichever is later)
     const result = await db.query(
       `UPDATE boutiques
        SET expires_at = GREATEST(NOW(), COALESCE(expires_at, NOW())) + ($1 || ' months')::INTERVAL,
@@ -827,6 +919,15 @@ app.patch('/api/admin/boutiques/:id/renew', adminAuth, async (req, res) => {
       [months, id, plan]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
+
+    // Auto-log the payment if amount provided
+    if (amount && amount > 0) {
+      await db.query(
+        'INSERT INTO subscription_payments (boutique_id, amount, months, plan, notes) VALUES ($1,$2,$3,$4,$5)',
+        [id, amount, months, plan, notes || '']
+      );
+    }
+
     res.json({ message: `Renewed for ${months} month(s) (${plan})`, boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
@@ -851,6 +952,56 @@ app.patch('/api/admin/boutiques/:id/reset-password', adminAuth, async (req, res)
     res.json({ message: 'Password reset successfully', boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Boutique activity stats (admin)
+app.get('/api/admin/boutiques/:id/stats', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [custRes, ordRes, invRes, boutRes] = await Promise.all([
+      db.query('SELECT COUNT(*)::int as count FROM customers WHERE boutique_id=$1', [id]),
+      db.query('SELECT COUNT(*)::int as count FROM orders WHERE boutique_id=$1', [id]),
+      db.query('SELECT COUNT(*)::int as count, COALESCE(SUM(total_amount),0)::float as revenue FROM invoices WHERE boutique_id=$1', [id]),
+      db.query('SELECT last_login_at FROM boutiques WHERE id=$1', [id]),
+    ]);
+    res.json({
+      customers:    custRes.rows[0].count,
+      orders:       ordRes.rows[0].count,
+      invoices:     invRes.rows[0].count,
+      app_revenue:  invRes.rows[0].revenue,
+      last_login_at: boutRes.rows[0]?.last_login_at || null,
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Subscription payment history (admin)
+app.get('/api/admin/boutiques/:id/payments', adminAuth, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM subscription_payments WHERE boutique_id=$1 ORDER BY paid_at DESC',
+      [req.params.id]
+    );
+    res.json(result.rows);
+  } catch (e) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Log a subscription payment (admin)
+app.post('/api/admin/boutiques/:id/payments', adminAuth, async (req, res) => {
+  try {
+    const { amount, months, plan, notes } = req.body;
+    const result = await db.query(
+      'INSERT INTO subscription_payments (boutique_id, amount, months, plan, notes) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [req.params.id, amount || 0, months || 1, plan || 'monthly', notes || '']
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
 });
