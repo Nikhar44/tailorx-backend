@@ -644,7 +644,7 @@ async function renewSubscription(id) {
 async function resetPassword(id) {
   const b = boutiques.find(x => x.id === id);
   const name = b ? b.name : 'this boutique';
-  const newPass = prompt('Reset password for "' + name + '".\n\nEnter new password (min 8 characters):');
+  const newPass = prompt('Reset password for "' + name + '".\\n\\nEnter new password (min 8 characters):');
   if (!newPass) return;
   if (newPass.length < 8) { alert('Password must be at least 8 characters.'); return; }
 
