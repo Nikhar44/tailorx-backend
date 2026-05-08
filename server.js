@@ -352,7 +352,7 @@ app.get('/admin', (req, res) => {
   header {
     background: linear-gradient(135deg, var(--dark), var(--mid));
     padding: 16px 24px; display: flex; align-items: center; gap: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2); position: sticky; top: 0; z-index: 10;
   }
   .logo { width: 40px; height: 40px; background: var(--accent); border-radius: 10px;
     display: grid; place-items: center; font-weight: 900; font-size: 14px; color: var(--dark); letter-spacing: 1px; }
@@ -365,7 +365,7 @@ app.get('/admin', (req, res) => {
     box-shadow: 0 8px 40px rgba(0,0,0,0.08); }
   .login-box h2 { font-size: 22px; margin-bottom: 6px; }
   .login-box p { color: var(--text2); font-size: 14px; margin-bottom: 24px; }
-  input[type=password], input[type=text] {
+  input[type=password], input[type=text], input[type=number] {
     width: 100%; padding: 12px 16px; border: 1.5px solid var(--border);
     border-radius: 10px; font-size: 15px; background: var(--bg); color: var(--text);
     outline: none; transition: border-color .2s;
@@ -375,8 +375,6 @@ app.get('/admin', (req, res) => {
     background: var(--dark); color: #fff; border: none; border-radius: 10px;
     font-size: 14px; font-weight: 700; letter-spacing: 0.8px; cursor: pointer; transition: opacity .2s; }
   .btn:hover { opacity: 0.85; }
-  .btn.danger { background: var(--danger); }
-  .btn.success { background: var(--success); }
   .error-msg { color: var(--danger); font-size: 13px; margin-top: 10px; display: none; }
 
   /* ── Dashboard ── */
@@ -386,52 +384,96 @@ app.get('/admin', (req, res) => {
     padding: 20px; text-align: center; color: #fff; }
   .stat-card .val { font-size: 36px; font-weight: 800; }
   .stat-card .lbl { font-size: 11px; color: rgba(255,255,255,0.5); letter-spacing: 1px; margin-top: 2px; }
-  .stat-card.active .val { color: #5dcea8; }
-  .stat-card.hold .val { color: #e87070; }
-  .stat-card.expired .val { color: #e09f3e; }
+  .stat-card.s-active .val { color: #5dcea8; }
+  .stat-card.s-hold .val { color: #e87070; }
+  .stat-card.s-expired .val { color: #e09f3e; }
 
   .search-bar { margin-bottom: 16px; }
   .search-bar input { width: 100%; padding: 11px 16px; border: 1.5px solid var(--border);
     border-radius: 10px; font-size: 14px; background: var(--card); }
 
   /* ── Boutique Cards ── */
-  .boutique-list { display: flex; flex-direction: column; gap: 12px; }
+  .boutique-list { display: flex; flex-direction: column; gap: 10px; }
   .boutique-card {
-    background: var(--card); border-radius: 16px; padding: 16px 18px;
+    background: var(--card); border-radius: 14px; padding: 14px 16px;
     border: 1.5px solid var(--border);
     display: flex; align-items: center; gap: 14px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-    transition: border-color .2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    cursor: pointer; transition: all .18s;
   }
-  .boutique-card.on-hold { border-color: rgba(207,71,71,0.4); background: #fff9f9; }
-  .avatar { width: 48px; height: 48px; border-radius: 12px; display: grid; place-items: center;
-    font-size: 18px; font-weight: 800; color: var(--dark); flex-shrink: 0; }
-  .avatar.active { background: linear-gradient(135deg, #d4a574, #e8c49a); }
-  .avatar.hold { background: linear-gradient(135deg, #e87070, #cf4747); color: #fff; }
+  .boutique-card:hover { border-color: var(--accent); box-shadow: 0 4px 20px rgba(212,165,116,0.15); transform: translateY(-1px); }
+  .boutique-card.on-hold { border-color: rgba(207,71,71,0.35); background: #fff9f9; }
+  .boutique-card.on-hold:hover { border-color: var(--danger); }
+  .avatar { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center;
+    font-size: 17px; font-weight: 800; color: var(--dark); flex-shrink: 0; }
+  .avatar.av-active { background: linear-gradient(135deg, #d4a574, #e8c49a); }
+  .avatar.av-hold   { background: linear-gradient(135deg, #e87070, #cf4747); color: #fff; }
   .info { flex: 1; min-width: 0; }
-  .info .name { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .info .meta { font-size: 12px; color: var(--text2); margin-top: 3px; }
-  .info .tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-  .tag { padding: 2px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
-  .tag.active      { background: rgba(45,143,111,0.1);  color: var(--success); border: 1px solid rgba(45,143,111,0.25); }
-  .tag.hold        { background: rgba(207,71,71,0.1);   color: var(--danger);  border: 1px solid rgba(207,71,71,0.25); }
-  .tag.expired-tag { background: rgba(207,71,71,0.1);   color: var(--danger);  border: 1px solid rgba(207,71,71,0.25); }
-  .tag.expiring-tag{ background: rgba(224,159,62,0.1);  color: var(--warning); border: 1px solid rgba(224,159,62,0.25); }
-  .tag.expiry-ok-tag{ background: rgba(45,143,111,0.08); color: var(--success); border: 1px solid rgba(45,143,111,0.2); }
-  .tag.plan        { background: rgba(212,165,116,0.1); color: #b8895a; border: 1px solid rgba(212,165,116,0.25); }
-  .tag.city        { background: rgba(107,107,123,0.08); color: var(--text2); border: 1px solid var(--border); }
-  .tag.trial-tag   { background: rgba(167,139,250,0.1); color: #7c5cbf; border: 1px solid rgba(167,139,250,0.3); }
-  .hold-btn.renew-btn { background: rgba(74,127,193,0.1); color: #4a7fc1; border: 1px solid rgba(74,127,193,0.25); }
+  .info .name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .info .meta { font-size: 12px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .info .tags { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+  .tag { padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; }
+  .tag.t-active    { background: rgba(45,143,111,0.1);  color: var(--success); border: 1px solid rgba(45,143,111,0.25); }
+  .tag.t-hold      { background: rgba(207,71,71,0.1);   color: var(--danger);  border: 1px solid rgba(207,71,71,0.25); }
+  .tag.t-expired   { background: rgba(207,71,71,0.1);   color: var(--danger);  border: 1px solid rgba(207,71,71,0.25); }
+  .tag.t-expiring  { background: rgba(224,159,62,0.1);  color: var(--warning); border: 1px solid rgba(224,159,62,0.25); }
+  .tag.t-expiry-ok { background: rgba(45,143,111,0.08); color: var(--success); border: 1px solid rgba(45,143,111,0.2); }
+  .tag.t-plan      { background: rgba(212,165,116,0.1); color: #b8895a; border: 1px solid rgba(212,165,116,0.25); }
+  .tag.t-city      { background: rgba(107,107,123,0.08); color: var(--text2); border: 1px solid var(--border); }
+  .tag.t-trial     { background: rgba(167,139,250,0.1); color: #7c5cbf; border: 1px solid rgba(167,139,250,0.3); }
+  .chevron { color: var(--text3); font-size: 18px; flex-shrink: 0; }
 
-  .hold-btn {
-    flex-shrink: 0; padding: 8px 14px; border: none; border-radius: 10px;
-    font-size: 11px; font-weight: 800; letter-spacing: 0.5px; cursor: pointer;
-    transition: opacity .2s; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  /* ── Modal ── */
+  .modal-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    z-index: 100; align-items: flex-end; justify-content: center;
   }
-  .hold-btn.do-hold   { background: rgba(207,71,71,0.1); color: var(--danger); border: 1px solid rgba(207,71,71,0.25); }
-  .hold-btn.do-lift   { background: rgba(45,143,111,0.1); color: var(--success); border: 1px solid rgba(45,143,111,0.25); }
-  .hold-btn:hover { opacity: 0.75; }
-  .hold-btn svg { width: 20px; height: 20px; }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 24px 24px 0 0; width: 100%; max-width: 520px;
+    padding: 0 0 32px; max-height: 92vh; overflow-y: auto;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 12px auto 0; }
+  .modal-header {
+    display: flex; align-items: center; gap: 14px;
+    padding: 20px 20px 16px; border-bottom: 1px solid var(--border);
+  }
+  .modal-avatar { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center;
+    font-size: 20px; font-weight: 800; flex-shrink: 0; }
+  .modal-info { flex: 1; min-width: 0; }
+  .modal-info h2 { font-size: 18px; font-weight: 700; }
+  .modal-info p  { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .modal-close { width: 32px; height: 32px; border-radius: 50%; background: var(--bg); border: none;
+    cursor: pointer; font-size: 18px; display: grid; place-items: center; color: var(--text2); flex-shrink: 0; }
+  .modal-close:hover { background: var(--border); }
+
+  .modal-details { padding: 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; border-bottom: 1px solid var(--border); }
+  .detail-item { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+  .detail-item .dl { font-size: 10px; font-weight: 700; letter-spacing: 0.6px; color: var(--text3); margin-bottom: 3px; }
+  .detail-item .dv { font-size: 13px; font-weight: 600; color: var(--text); }
+
+  .modal-actions { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .modal-actions h3 { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--text3); margin-bottom: 4px; }
+  .action-btn {
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    border-radius: 12px; border: 1.5px solid; cursor: pointer;
+    font-size: 14px; font-weight: 700; width: 100%; text-align: left; transition: opacity .15s;
+  }
+  .action-btn:hover { opacity: 0.75; }
+  .action-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .action-btn .ab-text { flex: 1; }
+  .action-btn .ab-text span { display: block; font-size: 11px; font-weight: 400; opacity: 0.7; margin-top: 1px; }
+  .ab-hold   { background: rgba(207,71,71,0.06);  color: var(--danger);  border-color: rgba(207,71,71,0.25); }
+  .ab-lift   { background: rgba(45,143,111,0.06); color: var(--success); border-color: rgba(45,143,111,0.25); }
+  .ab-renew  { background: rgba(74,127,193,0.06); color: #4a7fc1;        border-color: rgba(74,127,193,0.25); }
+  .ab-pw     { background: rgba(167,139,250,0.06);color: #7c5cbf;        border-color: rgba(167,139,250,0.3); }
+
+  .renew-input-row { display: none; gap: 8px; align-items: center; padding: 0 0 4px; }
+  .renew-input-row input { flex: 1; padding: 10px 12px; font-size: 14px; }
+  .renew-input-row button { padding: 10px 18px; background: #4a7fc1; color: #fff; border: none;
+    border-radius: 10px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 
   .empty { text-align: center; padding: 48px; color: var(--text3); font-size: 15px; }
   .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent);
@@ -443,6 +485,7 @@ app.get('/admin', (req, res) => {
     .stat-card { padding: 14px 10px; }
     .stat-card .val { font-size: 26px; }
     header h1 { font-size: 17px; }
+    .modal { border-radius: 20px 20px 0 0; }
   }
 </style>
 </head>
@@ -468,10 +511,10 @@ app.get('/admin', (req, res) => {
 <div id="dashboard">
   <div class="stats">
     <div class="stat-card"><div class="val" id="stat-total">—</div><div class="lbl">TOTAL</div></div>
-    <div class="stat-card active"><div class="val" id="stat-active">—</div><div class="lbl">ACTIVE</div></div>
+    <div class="stat-card s-active"><div class="val" id="stat-active">—</div><div class="lbl">ACTIVE</div></div>
     <div class="stat-card" style="--c:#a78bfa"><div class="val" id="stat-trial" style="color:#a78bfa">—</div><div class="lbl">ON TRIAL</div></div>
-    <div class="stat-card hold"><div class="val" id="stat-hold">—</div><div class="lbl">ON HOLD</div></div>
-    <div class="stat-card expired"><div class="val" id="stat-expired">—</div><div class="lbl">EXPIRED</div></div>
+    <div class="stat-card s-hold"><div class="val" id="stat-hold">—</div><div class="lbl">ON HOLD</div></div>
+    <div class="stat-card s-expired"><div class="val" id="stat-expired">—</div><div class="lbl">EXPIRED</div></div>
   </div>
   <div class="search-bar">
     <input type="text" id="search-input" placeholder="🔍  Search by name, email or city…" oninput="renderList()" />
@@ -481,9 +524,45 @@ app.get('/admin', (req, res) => {
   </div>
 </div>
 
+<!-- Boutique Detail Modal -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-avatar" id="m-avatar"></div>
+      <div class="modal-info">
+        <h2 id="m-name"></h2>
+        <p id="m-meta"></p>
+      </div>
+      <button class="modal-close" onclick="closeModalNow()">✕</button>
+    </div>
+    <div class="modal-details" id="m-details"></div>
+    <div class="modal-actions">
+      <h3>ACTIONS</h3>
+      <button class="action-btn" id="btn-hold" onclick="doHold()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="hold-icon"></svg>
+        <div class="ab-text"><span id="hold-label"></span><span id="hold-sub"></span></div>
+      </button>
+      <button class="action-btn ab-renew" onclick="toggleRenewInput()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        <div class="ab-text">Renew Subscription<span>Extend access by months</span></div>
+      </button>
+      <div class="renew-input-row" id="renew-row">
+        <input type="number" id="renew-months" placeholder="Months (e.g. 3)" min="1" max="24" />
+        <button onclick="doRenew()">RENEW</button>
+      </div>
+      <button class="action-btn ab-pw" onclick="doResetPassword()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        <div class="ab-text">Reset Password<span>Set a new password for this boutique</span></div>
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
 let secret = '';
 let boutiques = [];
+let selectedId = null;
 
 function doLogin() {
   const val = document.getElementById('secret-input').value.trim();
@@ -527,10 +606,10 @@ function expiryLabel(b) {
   const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
   const dateStr = d.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
   const isTrial = b.plan === 'trial';
-  if (diff < 0) return { text: (isTrial ? 'Trial ended ' : 'Expired ') + dateStr, cls: 'expired' };
-  if (diff <= 3) return { text: (isTrial ? 'Trial ends in ' : 'Expires in ') + diff + 'd!', cls: 'expiring' };
-  if (diff <= 7) return { text: (isTrial ? 'Trial: ' : '') + diff + ' days left (' + dateStr + ')', cls: 'expiring' };
-  return { text: (isTrial ? 'Trial until ' : 'Expires ') + dateStr, cls: 'expiry-ok' };
+  if (diff < 0) return { text: (isTrial ? 'Trial ended ' : 'Expired ') + dateStr, cls: 't-expired' };
+  if (diff <= 3) return { text: (isTrial ? 'Trial ends in ' : 'Expires in ') + diff + 'd!', cls: 't-expiring' };
+  if (diff <= 7) return { text: (isTrial ? 'Trial: ' : '') + diff + ' days left (' + dateStr + ')', cls: 't-expiring' };
+  return { text: (isTrial ? 'Trial until ' : 'Expires ') + dateStr, cls: 't-expiry-ok' };
 }
 
 function updateStats() {
@@ -561,131 +640,153 @@ function renderList() {
     const expired  = isExpired(b);
     const expLbl   = expiryLabel(b);
     const initials = (b.name || '?').trim().split(' ').filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join('');
-    const joined   = b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : '';
-    const cardCls  = !isActive ? 'on-hold' : expired ? 'on-hold' : '';
-    const avatarCls= !isActive || expired ? 'hold' : 'active';
-    const isTrial = b.plan === 'trial';
+    const cardCls  = (!isActive || expired) ? 'on-hold' : '';
+    const avatarCls= (!isActive || expired) ? 'av-hold' : 'av-active';
+    const isTrial  = b.plan === 'trial';
     const statusTag = !isActive
-      ? '<span class="tag hold">⏸ ON HOLD</span>'
+      ? '<span class="tag t-hold">ON HOLD</span>'
       : expired
-        ? \`<span class="tag expired-tag">⚠ \${isTrial ? 'TRIAL ENDED' : 'EXPIRED'}</span>\`
+        ? ('<span class="tag t-expired">' + (isTrial ? 'TRIAL ENDED' : 'EXPIRED') + '</span>')
         : isTrial
-          ? '<span class="tag trial-tag">🆓 FREE TRIAL</span>'
-          : '<span class="tag active">● ACTIVE</span>';
-    const expiryTag = expLbl
-      ? \`<span class="tag \${expLbl.cls === 'expired' ? 'expired-tag' : expLbl.cls === 'expiring' ? 'expiring-tag' : 'expiry-ok-tag'}">🗓 \${expLbl.text}</span>\`
-      : '<span class="tag city">🗓 No expiry set</span>';
-    return \`
-      <div class="boutique-card \${cardCls}" id="card-\${b.id}">
-        <div class="avatar \${avatarCls}">\${initials}</div>
-        <div class="info">
-          <div class="name">\${b.name || 'Unknown'}</div>
-          <div class="meta">\${b.email || ''} \${b.phone ? '· ' + b.phone : ''}</div>
-          <div class="tags">
-            \${statusTag}
-            <span class="tag plan">\${(b.plan || 'free').toUpperCase()}</span>
-            \${b.city ? '<span class="tag city">📍 ' + b.city + '</span>' : ''}
-            \${joined ? '<span class="tag city">Since ' + joined + '</span>' : ''}
-          </div>
-          <div class="tags" style="margin-top:4px">
-            \${expiryTag}
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">
-          <button class="hold-btn \${isActive && !expired ? 'do-hold' : 'do-lift'}" onclick="toggleHold(\${b.id}, \${isActive && !expired})">
-            \${isActive && !expired
-              ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>HOLD'
-              : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>LIFT'}
-          </button>
-          <button class="hold-btn renew-btn" onclick="renewSubscription(\${b.id})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
-            RENEW
-          </button>
-          <button class="hold-btn" style="background:rgba(167,139,250,0.1);color:#7c5cbf;border:1px solid rgba(167,139,250,0.3)" onclick="resetPassword(\${b.id})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-            RESET PW
-          </button>
-        </div>
-      </div>
-    \`;
+          ? '<span class="tag t-trial">FREE TRIAL</span>'
+          : '<span class="tag t-active">ACTIVE</span>';
+    const expiryTag = expLbl ? ('<span class="tag ' + expLbl.cls + '">' + expLbl.text + '</span>') : '';
+    return (
+      '<div class="boutique-card ' + cardCls + '" onclick="openModal(' + b.id + ')">' +
+        '<div class="avatar ' + avatarCls + '">' + initials + '</div>' +
+        '<div class="info">' +
+          '<div class="name">' + (b.name || 'Unknown') + '</div>' +
+          '<div class="meta">' + (b.email || '') + (b.phone ? ' · ' + b.phone : '') + '</div>' +
+          '<div class="tags">' + statusTag + '<span class="tag t-plan">' + (b.plan || 'free').toUpperCase() + '</span>' + (b.city ? '<span class="tag t-city">' + b.city + '</span>' : '') + expiryTag + '</div>' +
+        '</div>' +
+        '<div class="chevron">›</div>' +
+      '</div>'
+    );
   }).join('');
 }
 
-async function renewSubscription(id) {
+function openModal(id) {
+  selectedId = id;
   const b = boutiques.find(x => x.id === id);
-  const name = b ? b.name : 'this boutique';
-  const months = prompt('Renew "' + name + '" for how many months?\\n(Enter a number, e.g. 1, 3, 6, 12)', '1');
-  if (!months) return;
-  const m = parseInt(months);
-  if (!m || m < 1) { alert('Enter a valid number of months.'); return; }
+  if (!b) return;
+  const isActive = b.is_active !== false;
+  const expired  = isExpired(b);
+  const initials = (b.name || '?').trim().split(' ').filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join('');
+  const joined   = b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : 'Unknown';
+  const expiry   = b.expires_at ? new Date(b.expires_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'}) : 'Not set';
 
-  try {
-    const res = await fetch('/api/admin/boutiques/' + id + '/renew', {
-      method: 'PATCH',
-      headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ months: m })
-    });
-    if (!res.ok) { alert('Failed to renew. Try again.'); return; }
-    const data = await res.json();
-    // Update local data
-    const idx = boutiques.findIndex(x => x.id === id);
-    if (idx !== -1) {
-      boutiques[idx].expires_at = data.boutique.expires_at;
-      boutiques[idx].is_active  = true;
-    }
-    updateStats();
-    renderList();
-    alert('✅ "' + name + '" renewed for ' + m + ' month(s)!');
-  } catch (e) {
-    alert('Connection error.');
+  // Avatar
+  const av = document.getElementById('m-avatar');
+  av.textContent = initials;
+  av.className = 'modal-avatar ' + ((!isActive || expired) ? 'av-hold' : 'av-active');
+
+  // Header info
+  document.getElementById('m-name').textContent = b.name || 'Unknown';
+  document.getElementById('m-meta').textContent = (b.email || '') + (b.phone ? ' · ' + b.phone : '');
+
+  // Details grid
+  document.getElementById('m-details').innerHTML =
+    '<div class="detail-item"><div class="dl">STATUS</div><div class="dv">' + (!isActive ? 'On Hold' : expired ? 'Expired' : 'Active') + '</div></div>' +
+    '<div class="detail-item"><div class="dl">PLAN</div><div class="dv">' + (b.plan || 'free').toUpperCase() + '</div></div>' +
+    '<div class="detail-item"><div class="dl">CITY</div><div class="dv">' + (b.city || '—') + '</div></div>' +
+    '<div class="detail-item"><div class="dl">JOINED</div><div class="dv">' + joined + '</div></div>' +
+    '<div class="detail-item" style="grid-column:1/-1"><div class="dl">EXPIRY DATE</div><div class="dv">' + expiry + '</div></div>';
+
+  // Hold/Lift button
+  const btnHold = document.getElementById('btn-hold');
+  if (isActive && !expired) {
+    btnHold.className = 'action-btn ab-hold';
+    document.getElementById('hold-icon').innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+    document.getElementById('hold-label').textContent = 'Put on Hold';
+    document.getElementById('hold-sub').textContent = 'Boutique will not be able to login';
+  } else {
+    btnHold.className = 'action-btn ab-lift';
+    document.getElementById('hold-icon').innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
+    document.getElementById('hold-label').textContent = 'Lift Hold / Reactivate';
+    document.getElementById('hold-sub').textContent = 'Boutique will be able to login again';
   }
+
+  // Reset renew input
+  document.getElementById('renew-row').style.display = 'none';
+  document.getElementById('renew-months').value = '';
+
+  document.getElementById('modal-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
-async function resetPassword(id) {
-  const b = boutiques.find(x => x.id === id);
-  const name = b ? b.name : 'this boutique';
-  const newPass = prompt('Reset password for "' + name + '".\\n\\nEnter new password (min 8 characters):');
-  if (!newPass) return;
-  if (newPass.length < 8) { alert('Password must be at least 8 characters.'); return; }
-
-  try {
-    const res = await fetch('/api/admin/boutiques/' + id + '/reset-password', {
-      method: 'PATCH',
-      headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newPassword: newPass })
-    });
-    if (!res.ok) { alert('Failed to reset password. Try again.'); return; }
-    alert('✅ Password for "' + name + '" has been reset successfully!');
-  } catch (e) {
-    alert('Connection error.');
-  }
+function closeModal(e) {
+  if (e.target === document.getElementById('modal-backdrop')) closeModalNow();
+}
+function closeModalNow() {
+  document.getElementById('modal-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+  selectedId = null;
 }
 
-async function toggleHold(id, currentlyActive) {
-  const newState = !currentlyActive;
-  const b = boutiques.find(x => x.id === id);
-  const name = b ? b.name : 'this boutique';
-  const msg = newState
-    ? 'Reactivate "' + name + '"?\\nThey will be able to login again.'
-    : 'Put "' + name + '" on hold?\\nThey won\\'t be able to login until you lift the hold.';
+function toggleRenewInput() {
+  const row = document.getElementById('renew-row');
+  row.style.display = row.style.display === 'flex' ? 'none' : 'flex';
+}
+
+async function doHold() {
+  const b = boutiques.find(x => x.id === selectedId);
+  if (!b) return;
+  const isActive = b.is_active !== false;
+  const expired  = isExpired(b);
+  const newState = !(isActive && !expired);
+  const msg = newState ? 'Reactivate ' + b.name + '?' : 'Put ' + b.name + ' on hold?';
   if (!confirm(msg)) return;
-
   try {
-    const res = await fetch('/api/admin/boutiques/' + id + '/hold', {
+    const res = await fetch('/api/admin/boutiques/' + selectedId + '/hold', {
       method: 'PATCH',
       headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: newState })
     });
-    if (!res.ok) { alert('Failed to update. Try again.'); return; }
-    // Update local data and re-render
-    const idx = boutiques.findIndex(x => x.id === id);
+    if (!res.ok) { alert('Failed. Try again.'); return; }
+    const idx = boutiques.findIndex(x => x.id === selectedId);
     if (idx !== -1) boutiques[idx].is_active = newState;
-    updateStats();
-    renderList();
-  } catch (e) {
-    alert('Connection error.');
-  }
+    updateStats(); renderList(); closeModalNow();
+    alert(newState ? b.name + ' has been reactivated!' : b.name + ' has been put on hold.');
+  } catch(e) { alert('Connection error.'); }
 }
+
+async function doRenew() {
+  const m = parseInt(document.getElementById('renew-months').value);
+  if (!m || m < 1) { alert('Enter a valid number of months.'); return; }
+  const b = boutiques.find(x => x.id === selectedId);
+  try {
+    const res = await fetch('/api/admin/boutiques/' + selectedId + '/renew', {
+      method: 'PATCH',
+      headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ months: m })
+    });
+    if (!res.ok) { alert('Failed. Try again.'); return; }
+    const data = await res.json();
+    const idx = boutiques.findIndex(x => x.id === selectedId);
+    if (idx !== -1) { boutiques[idx].expires_at = data.boutique.expires_at; boutiques[idx].is_active = true; }
+    updateStats(); renderList(); closeModalNow();
+    alert((b ? b.name : 'Boutique') + ' renewed for ' + m + ' month(s)!');
+  } catch(e) { alert('Connection error.'); }
+}
+
+async function doResetPassword() {
+  const newPass = prompt('Enter new password (min 8 characters):');
+  if (!newPass) return;
+  if (newPass.length < 8) { alert('Password must be at least 8 characters.'); return; }
+  const b = boutiques.find(x => x.id === selectedId);
+  try {
+    const res = await fetch('/api/admin/boutiques/' + selectedId + '/reset-password', {
+      method: 'PATCH',
+      headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword: newPass })
+    });
+    if (!res.ok) { alert('Failed. Try again.'); return; }
+    closeModalNow();
+    alert('Password for ' + (b ? b.name : 'boutique') + ' has been reset!');
+  } catch(e) { alert('Connection error.'); }
+}
+
+
 </script>
 </body>
 </html>`);
