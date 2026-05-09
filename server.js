@@ -213,7 +213,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', auth, async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT id, name, owner_name, email, phone, city, address, gstin, logo_url, plan, created_at FROM boutiques WHERE id = $1',
+      'SELECT id, name, owner_name, email, phone, city, address, gstin, logo_url, plan, is_free, created_at FROM boutiques WHERE id = $1',
       [req.boutiqueId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
@@ -472,6 +472,8 @@ app.get('/admin', (req, res) => {
   .ab-lift   { background: rgba(45,143,111,0.06); color: var(--success); border-color: rgba(45,143,111,0.25); }
   .ab-renew  { background: rgba(74,127,193,0.06); color: #4a7fc1;        border-color: rgba(74,127,193,0.25); }
   .ab-pw     { background: rgba(167,139,250,0.06);color: #7c5cbf;        border-color: rgba(167,139,250,0.3); }
+  .ab-free   { background: rgba(212,165,116,0.06);color: #d4a574;        border-color: rgba(212,165,116,0.3); }
+  .ab-unfree { background: rgba(100,100,120,0.06);color: var(--text3);   border-color: rgba(100,100,120,0.25); }
 
   .renew-input-row { display: none; flex-direction: column; gap: 8px; padding: 0 0 4px; }
   .renew-input-row .renew-fields { display: flex; gap: 8px; }
@@ -595,10 +597,23 @@ app.get('/admin', (req, res) => {
           <button onclick="doRenew()">RENEW</button>
         </div>
       </div>
-      <button class="action-btn ab-pw" onclick="doResetPassword()">
+      <button class="action-btn ab-pw" onclick="toggleResetRow()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
         <div class="ab-text">Reset Password<span>Set a new password for this boutique</span></div>
       </button>
+      <button class="action-btn" id="btn-free" onclick="doToggleFree()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="free-icon"></svg>
+        <div class="ab-text"><span id="free-label"></span><span id="free-sub"></span></div>
+      </button>
+      <div id="reset-row" style="display:none;margin-top:12px;background:#f9f7f4;border-radius:10px;padding:14px;border:1px solid #e0d9d0;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#888;margin-bottom:8px;">NEW PASSWORD</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="reset-pass-input" type="text" placeholder="Min 8 characters" autocomplete="off"
+            style="flex:1;padding:9px 12px;border:1px solid #ddd;border-radius:7px;font-size:14px;font-family:monospace;background:#fff;" />
+          <button onclick="doResetPassword()" style="padding:9px 16px;background:#1a1a2e;color:#d4a574;border:none;border-radius:7px;font-size:12px;font-weight:700;letter-spacing:1px;cursor:pointer;">SET</button>
+        </div>
+        <div style="font-size:11px;color:#999;margin-top:6px;">The boutique owner will use this password to login.</div>
+      </div>
     </div>
   </div>
 </div>
@@ -734,7 +749,29 @@ function openModal(id) {
     '<div class="detail-item"><div class="dl">PLAN</div><div class="dv">' + (b.plan || 'free').toUpperCase() + '</div></div>' +
     '<div class="detail-item"><div class="dl">CITY</div><div class="dv">' + (b.city || '—') + '</div></div>' +
     '<div class="detail-item"><div class="dl">JOINED</div><div class="dv">' + joined + '</div></div>' +
-    '<div class="detail-item" style="grid-column:1/-1"><div class="dl">EXPIRY DATE</div><div class="dv">' + expiry + '</div></div>';
+    '<div class="detail-item" style="grid-column:1/-1"><div class="dl">EXPIRY DATE</div><div class="dv">' + expiry + '</div></div>' +
+    '<div class="detail-item" style="grid-column:1/-1"><div class="dl">EMAIL ID</div><div class="dv" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+      '<span style="font-family:monospace;font-size:13px;word-break:break-all">' + (b.email || '—') + '</span>' +
+      (b.email ? '<button onclick="copyText(\'' + b.email + '\',this)" style="padding:3px 10px;font-size:11px;background:#1a1a2e;color:#d4a574;border:none;border-radius:4px;cursor:pointer;letter-spacing:0.5px">COPY</button>' : '') +
+    '</div></div>' +
+    '<div class="detail-item" style="grid-column:1/-1"><div class="dl">PHONE</div><div class="dv" style="display:flex;align-items:center;gap:8px">' +
+      '<span style="font-family:monospace;font-size:13px">' + (b.phone || '—') + '</span>' +
+      (b.phone ? '<button onclick="copyText(\'' + b.phone + '\',this)" style="padding:3px 10px;font-size:11px;background:#1a1a2e;color:#d4a574;border:none;border-radius:4px;cursor:pointer;letter-spacing:0.5px">COPY</button>' : '') +
+    '</div></div>';
+
+  // Free Account button
+  const btnFree = document.getElementById('btn-free');
+  if (b.is_free) {
+    btnFree.className = 'action-btn ab-unfree';
+    document.getElementById('free-icon').innerHTML = '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>';
+    document.getElementById('free-label').textContent = 'Remove Free Access';
+    document.getElementById('free-sub').textContent   = 'Switch to paid plan required';
+  } else {
+    btnFree.className = 'action-btn ab-free';
+    document.getElementById('free-icon').innerHTML = '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>';
+    document.getElementById('free-label').textContent = 'Grant Free Access';
+    document.getElementById('free-sub').textContent   = 'No payment required — permanent free account';
+  }
 
   // Hold/Lift button
   const btnHold = document.getElementById('btn-hold');
@@ -820,6 +857,28 @@ function toggleRenewInput() {
   row.style.display = row.style.display === 'flex' ? 'none' : 'flex';
 }
 
+async function doToggleFree() {
+  const b = boutiques.find(x => x.id === selectedId);
+  if (!b) return;
+  const newFree = !b.is_free;
+  const msg = newFree
+    ? 'Grant FREE access to ' + b.name + '? They will never be charged.'
+    : 'Remove free access from ' + b.name + '? They will need to pay after trial ends.';
+  if (!confirm(msg)) return;
+  try {
+    const res = await fetch('/api/admin/boutiques/' + selectedId + '/free', {
+      method: 'PATCH',
+      headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_free: newFree })
+    });
+    if (!res.ok) { alert('Failed. Try again.'); return; }
+    const idx = boutiques.findIndex(x => x.id === selectedId);
+    if (idx !== -1) boutiques[idx].is_free = newFree;
+    openModal(selectedId);
+    alert(newFree ? '🎁 Free access granted to ' + b.name : '✓ Free access removed from ' + b.name);
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
 async function doHold() {
   const b = boutiques.find(x => x.id === selectedId);
   if (!b) return;
@@ -862,9 +921,15 @@ async function doRenew() {
   } catch(e) { alert('Connection error.'); }
 }
 
+function toggleResetRow() {
+  const row = document.getElementById('reset-row');
+  row.style.display = row.style.display === 'none' ? 'block' : 'none';
+  if (row.style.display === 'block') document.getElementById('reset-pass-input').focus();
+}
+
 async function doResetPassword() {
-  const newPass = prompt('Enter new password (min 8 characters):');
-  if (!newPass) return;
+  const newPass = document.getElementById('reset-pass-input').value.trim();
+  if (!newPass) { alert('Enter a password first.'); return; }
   if (newPass.length < 8) { alert('Password must be at least 8 characters.'); return; }
   const b = boutiques.find(x => x.id === selectedId);
   try {
@@ -874,9 +939,19 @@ async function doResetPassword() {
       body: JSON.stringify({ newPassword: newPass })
     });
     if (!res.ok) { alert('Failed. Try again.'); return; }
-    closeModalNow();
-    alert('Password for ' + (b ? b.name : 'boutique') + ' has been reset!');
+    document.getElementById('reset-row').style.display = 'none';
+    document.getElementById('reset-pass-input').value = '';
+    alert('✅ Password for ' + (b ? b.name : 'boutique') + ' has been reset to:\n\n' + newPass + '\n\nShare this with the owner.');
   } catch(e) { alert('Connection error.'); }
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'COPIED!';
+    btn.style.background = '#2d8f6f';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = '#1a1a2e'; }, 1500);
+  });
 }
 
 
@@ -889,7 +964,7 @@ async function doResetPassword() {
 app.get('/api/admin/boutiques', adminAuth, async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT id, name, owner_name, email, phone, city, plan, is_active, expires_at, created_at
+      `SELECT id, name, owner_name, email, phone, city, plan, is_active, is_free, expires_at, created_at
        FROM boutiques ORDER BY id ASC`
     );
     res.json(result.rows);
@@ -950,6 +1025,23 @@ app.patch('/api/admin/boutiques/:id/reset-password', adminAuth, async (req, res)
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
     res.json({ message: 'Password reset successfully', boutique: result.rows[0] });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Toggle free account (admin)
+app.patch('/api/admin/boutiques/:id/free', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_free } = req.body;
+    const result = await db.query(
+      'UPDATE boutiques SET is_free=$1, updated_at=NOW() WHERE id=$2 RETURNING id, name, is_free',
+      [is_free, id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
+    res.json({ message: is_free ? 'Free access granted' : 'Free access removed', boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
@@ -1404,7 +1496,21 @@ app.put('/api/invoices/:id', auth, async (req, res) => {
        req.params.id, req.boutiqueId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
+    const inv = result.rows[0];
+
+    // ── Sync the linked order's payment fields ──────────────────────────────
+    // So the Orders screen always reflects the latest payment state.
+    if (inv.order_id) {
+      const newAdv = parseFloat(inv.advance) || 0;
+      const newBal = parseFloat(inv.due_amount) || 0;
+      await db.query(
+        `UPDATE orders SET advance=$1, balance=$2, updated_at=NOW()
+         WHERE id=$3 AND boutique_id=$4`,
+        [newAdv, newBal, inv.order_id, req.boutiqueId]
+      ).catch(() => {}); // silently ignore if order already deleted
+    }
+
+    res.json(inv);
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -1419,7 +1525,19 @@ app.patch('/api/invoices/:id/pay', auth, async (req, res) => {
       [req.params.id, req.boutiqueId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
-    res.json(result.rows[0]);
+    const inv = result.rows[0];
+
+    // ── Sync the linked order ────────────────────────────────────────────────
+    if (inv.order_id) {
+      const fullAdv = parseFloat(inv.total_amount) || 0;
+      await db.query(
+        `UPDATE orders SET advance=$1, balance=0, updated_at=NOW()
+         WHERE id=$2 AND boutique_id=$3`,
+        [fullAdv, inv.order_id, req.boutiqueId]
+      ).catch(() => {});
+    }
+
+    res.json(inv);
   } catch (e) {
     res.status(500).json({ error: 'Server error' });
   }
