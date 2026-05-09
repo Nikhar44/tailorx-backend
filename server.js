@@ -213,7 +213,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', auth, async (req, res) => {
   try {
     const result = await db.query(
-      'SELECT id, name, owner_name, email, phone, city, address, gstin, plan, created_at FROM boutiques WHERE id = $1',
+      'SELECT id, name, owner_name, email, phone, city, address, gstin, logo_url, plan, created_at FROM boutiques WHERE id = $1',
       [req.boutiqueId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
@@ -226,11 +226,11 @@ app.get('/api/auth/me', auth, async (req, res) => {
 // Update boutique settings
 app.put('/api/auth/me', auth, async (req, res) => {
   try {
-    const { name, ownerName, phone, city, address, gstin } = req.body;
+    const { name, ownerName, phone, city, address, gstin, logo_url } = req.body;
     const result = await db.query(
-      `UPDATE boutiques SET name=$1, owner_name=$2, phone=$3, city=$4, address=$5, gstin=$6, updated_at=NOW()
-       WHERE id=$7 RETURNING id, name, owner_name, email, phone, city, address, gstin, plan`,
-      [name, ownerName, phone, city, address, gstin, req.boutiqueId]
+      `UPDATE boutiques SET name=$1, owner_name=$2, phone=$3, city=$4, address=$5, gstin=$6, logo_url=$7, updated_at=NOW()
+       WHERE id=$8 RETURNING id, name, owner_name, email, phone, city, address, gstin, logo_url, plan`,
+      [name, ownerName, phone, city, address, gstin, logo_url ?? null, req.boutiqueId]
     );
     res.json(result.rows[0]);
   } catch (e) {
