@@ -1337,16 +1337,27 @@ app.post('/api/orders', auth, async (req, res) => {
 
 app.put('/api/orders/:id', auth, async (req, res) => {
   try {
-    const { customer_id, customer_name, customer_phone,
-            garment, fabric, due_date, amount, advance,
-            stage, notify, notes } = req.body;
-    const bal = Math.max(0, (amount||0) - (advance||0));
-
+    // Fetch current row first — use as fallback for any field not sent
     const old = await db.query(
-      'SELECT stage, customer_id, customer_name, garment, notify FROM orders WHERE id=$1 AND boutique_id=$2',
+      'SELECT * FROM orders WHERE id=$1 AND boutique_id=$2',
       [req.params.id, req.boutiqueId]
     );
     if (!old.rows.length) return res.status(404).json({ error: 'Not found' });
+    const prev = old.rows[0];
+
+    const b = req.body;
+    const customer_id   = b.customer_id   ?? prev.customer_id;
+    const customer_name = b.customer_name ?? prev.customer_name;
+    const customer_phone= b.customer_phone?? prev.customer_phone;
+    const garment       = b.garment       ?? prev.garment;
+    const fabric        = b.fabric        ?? prev.fabric;
+    const due_date      = 'due_date' in b ? b.due_date : prev.due_date;
+    const amount        = b.amount        !== undefined ? b.amount        : (b.total_amount  !== undefined ? b.total_amount  : prev.amount);
+    const advance       = b.advance       !== undefined ? b.advance       : (b.advance_paid  !== undefined ? b.advance_paid  : prev.advance);
+    const stage         = b.stage         ?? b.status  ?? prev.stage;
+    const notify        = b.notify        !== undefined ? b.notify !== false : prev.notify;
+    const notes         = b.notes         ?? prev.notes;
+    const bal           = Math.max(0, amount - advance);
 
     const result = await db.query(
       `UPDATE orders SET
@@ -1355,16 +1366,16 @@ app.put('/api/orders/:id', auth, async (req, res) => {
          amount=$7, advance=$8, balance=$9,
          stage=$10, notify=$11, notes=$12, updated_at=NOW()
        WHERE id=$13 AND boutique_id=$14 RETURNING *`,
-      [customer_id||null, customer_name||'', customer_phone||'',
-       garment, fabric||'', due_date||null,
-       amount||0, advance||0, bal,
-       stage||'received', notify !== false, notes||'',
+      [customer_id, customer_name, customer_phone,
+       garment, fabric, due_date,
+       amount, advance, bal,
+       stage, notify, notes,
        req.params.id, req.boutiqueId]
     );
 
     const order = result.rows[0];
-    if (old.rows[0].stage !== 'ready' && (stage||'').toLowerCase() === 'ready' && old.rows[0].notify) {
-      await autoNotify(req.boutiqueId, old.rows[0].customer_id, old.rows[0].customer_name, old.rows[0].garment);
+    if (prev.stage !== 'ready' && (stage||'').toLowerCase() === 'ready' && prev.notify) {
+      await autoNotify(req.boutiqueId, prev.customer_id, prev.customer_name, prev.garment);
     }
     res.json(order);
   } catch (e) {
