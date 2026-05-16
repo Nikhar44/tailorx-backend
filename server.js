@@ -739,10 +739,10 @@ function renderList() {
         '<div class="avatar ' + avatarCls + '">' + initials + '</div>' +
         '<div class="info">' +
           '<div class="name">' + (b.name || 'Unknown') + '</div>' +
-          '<div class="meta">' + (b.email || '') + (b.phone ? ' · ' + b.phone : '') + '</div>' +
+          '<div class="meta">' + (b.email || '') + (b.phone ? ' - ' + b.phone : '') + '</div>' +
           '<div class="tags">' + statusTag + '<span class="tag t-plan">' + (b.plan || 'free').toUpperCase() + '</span>' + (b.city ? '<span class="tag t-city">' + b.city + '</span>' : '') + expiryTag + '</div>' +
         '</div>' +
-        '<div class="chevron">›</div>' +
+        '<div class="chevron">&#8250;</div>' +
       '</div>'
     );
   }).join('');
@@ -765,21 +765,21 @@ function openModal(id) {
 
   // Header info
   document.getElementById('m-name').textContent = b.name || 'Unknown';
-  document.getElementById('m-meta').textContent = (b.email || '') + (b.phone ? ' · ' + b.phone : '');
+  document.getElementById('m-meta').textContent = (b.email || '') + (b.phone ? ' - ' + b.phone : '');
 
   // Details grid
   document.getElementById('m-details').innerHTML =
     '<div class="detail-item"><div class="dl">STATUS</div><div class="dv">' + (!isActive ? 'On Hold' : expired ? 'Expired' : 'Active') + '</div></div>' +
     '<div class="detail-item"><div class="dl">PLAN</div><div class="dv">' + (b.plan || 'free').toUpperCase() + '</div></div>' +
-    '<div class="detail-item"><div class="dl">CITY</div><div class="dv">' + (b.city || '—') + '</div></div>' +
+    '<div class="detail-item"><div class="dl">CITY</div><div class="dv">' + (b.city || '-') + '</div></div>' +
     '<div class="detail-item"><div class="dl">JOINED</div><div class="dv">' + joined + '</div></div>' +
     '<div class="detail-item" style="grid-column:1/-1"><div class="dl">EXPIRY DATE</div><div class="dv">' + expiry + '</div></div>' +
     '<div class="detail-item" style="grid-column:1/-1"><div class="dl">EMAIL ID</div><div class="dv" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-      '<span style="font-family:monospace;font-size:13px;word-break:break-all">' + (b.email || '—') + '</span>' +
+      '<span style="font-family:monospace;font-size:13px;word-break:break-all">' + (b.email || '-') + '</span>' +
       (b.email ? '<button onclick="copyText(\'' + b.email + '\',this)" style="padding:3px 10px;font-size:11px;background:#1a1a2e;color:#d4a574;border:none;border-radius:4px;cursor:pointer;letter-spacing:0.5px">COPY</button>' : '') +
     '</div></div>' +
     '<div class="detail-item" style="grid-column:1/-1"><div class="dl">PHONE</div><div class="dv" style="display:flex;align-items:center;gap:8px">' +
-      '<span style="font-family:monospace;font-size:13px">' + (b.phone || '—') + '</span>' +
+      '<span style="font-family:monospace;font-size:13px">' + (b.phone || '-') + '</span>' +
       (b.phone ? '<button onclick="copyText(\'' + b.phone + '\',this)" style="padding:3px 10px;font-size:11px;background:#1a1a2e;color:#d4a574;border:none;border-radius:4px;cursor:pointer;letter-spacing:0.5px">COPY</button>' : '') +
     '</div></div>';
 
@@ -794,7 +794,7 @@ function openModal(id) {
     btnFree.className = 'action-btn ab-free';
     document.getElementById('free-icon').innerHTML = '<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>';
     document.getElementById('free-label').textContent = 'Grant Free Access';
-    document.getElementById('free-sub').textContent   = 'No payment required — permanent free account';
+    document.getElementById('free-sub').textContent   = 'No payment required - permanent free account';
   }
 
   // Hold/Lift button
@@ -834,7 +834,7 @@ async function loadActivity(id) {
       '<div class="act-item"><div class="av">' + fmt(d.customers) + '</div><div class="al">CUSTOMERS</div></div>' +
       '<div class="act-item"><div class="av">' + fmt(d.orders) + '</div><div class="al">ORDERS</div></div>' +
       '<div class="act-item"><div class="av">' + fmt(d.invoices) + '</div><div class="al">INVOICES</div></div>' +
-      '<div class="act-item"><div class="av">₹' + fmtRev(d.app_revenue) + '</div><div class="al">APP REV</div></div>';
+      '<div class="act-item"><div class="av">\u20B9' + fmtRev(d.app_revenue) + '</div><div class="al">APP REV</div></div>';
     const ll = d.last_login_at
       ? 'Last login: ' + new Date(d.last_login_at).toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
       : 'Last login: Never recorded';
@@ -849,7 +849,7 @@ async function loadPayments(id) {
     const res = await fetch('/api/admin/boutiques/' + id + '/payments', { headers: { 'x-admin-secret': secret } });
     const payments = await res.json();
     const total = payments.reduce((s, p) => s + parseFloat(p.amount), 0);
-    document.getElementById('m-total-paid').textContent = '₹' + total.toLocaleString('en-IN');
+    document.getElementById('m-total-paid').textContent = '\u20B9' + total.toLocaleString('en-IN');
     if (!payments.length) {
       document.getElementById('m-pay-list').innerHTML = '<div class="no-payments">No payments recorded yet</div>';
       return;
@@ -857,8 +857,8 @@ async function loadPayments(id) {
     document.getElementById('m-pay-list').innerHTML = payments.map(p => {
       const date = new Date(p.paid_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
       return '<div class="pay-item">' +
-        '<div><div class="pi-amt">₹' + parseFloat(p.amount).toLocaleString('en-IN') + '</div>' +
-        '<div class="pi-meta">' + p.months + ' month(s) · ' + (p.plan || 'monthly').toUpperCase() + (p.notes ? ' · ' + p.notes : '') + '</div></div>' +
+        '<div><div class="pi-amt">\u20B9' + parseFloat(p.amount).toLocaleString('en-IN') + '</div>' +
+        '<div class="pi-meta">' + p.months + ' month(s) - ' + (p.plan || 'monthly').toUpperCase() + (p.notes ? ' - ' + p.notes : '') + '</div></div>' +
         '<div class="pi-meta">' + date + '</div>' +
       '</div>';
     }).join('');
@@ -899,7 +899,7 @@ async function doToggleFree() {
     const idx = boutiques.findIndex(x => x.id === selectedId);
     if (idx !== -1) boutiques[idx].is_free = newFree;
     openModal(selectedId);
-    alert(newFree ? '🎁 Free access granted to ' + b.name : '✓ Free access removed from ' + b.name);
+    alert(newFree ? 'Free access granted to ' + b.name : 'Free access removed from ' + b.name);
   } catch (e) { alert('Error: ' + e.message); }
 }
 
@@ -941,7 +941,7 @@ async function doRenew() {
     const idx = boutiques.findIndex(x => x.id === selectedId);
     if (idx !== -1) { boutiques[idx].expires_at = data.boutique.expires_at; boutiques[idx].is_active = true; }
     updateStats(); renderList(); closeModalNow();
-    alert((b ? b.name : 'Boutique') + ' renewed for ' + m + ' month(s)!' + (amount > 0 ? ' Payment of ₹' + amount.toLocaleString('en-IN') + ' recorded.' : ''));
+    alert((b ? b.name : 'Boutique') + ' renewed for ' + m + ' month(s)!' + (amount > 0 ? ' Payment of \u20B9' + amount.toLocaleString('en-IN') + ' recorded.' : ''));
   } catch(e) { alert('Connection error.'); }
 }
 
@@ -965,7 +965,7 @@ async function doResetPassword() {
     if (!res.ok) { alert('Failed. Try again.'); return; }
     document.getElementById('reset-row').style.display = 'none';
     document.getElementById('reset-pass-input').value = '';
-    alert('✅ Password for ' + (b ? b.name : 'boutique') + ' has been reset to:\n\n' + newPass + '\n\nShare this with the owner.');
+    alert('Password for ' + (b ? b.name : 'boutique') + ' has been reset to:\n\n' + newPass + '\n\nShare this with the owner.');
   } catch(e) { alert('Connection error.'); }
 }
 
@@ -1675,3 +1675,4 @@ async function autoNotify(boutiqueId, customerId, customerName, garment) {
 //  START
 // ─────────────────────────────────────────────
 app.listen(PORT, () => console.log(`🚀 TailorX API running on port ${PORT}`));
+      
