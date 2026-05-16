@@ -965,7 +965,7 @@ async function doResetPassword() {
     if (!res.ok) { alert('Failed. Try again.'); return; }
     document.getElementById('reset-row').style.display = 'none';
     document.getElementById('reset-pass-input').value = '';
-    alert('Password for ' + (b ? b.name : 'boutique') + ' has been reset to:\n\n' + newPass + '\n\nShare this with the owner.');
+    alert('Password for ' + (b ? b.name : 'boutique') + ' has been reset to:\\n\\n' + newPass + '\\n\\nShare this with the owner.');
   } catch(e) { alert('Connection error.'); }
 }
 
