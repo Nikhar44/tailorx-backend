@@ -634,12 +634,30 @@ document.getElementById('secret-input').addEventListener('keydown', e => {
 });
 
 async function fetchBoutiques() {
-  document.getElementById('login-error').style.display = 'none';
+  const btn = document.querySelector('.login-box .btn');
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
   document.getElementById('boutique-list').innerHTML = '<div class="spinner"></div>';
+
+  // Show loading state on button
+  if (btn) { btn.textContent = 'CONNECTING…'; btn.disabled = true; btn.style.opacity = '0.7'; }
+
+  // Show hint after 4 seconds in case server is waking up
+  const wakeHint = setTimeout(() => {
+    errEl.style.display = 'block';
+    errEl.style.color = '#d4a574';
+    errEl.textContent = '⏳ Server is waking up, please wait…';
+  }, 4000);
+
   try {
     const res = await fetch('/api/admin/boutiques', { headers: { 'x-admin-secret': secret } });
+    clearTimeout(wakeHint);
+    errEl.style.display = 'none';
+    errEl.style.color = '';
+
     if (res.status === 403) {
-      document.getElementById('login-error').style.display = 'block';
+      errEl.textContent = 'Invalid secret. Try again.';
+      errEl.style.display = 'block';
       secret = '';
       return;
     }
@@ -650,8 +668,12 @@ async function fetchBoutiques() {
     updateStats();
     renderList();
   } catch (e) {
-    document.getElementById('login-error').textContent = 'Connection error. Is the server running?';
-    document.getElementById('login-error').style.display = 'block';
+    clearTimeout(wakeHint);
+    errEl.style.color = '';
+    errEl.textContent = 'Connection error — server may be down. Try again in a moment.';
+    errEl.style.display = 'block';
+  } finally {
+    if (btn) { btn.textContent = 'ENTER DASHBOARD'; btn.disabled = false; btn.style.opacity = '1'; }
   }
 }
 
