@@ -834,7 +834,7 @@ async function loadActivity(id) {
       '<div class="act-item"><div class="av">' + fmt(d.customers) + '</div><div class="al">CUSTOMERS</div></div>' +
       '<div class="act-item"><div class="av">' + fmt(d.orders) + '</div><div class="al">ORDERS</div></div>' +
       '<div class="act-item"><div class="av">' + fmt(d.invoices) + '</div><div class="al">INVOICES</div></div>' +
-      '<div class="act-item"><div class="av">\u20B9' + fmtRev(d.app_revenue) + '</div><div class="al">APP REV</div></div>';
+      '<div class="act-item"><div class="av">\\u20B9' + fmtRev(d.app_revenue) + '</div><div class="al">APP REV</div></div>';
     const ll = d.last_login_at
       ? 'Last login: ' + new Date(d.last_login_at).toLocaleString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
       : 'Last login: Never recorded';
@@ -849,7 +849,7 @@ async function loadPayments(id) {
     const res = await fetch('/api/admin/boutiques/' + id + '/payments', { headers: { 'x-admin-secret': secret } });
     const payments = await res.json();
     const total = payments.reduce((s, p) => s + parseFloat(p.amount), 0);
-    document.getElementById('m-total-paid').textContent = '\u20B9' + total.toLocaleString('en-IN');
+    document.getElementById('m-total-paid').textContent = '\\u20B9' + total.toLocaleString('en-IN');
     if (!payments.length) {
       document.getElementById('m-pay-list').innerHTML = '<div class="no-payments">No payments recorded yet</div>';
       return;
@@ -857,7 +857,7 @@ async function loadPayments(id) {
     document.getElementById('m-pay-list').innerHTML = payments.map(p => {
       const date = new Date(p.paid_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
       return '<div class="pay-item">' +
-        '<div><div class="pi-amt">\u20B9' + parseFloat(p.amount).toLocaleString('en-IN') + '</div>' +
+        '<div><div class="pi-amt">\\u20B9' + parseFloat(p.amount).toLocaleString('en-IN') + '</div>' +
         '<div class="pi-meta">' + p.months + ' month(s) - ' + (p.plan || 'monthly').toUpperCase() + (p.notes ? ' - ' + p.notes : '') + '</div></div>' +
         '<div class="pi-meta">' + date + '</div>' +
       '</div>';
@@ -941,7 +941,7 @@ async function doRenew() {
     const idx = boutiques.findIndex(x => x.id === selectedId);
     if (idx !== -1) { boutiques[idx].expires_at = data.boutique.expires_at; boutiques[idx].is_active = true; }
     updateStats(); renderList(); closeModalNow();
-    alert((b ? b.name : 'Boutique') + ' renewed for ' + m + ' month(s)!' + (amount > 0 ? ' Payment of \u20B9' + amount.toLocaleString('en-IN') + ' recorded.' : ''));
+    alert((b ? b.name : 'Boutique') + ' renewed for ' + m + ' month(s)!' + (amount > 0 ? ' Payment of \\u20B9' + amount.toLocaleString('en-IN') + ' recorded.' : ''));
   } catch(e) { alert('Connection error.'); }
 }
 
