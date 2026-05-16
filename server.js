@@ -473,6 +473,7 @@ app.get('/admin', (req, res) => {
   .ab-renew  { background: rgba(74,127,193,0.06); color: #4a7fc1;        border-color: rgba(74,127,193,0.25); }
   .ab-pw     { background: rgba(167,139,250,0.06);color: #7c5cbf;        border-color: rgba(167,139,250,0.3); }
   .ab-free   { background: rgba(212,165,116,0.06);color: #d4a574;        border-color: rgba(212,165,116,0.3); }
+  .ab-plan   { background: rgba(99,179,237,0.06); color: #3b82f6;        border-color: rgba(99,179,237,0.3); }
   .ab-unfree { background: rgba(100,100,120,0.06);color: var(--text3);   border-color: rgba(100,100,120,0.25); }
 
   .renew-input-row { display: none; flex-direction: column; gap: 8px; padding: 0 0 4px; }
@@ -596,6 +597,20 @@ app.get('/admin', (req, res) => {
           <input type="number" id="renew-amount" placeholder="Amount paid (₹)" min="0" />
           <button onclick="doRenew()">RENEW</button>
         </div>
+      </div>
+      <button class="action-btn ab-plan" onclick="togglePlanRow()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        <div class="ab-text">Change Plan<span>Switch between Free / Monthly / Yearly / Pro</span></div>
+      </button>
+      <div id="plan-row" style="display:none;margin-top:-4px;background:#f0f7ff;border-radius:10px;padding:14px;border:1px solid #bfdbfe;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#3b82f6;margin-bottom:8px;">SELECT NEW PLAN</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+          <button onclick="doChangePlan('free')"    style="padding:8px 14px;border-radius:7px;border:1.5px solid #94a3b8;background:#fff;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">FREE</button>
+          <button onclick="doChangePlan('monthly')" style="padding:8px 14px;border-radius:7px;border:1.5px solid #3b82f6;background:#fff;color:#3b82f6;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">MONTHLY</button>
+          <button onclick="doChangePlan('yearly')"  style="padding:8px 14px;border-radius:7px;border:1.5px solid #7c3aed;background:#fff;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">YEARLY</button>
+          <button onclick="doChangePlan('pro')"     style="padding:8px 14px;border-radius:7px;border:1.5px solid #d4a574;background:#1a1a2e;color:#d4a574;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">PRO</button>
+        </div>
+        <div style="font-size:11px;color:#64748b;">Current plan shown in details above. Takes effect immediately.</div>
       </div>
       <button class="action-btn ab-pw" onclick="toggleResetRow()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
@@ -945,6 +960,30 @@ async function doRenew() {
   } catch(e) { alert('Connection error.'); }
 }
 
+function togglePlanRow() {
+  var row = document.getElementById('plan-row');
+  row.style.display = row.style.display === 'none' ? 'block' : 'none';
+}
+
+async function doChangePlan(newPlan) {
+  var b = boutiques.find(function(x){ return x.id === selectedId; });
+  var name = b ? b.name : 'this boutique';
+  if (!confirm('Change plan for ' + name + ' to ' + newPlan.toUpperCase() + '?')) return;
+  try {
+    var res = await fetch('/api/admin/boutiques/' + selectedId + '/plan', {
+      method: 'PATCH',
+      headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: newPlan })
+    });
+    if (!res.ok) { alert('Failed. Try again.'); return; }
+    var idx = boutiques.findIndex(function(x){ return x.id === selectedId; });
+    if (idx !== -1) boutiques[idx].plan = newPlan;
+    document.getElementById('plan-row').style.display = 'none';
+    updateStats(); renderList(); openModal(selectedId);
+    alert(name + ' plan changed to ' + newPlan.toUpperCase() + '!');
+  } catch(e) { alert('Connection error.'); }
+}
+
 function toggleResetRow() {
   const row = document.getElementById('reset-row');
   row.style.display = row.style.display === 'none' ? 'block' : 'none';
@@ -1049,6 +1088,25 @@ app.patch('/api/admin/boutiques/:id/reset-password', adminAuth, async (req, res)
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
     res.json({ message: 'Password reset successfully', boutique: result.rows[0] });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Change plan (admin)
+app.patch('/api/admin/boutiques/:id/plan', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { plan } = req.body;
+    const allowed = ['free', 'monthly', 'yearly', 'pro'];
+    if (!allowed.includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
+    const result = await db.query(
+      'UPDATE boutiques SET plan=$1, updated_at=NOW() WHERE id=$2 RETURNING id, name, plan',
+      [plan, id]
+    );
+    if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
+    res.json({ message: 'Plan updated to ' + plan, boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
