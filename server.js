@@ -474,7 +474,6 @@ app.get('/admin', (req, res) => {
   .ab-pw     { background: rgba(167,139,250,0.06);color: #7c5cbf;        border-color: rgba(167,139,250,0.3); }
   .ab-free   { background: rgba(212,165,116,0.06);color: #d4a574;        border-color: rgba(212,165,116,0.3); }
   .ab-unfree { background: rgba(100,100,120,0.06);color: var(--text3);   border-color: rgba(100,100,120,0.25); }
-  .ab-plan   { background: rgba(45,143,111,0.06); color: #2D8F6F;        border-color: rgba(45,143,111,0.25); }
 
   .renew-input-row { display: none; flex-direction: column; gap: 8px; padding: 0 0 4px; }
   .renew-input-row .renew-fields { display: flex; gap: 8px; }
@@ -598,24 +597,6 @@ app.get('/admin', (req, res) => {
           <button onclick="doRenew()">RENEW</button>
         </div>
       </div>
-      <button class="action-btn ab-plan" onclick="togglePlanRow()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-        <div class="ab-text">Change Plan<span>Switch between trial / monthly / yearly / pro</span></div>
-      </button>
-      <div class="renew-input-row" id="plan-row">
-        <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#888;margin-bottom:4px;">SELECT NEW PLAN</div>
-        <div class="renew-fields" style="flex-wrap:wrap;">
-          <select id="plan-select" style="flex:1;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;min-width:140px;">
-            <option value="trial">Trial</option>
-            <option value="monthly">Monthly (₹499/mo)</option>
-            <option value="yearly">Yearly (₹3,999/yr)</option>
-            <option value="pro">Pro</option>
-            <option value="free">Free</option>
-          </select>
-          <button onclick="doChangePlan()" style="background:#1a1a2e;color:#d4a574;">SAVE PLAN</button>
-        </div>
-        <div style="font-size:11px;color:#999;margin-top:2px;">This only changes the plan label. Use Renew to extend expiry date.</div>
-      </div>
       <button class="action-btn ab-pw" onclick="toggleResetRow()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
         <div class="ab-text">Reset Password<span>Set a new password for this boutique</span></div>
@@ -643,7 +624,7 @@ let boutiques = [];
 let selectedId = null;
 
 function doLogin() {
-  const val = document.getElementById('secret-input').value.trim();
+  var val = document.getElementById('secret-input').value.trim();
   if (!val) return;
   secret = val;
   fetchBoutiques();
@@ -657,19 +638,17 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function fetchBoutiques() {
-  const btn = document.querySelector('.login-box .btn');
-  const errEl = document.getElementById('login-error');
+  var btn = document.getElementById('login-btn');
+  var errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
   document.getElementById('boutique-list').innerHTML = '<div class="spinner"></div>';
 
-  // Show loading state on button
-  if (btn) { btn.textContent = 'CONNECTING…'; btn.disabled = true; btn.style.opacity = '0.7'; }
+  if (btn) { btn.textContent = 'CONNECTING...'; btn.disabled = true; btn.style.opacity = '0.7'; }
 
-  // Show hint after 4 seconds in case server is waking up
-  const wakeHint = setTimeout(() => {
+  var wakeHint = setTimeout(function() {
     errEl.style.display = 'block';
     errEl.style.color = '#d4a574';
-    errEl.textContent = '⏳ Server is waking up, please wait…';
+    errEl.textContent = 'Server is waking up, please wait...';
   }, 4000);
 
   try {
@@ -693,7 +672,7 @@ async function fetchBoutiques() {
   } catch (e) {
     clearTimeout(wakeHint);
     errEl.style.color = '';
-    errEl.textContent = 'Connection error — server may be down. Try again in a moment.';
+    errEl.textContent = 'Connection error - server may be down. Try again in a moment.';
     errEl.style.display = 'block';
   } finally {
     if (btn) { btn.textContent = 'ENTER DASHBOARD'; btn.disabled = false; btn.style.opacity = '1'; }
@@ -837,12 +816,6 @@ function openModal(id) {
   document.getElementById('renew-months').value = '';
   document.getElementById('renew-amount').value = '';
 
-  // Reset plan row — pre-select current plan
-  document.getElementById('plan-row').style.display = 'none';
-  const planSel = document.getElementById('plan-select');
-  const curPlan = (b.plan || 'trial').toLowerCase();
-  planSel.value = ['trial','monthly','yearly','pro','free'].includes(curPlan) ? curPlan : 'trial';
-
   document.getElementById('modal-backdrop').classList.add('open');
   document.body.style.overflow = 'hidden';
 
@@ -901,33 +874,6 @@ function closeModalNow() {
   document.getElementById('modal-backdrop').classList.remove('open');
   document.body.style.overflow = '';
   selectedId = null;
-}
-
-function togglePlanRow() {
-  const row = document.getElementById('plan-row');
-  row.style.display = row.style.display === 'flex' ? 'none' : 'flex';
-}
-
-async function doChangePlan() {
-  if (!selectedId) return;
-  const plan = document.getElementById('plan-select').value;
-  const b = boutiques.find(x => x.id === selectedId);
-  if (!confirm('Change plan for ' + (b ? b.name : 'this boutique') + ' to "' + plan.toUpperCase() + '"?')) return;
-  try {
-    const res = await fetch('/api/admin/boutiques/' + selectedId + '/plan', {
-      method: 'PATCH',
-      headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan })
-    });
-    if (!res.ok) throw new Error('Failed');
-    if (b) b.plan = plan;
-    document.getElementById('plan-row').style.display = 'none';
-    // Refresh detail row in modal
-    openModal(selectedId);
-    alert('Plan updated to ' + plan.toUpperCase() + ' successfully.');
-  } catch (e) {
-    alert('Error updating plan. Please try again.');
-  }
 }
 
 function toggleRenewInput() {
@@ -1103,26 +1049,6 @@ app.patch('/api/admin/boutiques/:id/reset-password', adminAuth, async (req, res)
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
     res.json({ message: 'Password reset successfully', boutique: result.rows[0] });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Change subscription plan (admin)
-app.patch('/api/admin/boutiques/:id/plan', adminAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { plan } = req.body;
-    const allowed = ['trial', 'monthly', 'yearly', 'pro', 'free'];
-    if (!plan || !allowed.includes(plan.toLowerCase()))
-      return res.status(400).json({ error: 'Invalid plan. Must be one of: ' + allowed.join(', ') });
-    const result = await db.query(
-      'UPDATE boutiques SET plan=$1, updated_at=NOW() WHERE id=$2 RETURNING id, name, plan',
-      [plan.toLowerCase(), id]
-    );
-    if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
-    res.json({ ok: true, boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
