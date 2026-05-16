@@ -776,11 +776,11 @@ function openModal(id) {
     '<div class="detail-item" style="grid-column:1/-1"><div class="dl">EXPIRY DATE</div><div class="dv">' + expiry + '</div></div>' +
     '<div class="detail-item" style="grid-column:1/-1"><div class="dl">EMAIL ID</div><div class="dv" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
       '<span style="font-family:monospace;font-size:13px;word-break:break-all">' + (b.email || '-') + '</span>' +
-      (b.email ? '<button onclick="copyText(\'' + b.email + '\',this)" style="padding:3px 10px;font-size:11px;background:#1a1a2e;color:#d4a574;border:none;border-radius:4px;cursor:pointer;letter-spacing:0.5px">COPY</button>' : '') +
+      (b.email ? '<button data-v="' + b.email + '" onclick="copyText(this.dataset.v,this)" style="padding:3px 10px;font-size:11px;background:#1a1a2e;color:#d4a574;border:none;border-radius:4px;cursor:pointer;letter-spacing:0.5px">COPY</button>' : '') +
     '</div></div>' +
     '<div class="detail-item" style="grid-column:1/-1"><div class="dl">PHONE</div><div class="dv" style="display:flex;align-items:center;gap:8px">' +
       '<span style="font-family:monospace;font-size:13px">' + (b.phone || '-') + '</span>' +
-      (b.phone ? '<button onclick="copyText(\'' + b.phone + '\',this)" style="padding:3px 10px;font-size:11px;background:#1a1a2e;color:#d4a574;border:none;border-radius:4px;cursor:pointer;letter-spacing:0.5px">COPY</button>' : '') +
+      (b.phone ? '<button data-v="' + b.phone + '" onclick="copyText(this.dataset.v,this)" style="padding:3px 10px;font-size:11px;background:#1a1a2e;color:#d4a574;border:none;border-radius:4px;cursor:pointer;letter-spacing:0.5px">COPY</button>' : '') +
     '</div></div>';
 
   // Free Account button
