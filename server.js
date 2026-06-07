@@ -27,6 +27,20 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 // ─────────────────────────────────────────────
+//  CRASH PROTECTION — Layer 1 & 2
+//  Catches any uncaught error or rejected promise
+//  so the server NEVER crashes completely.
+// ─────────────────────────────────────────────
+process.on('uncaughtException', (err) => {
+  console.error('❌ Uncaught Exception — server kept running:', err.message);
+  console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('❌ Unhandled Promise Rejection — server kept running:', reason);
+});
+
+// ─────────────────────────────────────────────
 //  DATABASE
 // ─────────────────────────────────────────────
 const pool = new Pool(
@@ -114,6 +128,100 @@ app.post('/api/license/verify', async (req, res) => {
 //  AUTH ROUTES
 // ─────────────────────────────────────────────
 
+// ─── In-memory OTP store (email → {otp, expires, data}) ─────────────
+const otpStore = new Map();
+
+// Send OTP — step 1 of registration
+app.post('/api/auth/send-otp', async (req, res) => {
+  try {
+    const { email, name, ownerName, password, phone, city, address } = req.body;
+    if (!email || !name || !password)
+      return res.status(400).json({ error: 'Name, email and password required' });
+
+    // Check if email already registered
+    const exists = await db.query('SELECT id FROM boutiques WHERE email = $1', [email]);
+    if (exists.rows.length) return res.status(409).json({ error: 'Email already registered' });
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    // Store OTP + registration data temporarily
+    otpStore.set(email, { otp, expires, data: { name, ownerName, password, phone, city, address } });
+
+    // Send OTP email via Resend
+    if (resendClient) {
+      await resendClient.emails.send({
+        from: 'TailorX <noreply@tailorx.in>',
+        to: email,
+        subject: 'Your TailorX Verification Code',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px; background: #f8f7f4; border-radius: 12px;">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <div style="display: inline-block; background: #1a1a2e; padding: 12px 24px; border-radius: 8px;">
+                <span style="color: #D4A574; font-size: 22px; font-weight: 800; letter-spacing: 3px;">TAILORX</span>
+              </div>
+            </div>
+            <h2 style="color: #1a1a2e; text-align: center; margin-bottom: 8px;">Verify Your Email</h2>
+            <p style="color: #6b6b7b; text-align: center; margin-bottom: 32px;">Enter this code to complete your registration</p>
+            <div style="background: #1a1a2e; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
+              <span style="color: #D4A574; font-size: 40px; font-weight: 800; letter-spacing: 12px;">${otp}</span>
+            </div>
+            <p style="color: #9e9ea8; text-align: center; font-size: 13px;">This code expires in <strong>10 minutes</strong>.</p>
+            <p style="color: #9e9ea8; text-align: center; font-size: 13px;">If you didn't request this, ignore this email.</p>
+          </div>
+        `,
+      });
+    } else {
+      // Dev mode — log OTP to console
+      console.log(`📧 OTP for ${email}: ${otp}`);
+    }
+
+    res.json({ message: 'OTP sent to ' + email });
+  } catch (e) {
+    console.error('Send OTP error:', e);
+    res.status(500).json({ error: 'Failed to send OTP' });
+  }
+});
+
+// Verify OTP — step 2 of registration
+app.post('/api/auth/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
+
+    const record = otpStore.get(email);
+    if (!record) return res.status(400).json({ error: 'OTP not found. Please request a new one.' });
+    if (Date.now() > record.expires) {
+      otpStore.delete(email);
+      return res.status(400).json({ error: 'OTP expired. Please request a new one.' });
+    }
+    if (record.otp !== otp.toString()) return res.status(400).json({ error: 'Incorrect OTP. Please try again.' });
+
+    // OTP verified — create the account
+    const { name, ownerName, password, phone, city, address } = record.data;
+    otpStore.delete(email); // clear OTP
+
+    const hash = await bcrypt.hash(password, 12);
+    const result = await db.query(
+      `INSERT INTO boutiques (name, owner_name, email, password, phone, city, address, plan, expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'trial', NOW() + INTERVAL '15 days')
+       RETURNING id, name, owner_name, email, phone, city, address, plan, expires_at`,
+      [name, ownerName || '', email, hash, phone || '', city || 'Surat', address || '']
+    );
+    const boutique = result.rows[0];
+    const token = jwt.sign(
+      { boutiqueId: boutique.id },
+      process.env.JWT_SECRET || 'dev_secret',
+      { expiresIn: '30d' }
+    );
+    res.status(201).json({ token, boutique });
+  } catch (e) {
+    console.error('Verify OTP error:', e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Register
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -140,6 +248,66 @@ app.post('/api/auth/register', async (req, res) => {
     res.status(201).json({ token, boutique });
   } catch (e) {
     console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Social Login — Google / Apple
+// Client sends the provider ID token; we verify it with the provider,
+// then find-or-create the boutique account and return a JWT.
+app.post('/api/auth/social', async (req, res) => {
+  try {
+    const { provider, idToken, name, email: clientEmail } = req.body;
+    if (!provider || !idToken) return res.status(400).json({ error: 'provider and idToken required' });
+
+    let verifiedEmail = null;
+    let verifiedName  = name || '';
+
+    if (provider === 'google') {
+      // Verify Google ID token via Google's tokeninfo endpoint
+      const gRes  = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+      const gData = await gRes.json();
+      if (!gData.email || gData.error) return res.status(401).json({ error: 'Invalid Google token' });
+      verifiedEmail = gData.email;
+      verifiedName  = gData.name || verifiedName;
+    } else if (provider === 'facebook') {
+      // Verify Facebook access token via Graph API
+      const fbRes  = await fetch(`https://graph.facebook.com/me?fields=id,name,email&access_token=${idToken}`);
+      const fbData = await fbRes.json();
+      if (!fbData.email || fbData.error) return res.status(401).json({ error: 'Invalid Facebook token' });
+      verifiedEmail = fbData.email;
+      verifiedName  = fbData.name || verifiedName;
+    } else {
+      return res.status(400).json({ error: 'Unknown provider' });
+    }
+
+    // Find or create boutique by email
+    let result = await db.query('SELECT * FROM boutiques WHERE email = $1', [verifiedEmail]);
+    let boutique;
+    let isNewUser = false;
+
+    if (result.rows.length === 0) {
+      // New social user — create account (phone/city filled in later)
+      const ins = await db.query(
+        `INSERT INTO boutiques (name, owner_name, email, password, phone, city, address, plan, expires_at)
+         VALUES ($1,$2,$3,$4,'','','','trial', NOW() + INTERVAL '15 days')
+         RETURNING *`,
+        [verifiedName || 'My Boutique', verifiedName, verifiedEmail, '']
+      );
+      boutique  = ins.rows[0];
+      isNewUser = true;
+    } else {
+      boutique = result.rows[0];
+    }
+
+    const token = jwt.sign(
+      { boutiqueId: boutique.id },
+      process.env.JWT_SECRET || 'dev_secret',
+      { expiresIn: '30d' }
+    );
+    res.json({ token, boutique, isNewUser });
+  } catch (e) {
+    console.error('Social auth error:', e);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -1728,6 +1896,44 @@ async function autoNotify(boutiqueId, customerId, customerName, garment) {
     console.error('Auto notify failed:', e.message);
   }
 }
+
+// ─────────────────────────────────────────────
+//  CRASH PROTECTION — Layer 3
+//  404 handler for unknown routes
+// ─────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// ─────────────────────────────────────────────
+//  CRASH PROTECTION — Layer 4
+//  Global Express error handler.
+//  Catches any error thrown inside a route that
+//  wasn't caught by its own try/catch.
+//  Without this, one bad request hangs forever
+//  or crashes the whole process.
+// ─────────────────────────────────────────────
+app.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
+  console.error('❌ Unhandled route error:', err.message);
+  console.error(err.stack);
+  if (!res.headersSent) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ─────────────────────────────────────────────
+//  GRACEFUL SHUTDOWN
+//  Render sends SIGTERM when restarting/deploying.
+//  This closes the DB pool cleanly so no
+//  connections are left dangling.
+// ─────────────────────────────────────────────
+process.on('SIGTERM', () => {
+  console.log('🔄 SIGTERM received — shutting down gracefully...');
+  pool.end(() => {
+    console.log('✅ Database pool closed. Server stopped.');
+    process.exit(0);
+  });
+});
 
 // ─────────────────────────────────────────────
 //  START
