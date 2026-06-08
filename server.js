@@ -152,7 +152,7 @@ app.post('/api/auth/send-otp', async (req, res) => {
     // Send OTP email via Resend
     if (resendClient) {
       await resendClient.emails.send({
-        from: 'TailorX <noreply@tailorx.in>',
+        from: 'TailorX <noreply@tailor-x.in>',
         to: email,
         subject: 'Your TailorX Verification Code',
         html: `
@@ -430,7 +430,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     if (resendClient) {
       await resendClient.emails.send({
-        from:    'TailorX <noreply@tailorx.in>',
+        from:    'TailorX <noreply@tailor-x.in>',
         to:      email,
         subject: 'Reset Your TailorX Password',
         html: `

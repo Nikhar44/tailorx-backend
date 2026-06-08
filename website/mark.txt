@@ -1,0 +1,8 @@
+
+Nikhar@1188
+
+postgresql://postgres:[YOUR-PASSWORD]@db.qhujzhjuamizvsvuwcnr.supabase.co:5432/postgres
+
+npx skills add supabase/agent-skills
+
+supabase database password :- hc3F59tkUYQuzJvE

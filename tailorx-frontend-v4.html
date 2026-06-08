@@ -1,0 +1,2510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TailorX — Boutique Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --white:#FFFFFF;--off-white:#F7F6F4;--charcoal:#1C1C1C;--c2:#2E2E2E;--c3:#3D3D3D;
+  --mid:#8A8680;--light:#C8C4BC;--border:#E2DDD7;
+  --gold:#B8975A;--green:#4A8C6A;--red:#B05555;--blue:#4A6E8C;--purple:#7A6BAF;--teal:#3D8C8C;
+  --font-d:'Cormorant Garamond',serif;--font-b:'DM Sans',sans-serif;
+}
+html,body{background:var(--off-white);color:var(--charcoal);font-family:var(--font-b);font-size:13px;height:100%;overflow:hidden}
+.app{display:flex;height:100vh}
+
+/* ── AUTH SCREEN ── */
+#auth-screen{position:fixed;inset:0;background:var(--charcoal);display:flex;align-items:center;justify-content:center;z-index:2000}
+.auth-box{background:var(--white);width:420px;padding:40px;border:1px solid var(--border)}
+.auth-logo{font-family:var(--font-d);font-size:28px;font-weight:300;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px}
+.auth-sub{font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-bottom:32px}
+.auth-tabs{display:flex;margin-bottom:24px;border-bottom:1px solid var(--border)}
+.auth-tab{flex:1;padding:10px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--mid);cursor:pointer;text-align:center;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s}
+.auth-tab.active{color:var(--charcoal);border-bottom-color:var(--charcoal)}
+.auth-form{display:flex;flex-direction:column;gap:12px}
+.auth-field{display:flex;flex-direction:column;gap:5px}
+.auth-field label{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mid)}
+.auth-field input{background:var(--off-white);border:1px solid var(--border);padding:10px 12px;font-family:var(--font-b);font-size:13px;color:var(--charcoal);outline:none;transition:border-color 0.2s;width:100%}
+.auth-field input:focus{border-color:var(--charcoal);background:var(--white)}
+.auth-btn{background:var(--charcoal);color:var(--white);border:none;padding:13px;font-family:var(--font-b);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;transition:background 0.2s;margin-top:6px}
+.auth-btn:hover{background:var(--c2)}
+.auth-err{font-size:12px;color:var(--red);padding:8px 12px;background:rgba(176,85,85,0.08);border:1px solid rgba(176,85,85,0.2);display:none}
+.auth-err.show{display:block}
+.auth-success{font-size:12px;color:var(--green);padding:8px 12px;background:rgba(74,140,106,0.08);border:1px solid rgba(74,140,106,0.2);display:none}
+.auth-success.show{display:block}
+.auth-link{font-size:12px;color:var(--mid);text-align:right;cursor:pointer;margin-top:-6px;transition:color 0.2s}
+.auth-link:hover{color:var(--charcoal)}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:4px 0}
+.auth-divider span{font-size:11px;color:var(--light);white-space:nowrap}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.api-notice{font-size:11px;color:var(--mid);margin-top:14px;padding:10px 12px;background:var(--off-white);border:1px solid var(--border);line-height:1.6}
+
+/* ── SIDEBAR ── */
+.sidebar{width:220px;min-width:220px;background:var(--charcoal);display:flex;flex-direction:column;flex-shrink:0}
+.logo-wrap{padding:26px 24px 20px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.logo-mark{font-family:var(--font-d);font-size:22px;font-weight:300;letter-spacing:0.15em;color:var(--white);text-transform:uppercase}
+.logo-sub{font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-top:3px}
+.sidebar-nav{padding:14px 0;flex:1;overflow-y:auto}
+.nav-sec{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.25);padding:0 24px;margin-bottom:4px;margin-top:14px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 24px;font-size:12.5px;color:rgba(255,255,255,0.45);cursor:pointer;transition:all 0.18s;position:relative}
+.nav-item:hover{color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.03)}
+.nav-item.active{color:var(--white);background:rgba(255,255,255,0.07)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2px;height:18px;background:var(--gold);border-radius:0 2px 2px 0}
+.nav-badge{margin-left:auto;background:var(--gold);color:var(--charcoal);font-size:9px;font-weight:500;padding:2px 6px;border-radius:10px;min-width:18px;text-align:center}
+.sidebar-bottom{padding:12px 16px;border-top:1px solid rgba(255,255,255,0.07)}
+.b-badge{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.b-badge:hover{background:rgba(255,255,255,0.08)}
+.b-av{width:30px;height:30px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:14px;font-weight:500;color:var(--charcoal);flex-shrink:0}
+.b-name{font-size:12px;color:var(--white)}
+.b-plan{font-size:10px;color:var(--gold);margin-top:1px}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px}
+.tb-title{font-family:var(--font-d);font-size:20px;font-weight:400;letter-spacing:0.02em;white-space:nowrap}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.search-box{background:var(--off-white);border:1px solid var(--border);padding:8px 12px;font-size:12px;color:var(--mid);width:190px;font-family:var(--font-b);outline:none;transition:border-color 0.2s}
+.search-box:focus{border-color:var(--charcoal);background:var(--white);color:var(--charcoal)}
+
+/* BUTTONS */
+.btn{padding:9px 16px;font-family:var(--font-b);font-size:11px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;border:1px solid var(--border);background:var(--white);color:var(--mid);white-space:nowrap}
+.btn:hover{border-color:var(--charcoal);color:var(--charcoal)}
+.btn-primary{background:var(--charcoal);color:var(--white);border-color:var(--charcoal)}.btn-primary:hover{background:var(--c2)}
+.btn-outline{border-color:var(--charcoal);color:var(--charcoal)}
+.btn-sm{padding:6px 12px;font-size:10px}
+.btn-divider{width:1px;height:26px;background:var(--border);flex-shrink:0}
+
+/* PAGES */
+.page{display:none;flex:1;flex-direction:column;overflow:hidden}
+.page.active{display:flex}
+.scroll{flex:1;overflow-y:auto;padding:22px 24px}
+
+/* PANEL */
+.panel{background:var(--white);border:1px solid var(--border)}
+.panel-head{padding:15px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.panel-title{font-family:var(--font-d);font-size:17px;font-weight:400;color:var(--charcoal);letter-spacing:0.03em}
+.panel-sub{font-size:11px;color:var(--mid);margin-top:2px}
+
+/* FIELD */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mid);font-weight:500}
+.field input,.field select,.field textarea{background:var(--off-white);border:1px solid var(--border);padding:9px 11px;font-family:var(--font-b);font-size:13px;color:var(--charcoal);outline:none;transition:border-color 0.2s;appearance:none;-webkit-appearance:none;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--charcoal);background:var(--white)}
+.field input::placeholder,.field textarea::placeholder{color:var(--light)}
+.field textarea{resize:vertical;min-height:65px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fdiv{height:1px;background:var(--border);margin:16px 0}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--light);font-weight:500;text-align:left;padding:9px 16px;border-bottom:1px solid var(--border)}
+.tbl td{padding:11px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.clickable{cursor:pointer;transition:background 0.15s}
+.tbl tr.clickable:hover td{background:var(--off-white)}
+.empty-row td{text-align:center;padding:32px;font-family:var(--font-d);font-size:16px;color:var(--light);font-style:italic}
+
+/* TAGS */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;border:1px solid;white-space:nowrap;font-weight:500}
+.tag-green{color:var(--green);border-color:var(--green);background:rgba(74,140,106,0.07)}
+.tag-gold{color:var(--gold);border-color:var(--gold);background:rgba(184,151,90,0.08)}
+.tag-red{color:var(--red);border-color:var(--red);background:rgba(176,85,85,0.07)}
+.tag-blue{color:var(--blue);border-color:var(--blue);background:rgba(74,110,140,0.07)}
+.tag-mid{color:var(--mid);border-color:var(--border);background:var(--off-white)}
+.tag-teal{color:var(--teal);border-color:var(--teal);background:rgba(61,140,140,0.07)}
+.tag-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* FILTER TABS */
+.ftabs{display:flex;gap:0;flex-wrap:wrap}
+.ftab{padding:7px 14px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid);border:1px solid var(--border);background:var(--off-white);cursor:pointer;transition:all 0.15s;margin-right:-1px}
+.ftab.active{background:var(--charcoal);color:var(--white);border-color:var(--charcoal);z-index:1}
+.ftab:hover:not(.active){color:var(--charcoal);border-color:var(--charcoal);z-index:1}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat-grid.c3{grid-template-columns:repeat(3,1fr)}
+.stat-card{background:var(--white);border:1px solid var(--border);padding:18px 20px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.gold::after{background:var(--gold)}.stat-card.green::after{background:var(--green)}
+.stat-card.blue::after{background:var(--blue)}.stat-card.red::after{background:var(--red)}
+.sl{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
+.sv{font-family:var(--font-d);font-size:34px;font-weight:300;color:var(--charcoal);line-height:1}
+.sv.sm{font-size:22px}
+.sd{font-size:11px;margin-top:8px;color:var(--mid)}
+
+/* STAGE PILLS */
+.sp{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;font-weight:500;border:1px solid;white-space:nowrap}
+.sp-received{color:var(--blue);border-color:var(--blue);background:rgba(74,110,140,0.06)}
+.sp-cutting{color:var(--gold);border-color:var(--gold);background:rgba(184,151,90,0.08)}
+.sp-stitching{color:var(--purple);border-color:var(--purple);background:rgba(122,107,175,0.08)}
+.sp-ready{color:var(--green);border-color:var(--green);background:rgba(74,140,106,0.07)}
+.sp-dispensed{color:var(--teal);border-color:var(--teal);background:rgba(61,140,140,0.07)}
+.sp-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* GENDER */
+.g-toggle{display:flex}
+.g-btn{flex:1;padding:10px;font-family:var(--font-b);font-size:11px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;border:1px solid var(--border);background:var(--off-white);color:var(--mid);transition:all 0.2s;text-align:center}
+.g-btn:first-child{border-right:none}
+.g-btn.active{background:var(--charcoal);color:var(--white);border-color:var(--charcoal)}
+
+/* MEASUREMENTS */
+.msec{display:none}.msec.vis{display:block;animation:fadeUp 0.25s ease both}
+.g-hint{font-size:14px;color:var(--light);text-align:center;padding:18px 0;font-style:italic;font-family:var(--font-d)}
+.mb-head{display:flex;align-items:center;gap:10px;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;font-weight:500;margin-bottom:12px;cursor:pointer;user-select:none;padding-top:12px}
+.mb-head .bl{color:var(--gold);white-space:nowrap}
+.mb-head .bline{flex:1;height:1px;background:var(--border)}
+.mb-head .btog{font-size:11px;color:var(--light);transition:transform 0.2s}
+.mb-head.col .btog{transform:rotate(-90deg)}
+.mb-body{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.mb-body.hid{display:none}
+.mf{display:flex;flex-direction:column;gap:3px}
+.mf label{font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid)}
+.mf input{background:var(--off-white);border:1px solid var(--border);padding:8px;font-family:var(--font-d);font-size:14px;font-weight:300;color:var(--charcoal);outline:none;text-align:center;transition:border-color 0.2s;width:100%}
+.mf input:focus{border-color:var(--charcoal);background:var(--white)}
+.mf-unit{font-size:9px;color:var(--light);text-align:center;margin-top:1px}
+
+/* NOTIFY OPTS */
+.no-opt{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);background:var(--off-white);cursor:pointer;transition:all 0.2s;margin-bottom:7px}
+.no-opt:last-child{margin-bottom:0}
+.no-opt.sel{border-color:var(--charcoal);background:var(--white)}
+.no-opt:hover{border-color:var(--charcoal)}
+.no-lbl{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--c3)}
+.no-radio{width:13px;height:13px;border:1.5px solid var(--light);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.no-opt.sel .no-radio{border-color:var(--charcoal)}
+.no-opt.sel .no-radio::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--charcoal)}
+
+/* STAGE SELECT */
+.ssrow{display:grid;gap:8px;margin-top:4px}
+.ssb{padding:9px;border:1px solid var(--border);background:var(--off-white);font-family:var(--font-b);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);cursor:pointer;text-align:center;transition:all 0.2s}
+.ssb:hover{border-color:var(--charcoal);color:var(--charcoal)}
+.ssb.sel{background:var(--charcoal);color:var(--white);border-color:var(--charcoal)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border:1px solid var(--border);padding:26px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto;animation:fadeUp 0.2s ease both}
+.modal-title{font-family:var(--font-d);font-size:22px;font-weight:400;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--mid);margin-bottom:20px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;border-top:1px solid var(--border);padding-top:14px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--charcoal);color:var(--white);padding:11px 18px;font-size:12px;display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:9999}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.green{background:var(--green)}.toast.gold{background:var(--gold)}.toast.red{background:var(--red)}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.7);display:none;align-items:center;justify-content:center;z-index:900;font-family:var(--font-d);font-size:18px;color:var(--mid)}
+.loading-overlay.show{display:flex}
+
+/* INVOICE BILL */
+@media print{.sidebar,.main>.topbar,.page:not(.active),.action-bar,.bill-controls{display:none!important}.scroll{padding:0!important;overflow:visible!important}}
+.inv-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.inv-tbl th{background:var(--charcoal);color:var(--white);padding:9px 12px;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;text-align:center}
+.inv-tbl th:first-child{text-align:left}
+.inv-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+.inv-tbl td:first-child{text-align:left}
+.inv-tbl tr:last-child td{border-bottom:none}
+.inv-tbl tfoot td{background:var(--off-white);font-weight:500}
+.inv-tbl tfoot .grand td{background:var(--charcoal);color:var(--white)}
+.inv-tbl tfoot .grand td:last-child{font-family:var(--font-d);font-size:18px;font-weight:300}
+
+/* SEND OPTIONS */
+.send-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);background:var(--white);cursor:pointer;transition:all 0.18s;margin-bottom:8px}
+.send-opt:last-child{margin-bottom:0}
+.send-opt:hover{border-color:var(--charcoal);background:var(--off-white)}
+.send-opt.sent{border-color:var(--green);background:rgba(74,140,106,0.04)}
+.so-icon{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--border);background:var(--off-white);flex-shrink:0}
+.so-info{flex:1}.so-title{font-size:12px;font-weight:500;color:var(--charcoal)}.so-sub{font-size:11px;color:var(--mid);margin-top:1px}
+.so-arrow{font-size:12px;color:var(--light);transition:all 0.15s}
+.send-opt:hover .so-arrow,.send-opt.sent .so-arrow{color:var(--charcoal);transform:translateX(3px)}
+.send-opt.sent .so-arrow{color:var(--green)}
+
+/* SETTINGS */
+.settings-layout{display:grid;grid-template-columns:185px 1fr;gap:16px;align-items:start}
+.sn-wrap{background:var(--white);border:1px solid var(--border)}
+.sn-item{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:12px;color:var(--mid);cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.15s;position:relative}
+.sn-item:last-child{border-bottom:none}
+.sn-item:hover{background:var(--off-white);color:var(--charcoal)}
+.sn-item.active{color:var(--charcoal);background:var(--off-white)}
+.sn-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2px;height:14px;background:var(--gold)}
+
+/* NOTIF */
+.notif-split{display:grid;grid-template-columns:1fr 310px;gap:16px;align-items:start}
+.ni{display:flex;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s}
+.ni:last-child{border-bottom:none}
+.ni:hover{background:var(--off-white)}
+.ni.unread{background:rgba(184,151,90,0.04)}
+.ni-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.tpl-chip{padding:5px 10px;font-size:11px;border:1px solid var(--border);background:var(--off-white);color:var(--mid);cursor:pointer;transition:all 0.15s}
+.tpl-chip:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ACTION BAR */
+.action-bar{background:var(--white);border-top:1px solid var(--border);padding:13px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border)}
+.srow:last-child{border-bottom:none}
+.sr-lbl{font-size:13px;font-weight:500;color:var(--charcoal)}
+.sr-sub{font-size:11px;color:var(--mid);margin-top:2px}
+.tog-wrap{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.tog-track{width:34px;height:18px;background:var(--border);border-radius:9px;position:relative;transition:background 0.2s;flex-shrink:0}
+.tog-track.on{background:var(--green)}
+.tog-knob{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--white);transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.tog-track.on .tog-knob{transform:translateX(16px)}
+.tog-lbl{font-size:11px;color:var(--mid)}
+.tog-wrap.on .tog-lbl{color:var(--green)}
+
+.cc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.cc{background:var(--white);border:1px solid var(--border);padding:18px;cursor:pointer;transition:all 0.18s;position:relative;overflow:hidden}
+.cc:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.07);border-color:var(--charcoal)}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.cc.female::before{background:var(--gold)}.cc.male::before{background:var(--blue)}
+.profile-grid{display:grid;grid-template-columns:290px 1fr;gap:16px;align-items:start}
+.ph-card{background:var(--white);border:1px solid var(--border)}
+.ph-top{padding:24px 20px 18px;text-align:center;border-bottom:1px solid var(--border);position:relative}
+.ph-top::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.ph-top.female::before{background:linear-gradient(90deg,var(--gold),rgba(184,151,90,0.2))}
+.ph-top.male::before{background:linear-gradient(90deg,var(--blue),rgba(74,110,140,0.2))}
+.ph-av{width:60px;height:60px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:22px;font-weight:300}
+.ph-av.female{background:rgba(184,151,90,0.12);color:var(--gold)}
+.ph-av.male{background:rgba(74,110,140,0.12);color:var(--blue)}
+.ph-name{font-family:var(--font-d);font-size:22px;font-weight:400}
+.ph-sub{font-size:11px;color:var(--mid);margin-top:4px}
+.ph-stats{display:grid;grid-template-columns:1fr 1fr 1fr;padding:14px 18px}
+.phs{text-align:center;padding:0 4px}
+.phs:not(:last-child){border-right:1px solid var(--border)}
+.phs-n{font-family:var(--font-d);font-size:20px;font-weight:300}
+.phs-l{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--light);margin-top:2px}
+.md-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mdf{background:var(--off-white);border:1px solid var(--border);padding:8px;text-align:center}
+.mdf-v{font-family:var(--font-d);font-size:17px;font-weight:300;line-height:1}
+.mdf-l{font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid);margin-top:4px}
+
+.qa-btn{padding:14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;font-size:16px;transition:background 0.15s;text-align:center;}
+.qa-btn:nth-child(even){border-right:none}
+.qa-btn:nth-last-child(-n+2){border-bottom:none}
+.qa-btn:hover{background:var(--off-white)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.page.active .scroll>*{animation:fadeUp 0.3s ease both}
+
+/* ── PLAN MODAL ── */
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.plan-card{border:1px solid var(--border);padding:18px;cursor:pointer;transition:all 0.2s;position:relative;background:var(--off-white)}
+.plan-card:hover{border-color:var(--charcoal)}
+.plan-card.selected{border-color:var(--gold);background:rgba(184,151,90,0.04)}
+.plan-card.selected::before{content:'✓ Selected';position:absolute;top:8px;right:8px;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);}
+.plan-card-name{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
+.plan-card-price{font-family:var(--font-d);font-size:28px;font-weight:300;color:var(--charcoal);line-height:1}
+.plan-card-period{font-size:11px;color:var(--light);margin-bottom:10px}
+.plan-card-feat{font-size:11px;color:var(--mid);margin-top:4px;display:flex;align-items:center;gap:5px}
+.plan-card-feat::before{content:'✓';color:var(--gold);font-size:10px}
+.pay-method{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.pm-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);background:var(--off-white);cursor:pointer;transition:all 0.2s}
+.pm-opt:hover,.pm-opt.sel{border-color:var(--charcoal);background:var(--white)}
+.pm-opt.sel .pm-radio::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--charcoal);display:block}
+.pm-radio{width:14px;height:14px;border:1.5px solid var(--light);border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.pm-opt.sel .pm-radio{border-color:var(--charcoal)}
+.pm-icon{font-size:20px}
+.pm-label{font-size:13px;font-weight:500;color:var(--charcoal)}
+.pm-sub{font-size:11px;color:var(--mid);margin-top:1px}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">Tailor<span style="color:var(--gold)">X</span></div>
+    <div class="auth-sub">Boutique Management</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Login</div>
+      <div class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Register</div>
+      <div class="auth-tab" id="tab-forgot" onclick="switchAuthTab('forgot')" style="display:none;">Reset Password</div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="form-login" class="auth-form">
+      <div class="auth-field"><label>Email</label><input id="li-email" type="email" placeholder="you@boutique.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="auth-field"><label>Password</label><input id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="auth-link" onclick="switchAuthTab('forgot')">Forgot password?</div>
+      <div class="auth-err" id="li-err"></div>
+      <button class="auth-btn" id="li-btn" onclick="doLogin()">Login →</button>
+      <div class="auth-divider"><span>don't have an account?</span></div>
+      <div style="text-align:center;font-size:12px;color:var(--mid);cursor:pointer;" onclick="switchAuthTab('register')">Create free account <span style="color:var(--charcoal);font-weight:500;">Register →</span></div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="form-register" class="auth-form" style="display:none;">
+      <div class="fr" style="gap:12px;"><div class="auth-field"><label>Boutique Name *</label><input id="rg-name" placeholder="e.g. Riya Boutique"></div><div class="auth-field"><label>Owner Name</label><input id="rg-owner" placeholder="Your name"></div></div>
+      <div class="auth-field"><label>Email *</label><input id="rg-email" type="email" placeholder="you@boutique.com"></div>
+      <div class="fr" style="gap:12px;"><div class="auth-field"><label>Password *</label><input id="rg-pass" type="password" placeholder="Min 8 characters"></div><div class="auth-field"><label>Phone</label><input id="rg-phone" placeholder="+91 98765 43210"></div></div>
+      <div class="fr" style="gap:12px;"><div class="auth-field"><label>City</label><input id="rg-city" value="Surat"></div><div class="auth-field"><label>Address</label><input id="rg-addr" placeholder="Shop address"></div></div>
+      <div class="auth-err" id="rg-err"></div>
+      <button class="auth-btn" id="rg-btn" onclick="doRegister()">Create Account →</button>
+      <div class="auth-divider"><span>already have an account?</span></div>
+      <div style="text-align:center;font-size:12px;color:var(--mid);cursor:pointer;" onclick="switchAuthTab('login')">Back to <span style="color:var(--charcoal);font-weight:500;">Login →</span></div>
+    </div>
+
+    <!-- FORGOT PASSWORD -->
+    <div id="form-forgot" class="auth-form" style="display:none;">
+      <div style="font-size:13px;color:var(--mid);margin-bottom:4px;line-height:1.6;">Enter your registered email address. We will send you a password reset link.</div>
+      <div class="auth-field"><label>Email Address</label><input id="fp-email" type="email" placeholder="you@boutique.com" onkeydown="if(event.key==='Enter')doForgotPassword()"></div>
+      <div class="auth-err" id="fp-err"></div>
+      <div class="auth-success" id="fp-success"></div>
+      <button class="auth-btn" id="fp-btn" onclick="doForgotPassword()">Send Reset Link →</button>
+      <div class="auth-divider"><span>remember your password?</span></div>
+      <div style="text-align:center;font-size:12px;color:var(--mid);cursor:pointer;" onclick="switchAuthTab('login')">Back to <span style="color:var(--charcoal);font-weight:500;">Login →</span></div>
+    </div>
+
+    <!-- RESET PASSWORD (shown when user clicks link from email) -->
+    <div id="form-reset" class="auth-form" style="display:none;">
+      <div style="font-size:13px;color:var(--mid);margin-bottom:4px;line-height:1.6;">Enter your new password below.</div>
+      <input type="hidden" id="reset-token">
+      <div class="auth-field"><label>New Password *</label><input id="rp-pass" type="password" placeholder="Min 8 characters" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
+      <div class="auth-field"><label>Confirm New Password *</label><input id="rp-confirm" type="password" placeholder="Repeat password" onkeydown="if(event.key==='Enter')doResetPassword()"></div>
+      <div class="auth-err" id="rp-err"></div>
+      <div class="auth-success" id="rp-success"></div>
+      <button class="auth-btn" id="rp-btn" onclick="doResetPassword()">Set New Password →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP (hidden until logged in) -->
+<div class="app" id="main-app" style="display:none;">
+<div class="sidebar">
+  <div class="logo-wrap">
+    <div class="logo-mark">Tailor<span style="color:var(--gold)">X</span></div>
+    <div class="logo-sub">Boutique Management</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-sec">Main</div>
+    <div class="nav-item" id="nav-dashboard" onclick="P('dashboard')">▣ &nbsp;Dashboard</div>
+    <div class="nav-item" id="nav-orders" onclick="P('orders')">◈ &nbsp;Orders <span class="nav-badge" id="badge-orders">0</span></div>
+    <div class="nav-item" id="nav-customers" onclick="P('customers')">◉ &nbsp;Customers</div>
+    <div class="nav-item" id="nav-measurements" onclick="P('measurements')">◫ &nbsp;Measurements</div>
+    <div class="nav-sec">Manage</div>
+    <div class="nav-item" id="nav-invoices" onclick="P('invoices')">◻ &nbsp;Invoices</div>
+    <div class="nav-item" id="nav-notifications" onclick="P('notifications')">◎ &nbsp;Notifications <span class="nav-badge" id="badge-notif">0</span></div>
+    <div class="nav-sec">Account</div>
+    <div class="nav-item" id="nav-settings" onclick="P('settings')">◷ &nbsp;Settings</div>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="b-badge" onclick="P('settings');swSet(document.querySelector('.sn-item'),'boutique')">
+      <div class="b-av" id="s-av">R</div>
+      <div><div class="b-name" id="s-name">Riya Boutique</div><div class="b-plan">Pro Plan · Active</div></div>
+    </div>
+  </div>
+</div>
+<div class="main">
+  <div class="topbar">
+    <div id="tb-left" style="display:flex;align-items:center;gap:12px;"></div>
+    <div class="topbar-right" id="tb-right">
+      <button class="btn btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page" id="page-dashboard">
+    <div class="scroll">
+      <div class="stat-grid" id="d-stats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 270px;gap:14px;">
+        <div class="panel"><div class="panel-head"><div class="panel-title">Recent Orders</div><span style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);cursor:pointer;" onclick="P('orders')">View All →</span></div><table class="tbl"><thead><tr><th>Customer</th><th>Stage</th><th>Due</th><th>Amount</th></tr></thead><tbody id="d-orders"></tbody></table></div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="panel"><div class="panel-head"><div class="panel-title">Pipeline</div></div><div id="d-pipeline"></div></div>
+          <div class="panel"><div class="panel-head"><div class="panel-title">Quick Actions</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;">
+              <div class="qa-btn" onclick="P('orders');setTimeout(openOrderModal,150)">✚<div style="font-size:12px;font-weight:500;margin-top:4px;">New Order</div></div>
+              <div class="qa-btn" onclick="P('invoices');setTimeout(openInvoiceModal,150)">◻<div style="font-size:12px;font-weight:500;margin-top:4px;">New Invoice</div></div>
+              <div class="qa-btn" onclick="P('customers');setTimeout(openCustomerModal,150)">◉<div style="font-size:12px;font-weight:500;margin-top:4px;">Add Customer</div></div>
+              <div class="qa-btn" onclick="P('notifications')">◎<div style="font-size:12px;font-weight:500;margin-top:4px;">Notifications</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="panel"><div class="panel-head"><div class="panel-title">Due Soon</div></div><div id="d-due"></div></div>
+          <div class="panel"><div class="panel-head"><div class="panel-title">Recent Alerts</div></div><div id="d-alerts"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div class="page" id="page-orders">
+    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;">
+      <div class="ftabs"><div class="ftab active" onclick="filterOrders('all',this)">All</div><div class="ftab" onclick="filterOrders('received',this)">Received</div><div class="ftab" onclick="filterOrders('cutting',this)">Cutting</div><div class="ftab" onclick="filterOrders('stitching',this)">Stitching</div><div class="ftab" onclick="filterOrders('ready',this)">Ready</div><div class="ftab" onclick="filterOrders('dispensed',this)">Dispensed</div></div>
+      <span style="font-size:11px;color:var(--light);" id="order-count">0 orders</span>
+    </div>
+    <div class="scroll"><div class="panel"><table class="tbl"><thead><tr><th>#</th><th>Customer</th><th>Garment</th><th>Stage</th><th>Due Date</th><th>Amount</th><th>Balance</th><th>Actions</th></tr></thead><tbody id="orders-tbody"></tbody></table></div></div>
+  </div>
+
+  <!-- CUSTOMERS -->
+  <div class="page" id="page-customers">
+    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;">
+      <div class="ftabs"><div class="ftab active" onclick="filterCustomers('all',this)">All</div><div class="ftab" onclick="filterCustomers('female',this)">Female</div><div class="ftab" onclick="filterCustomers('male',this)">Male</div></div>
+      <span style="font-size:11px;color:var(--light);" id="cust-count">0 customers</span>
+    </div>
+    <div class="scroll"><div class="cc-grid" id="cust-grid"></div></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="page" id="page-profile">
+    <div class="scroll"><div class="profile-grid" id="profile-inner"></div></div>
+    <div class="action-bar"><button class="btn" onclick="P('customers')">← Customers</button><div style="display:flex;gap:8px;"><button class="btn" id="prof-new-ord">+ New Order</button><button class="btn btn-primary" id="prof-edit">Edit Profile</button></div></div>
+  </div>
+
+  <!-- MEASUREMENTS -->
+  <div class="page" id="page-measurements">
+    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <div class="ftabs"><div class="ftab active" onclick="filterMeasure('all',this)">All</div><div class="ftab" onclick="filterMeasure('female',this)">Female</div><div class="ftab" onclick="filterMeasure('male',this)">Male</div></div>
+    </div>
+    <div class="scroll"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;" id="measure-grid"></div></div>
+  </div>
+
+  <!-- INVOICES -->
+  <div class="page" id="page-invoices">
+    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;">
+      <div class="ftabs"><div class="ftab active" onclick="filterInv('all',this)">All</div><div class="ftab" onclick="filterInv('pending',this)">Pending</div><div class="ftab" onclick="filterInv('paid',this)">Paid</div></div>
+    </div>
+    <div class="scroll">
+      <div class="stat-grid c3" id="inv-stats"></div>
+      <div class="panel">
+        <div class="panel-head"><div><div class="panel-title">All Invoices</div><div class="panel-sub">Saved for future reference — no deletes</div></div><button class="btn btn-primary" onclick="openInvoiceModal()">+ New Invoice</button></div>
+        <table class="tbl"><thead><tr><th>Bill No</th><th>Customer</th><th>Garment</th><th>Date</th><th>Total</th><th>Disc%</th><th>Advance</th><th>Due</th><th>Status</th><th>Action</th></tr></thead><tbody id="inv-tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BILL PREVIEW -->
+  <div class="page" id="page-bill">
+    <div class="scroll">
+      <div style="display:grid;grid-template-columns:1fr 290px;gap:18px;align-items:start;">
+        <div id="bill-inner"></div>
+        <div class="bill-controls">
+          <div class="panel" style="margin-bottom:14px;"><div class="panel-head"><div class="panel-title">Deliver Bill</div><div class="panel-sub">Choose how to send</div></div><div style="padding:12px 16px;" id="bill-send"></div></div>
+          <button class="btn btn-primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;" onclick="window.print()">🖨️ &nbsp; Print Bill</button>
+          <div style="margin-top:10px;" id="bill-paid-wrap"></div>
+        </div>
+      </div>
+    </div>
+    <div class="action-bar"><button class="btn" onclick="P('invoices')">← Back to Invoices</button></div>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div class="page" id="page-notifications">
+    <div class="scroll">
+      <div class="notif-split">
+        <div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;">
+            <div class="ftabs"><div class="ftab active" onclick="filterNotifs('all',this)">All</div><div class="ftab" onclick="filterNotifs('whatsapp',this)">WhatsApp</div><div class="ftab" onclick="filterNotifs('sms',this)">SMS</div><div class="ftab" onclick="filterNotifs('email',this)">Email</div></div>
+            <button class="btn btn-sm" onclick="markAllRead()">Mark All Read</button>
+          </div>
+          <div class="panel" id="notif-log"></div>
+        </div>
+        <div>
+          <div class="panel" style="padding:18px 20px;">
+            <div style="font-family:var(--font-d);font-size:18px;margin-bottom:14px;">Send Notification</div>
+            <div class="field" style="margin-bottom:10px;"><label>Recipient</label><select id="notif-recipient"></select></div>
+            <div class="field" style="margin-bottom:10px;"><label>Channel</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:4px;">
+                <div class="ssb sel" onclick="selCh(this)">💬 WA</div>
+                <div class="ssb" onclick="selCh(this)">📩 SMS</div>
+                <div class="ssb" onclick="selCh(this)">✉️ Email</div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:8px;"><label>Templates</label>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
+                <div class="tpl-chip" onclick="useTpl('ready')">Order Ready</div>
+                <div class="tpl-chip" onclick="useTpl('delay')">Delay Notice</div>
+                <div class="tpl-chip" onclick="useTpl('payment')">Payment Due</div>
+                <div class="tpl-chip" onclick="useTpl('pickup')">Pickup Reminder</div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:10px;"><label>Message</label>
+              <textarea id="notif-msg" style="width:100%;background:var(--off-white);border:1px solid var(--border);padding:9px 11px;font-family:var(--font-b);font-size:13px;color:var(--charcoal);outline:none;resize:vertical;min-height:80px;" placeholder="Type message..."></textarea>
+            </div>
+            <button class="btn btn-primary" style="width:100%;" onclick="sendNotif()">Send →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="scroll">
+      <div class="settings-layout">
+        <div class="sn-wrap">
+          <div class="sn-item active" onclick="swSet(this,'boutique')">🏪 Boutique</div>
+          <div class="sn-item" onclick="swSet(this,'account')">👤 Account</div>
+          <div class="sn-item" onclick="swSet(this,'notif_s')">🔔 Notifications</div>
+          <div class="sn-item" onclick="swSet(this,'billing')">💳 Billing</div>
+          <div class="sn-item" onclick="swSet(this,'appear')">🎨 Appearance</div>
+          <div class="sn-item" onclick="swSet(this,'integrations')">🔗 Integrations</div>
+        </div>
+        <div id="settings-panel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODALS -->
+<!-- Customer Modal -->
+<div class="modal-overlay" id="modal-customer">
+<div class="modal">
+  <div class="modal-title" id="cm-title">Add Customer</div>
+  <div class="modal-sub">Fill in details and body measurements</div>
+  <input type="hidden" id="cm-id">
+  <div class="fr"><div class="field"><label>Full Name *</label><input id="cm-name" placeholder="e.g. Priya Mehta"></div><div class="field"><label>Mobile *</label><input id="cm-phone" placeholder="+91 98765 43210"></div></div>
+  <div class="fr"><div class="field"><label>Email</label><input id="cm-email" placeholder="optional"></div><div class="field"><label>City</label><input id="cm-city" value="Surat"></div></div>
+  <div class="fdiv"></div>
+  <div class="field" style="margin-bottom:14px;"><label>Gender</label>
+    <div class="g-toggle"><div class="g-btn" id="gm" onclick="selG('male')">♂ Male</div><div class="g-btn" id="gf" onclick="selG('female')">♀ Female</div></div>
+  </div>
+  <div class="g-hint" id="g-hint">Select gender to load measurement form</div>
+  <div class="msec" id="ms-male">
+    <div class="mb-head" onclick="togBlk(this)"><span class="bl">Top</span><div class="bline"></div><span class="btog">▾</span></div>
+    <div class="mb-body"><div class="mf"><label>Chest</label><input type="number" id="m-chest" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Shoulder</label><input type="number" id="m-shldr" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Neck</label><input type="number" id="m-neck" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Sleeve</label><input type="number" id="m-slv" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Shirt Length</label><input type="number" id="m-shirt" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Back Width</label><input type="number" id="m-back" placeholder="—"><div class="mf-unit">in</div></div></div>
+    <div class="mb-head" onclick="togBlk(this)"><span class="bl">Bottom</span><div class="bline"></div><span class="btog">▾</span></div>
+    <div class="mb-body"><div class="mf"><label>Waist</label><input type="number" id="m-waist" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Hip</label><input type="number" id="m-hip" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Inseam</label><input type="number" id="m-inseam" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Trouser Waist</label><input type="number" id="m-trwaist" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Thigh</label><input type="number" id="m-thigh" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Pant Length</label><input type="number" id="m-pantlen" placeholder="—"><div class="mf-unit">in</div></div></div>
+  </div>
+  <div class="msec" id="ms-female">
+    <div class="mb-head" onclick="togBlk(this)"><span class="bl">Top</span><div class="bline"></div><span class="btog">▾</span></div>
+    <div class="mb-body"><div class="mf"><label>Length</label><input type="number" id="f-len" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Front</label><input type="number" id="f-front" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Chest 1</label><input type="number" id="f-c1" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Chest 2</label><input type="number" id="f-c2" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Shoulder</label><input type="number" id="f-shldr" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Sleeve</label><input type="number" id="f-slv" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Sleeve Bottom</label><input type="number" id="f-slvbot" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Blouse Length</label><input type="number" id="f-blolen" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Back Length</label><input type="number" id="f-backlen" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Front Length</label><input type="number" id="f-frontlen" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Neck Depth</label><input type="number" id="f-neckd" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Armhole</label><input type="number" id="f-arm" placeholder="—"><div class="mf-unit">in</div></div></div>
+    <div class="mb-head" onclick="togBlk(this)"><span class="bl">Bottom</span><div class="bline"></div><span class="btog">▾</span></div>
+    <div class="mb-body"><div class="mf"><label>Waist</label><input type="number" id="f-waist" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Hip</label><input type="number" id="f-hip" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Skirt Length</label><input type="number" id="f-skirt" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Lehenga</label><input type="number" id="f-leh" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Salwar Length</label><input type="number" id="f-salwar" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Thigh</label><input type="number" id="f-thigh" placeholder="—"><div class="mf-unit">in</div></div></div>
+  </div>
+  <div class="field" style="margin-top:14px;margin-bottom:10px;"><label>Preferred Notification</label>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+      <div class="no-opt sel" onclick="selNotify(this)"><div class="no-lbl"><span>💬</span> WhatsApp</div><div class="no-radio"></div></div>
+      <div class="no-opt" onclick="selNotify(this)"><div class="no-lbl"><span>📩</span> SMS</div><div class="no-radio"></div></div>
+      <div class="no-opt" onclick="selNotify(this)"><div class="no-lbl"><span>✉️</span> Email</div><div class="no-radio"></div></div>
+    </div>
+  </div>
+  <div class="field"><label>Fitting Notes</label><textarea id="cm-notes" placeholder="Special instructions..."></textarea></div>
+  <div class="modal-actions"><button class="btn" onclick="closeM('customer')">Cancel</button><button class="btn btn-primary" onclick="saveCustomer()">Save Customer</button></div>
+</div>
+</div>
+
+<!-- Order Modal -->
+<div class="modal-overlay" id="modal-order">
+<div class="modal">
+  <div class="modal-title" id="om-title">New Order</div>
+  <div class="modal-sub">Create an order for a customer</div>
+  <input type="hidden" id="om-id">
+  <div class="fr">
+    <div class="field"><label>Customer *</label><select id="om-cust"></select></div>
+    <div class="field"><label>Garment *</label><select id="om-garment"><option value="">Select...</option><option>Sherwani</option><option>Bandhgala Suit</option><option>Kurta Pyjama</option><option>Shirt + Trouser</option><option>Blouse</option><option>Salwar Suit</option><option>Lehenga</option><option>Saree Blouse</option><option>Kurti</option><option>Custom</option></select></div>
+  </div>
+  <div class="fr">
+    <div class="field"><label>Due Date</label><input type="date" id="om-due"></div>
+    <div class="field"><label>Fabric / Material</label><input id="om-fabric" placeholder="e.g. Silk, Cotton"></div>
+  </div>
+  <div class="fr">
+    <div class="field"><label>Amount (₹)</label><input type="number" id="om-amount" placeholder="0" oninput="calcOrdBal()"></div>
+    <div class="field"><label>Advance Paid (₹)</label><input type="number" id="om-advance" placeholder="0" oninput="calcOrdBal()"></div>
+  </div>
+  <div class="field" style="margin-bottom:12px;"><label>Balance Due (₹)</label><input id="om-balance" readonly style="color:var(--mid);"></div>
+  <div class="field" style="margin-bottom:12px;"><label>Initial Stage</label>
+    <div class="ssrow" style="grid-template-columns:repeat(5,1fr);">
+      <div class="ssb sel" onclick="selStage(this)">Received</div><div class="ssb" onclick="selStage(this)">Cutting</div><div class="ssb" onclick="selStage(this)">Stitching</div><div class="ssb" onclick="selStage(this)">Ready</div><div class="ssb" onclick="selStage(this)">Dispensed</div>
+    </div>
+  </div>
+  <div class="field" style="margin-bottom:10px;"><label>Notify Customer When Ready?</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+      <div class="ssb sel" id="ny-yes" onclick="selNotifyOrd(true)">✓ Yes</div>
+      <div class="ssb" id="ny-no" onclick="selNotifyOrd(false)">✗ Skip</div>
+    </div>
+  </div>
+  <div class="field"><label>Notes</label><textarea id="om-notes" placeholder="Special instructions..."></textarea></div>
+  <div class="modal-actions"><button class="btn" onclick="closeM('order')">Cancel</button><button class="btn btn-primary" onclick="saveOrder()">Save Order</button></div>
+</div>
+</div>
+
+<!-- Stage Modal -->
+<div class="modal-overlay" id="modal-stage">
+<div class="modal" style="width:400px;">
+  <div class="modal-title">Update Stage</div>
+  <div class="modal-sub" id="stage-sub"></div>
+  <input type="hidden" id="stage-id">
+  <div class="ssrow" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px;">
+    <div class="ssb" onclick="selStageUp(this)">Received</div><div class="ssb" onclick="selStageUp(this)">Cutting</div><div class="ssb" onclick="selStageUp(this)">Stitching</div><div class="ssb" onclick="selStageUp(this)">Ready</div><div class="ssb" onclick="selStageUp(this)">Dispensed</div>
+  </div>
+  <div style="padding:10px 14px;background:var(--off-white);border:1px solid var(--border);font-size:12px;color:var(--mid);">Setting to <strong>Ready</strong> auto-notifies customer. <strong>Dispensed</strong> = handed over to customer.</div>
+  <div class="modal-actions"><button class="btn" onclick="closeM('stage')">Cancel</button><button class="btn btn-primary" onclick="saveStageUp()">Update Stage</button></div>
+</div>
+</div>
+
+<!-- Invoice Modal -->
+<div class="modal-overlay" id="modal-invoice">
+<div class="modal" style="width:640px;">
+  <div class="modal-title">Generate Invoice</div>
+  <div class="modal-sub">Create a proper bill for a customer</div>
+  <input type="hidden" id="iv-id">
+  <div class="fr">
+    <div class="field"><label>Customer *</label><select id="iv-cust" onchange="loadCustOrders()"></select></div>
+    <div class="field"><label>Order (optional)</label><select id="iv-order" onchange="fillFromOrder()"></select></div>
+  </div>
+  <div class="fr">
+    <div class="field"><label>Bill Date *</label><input type="date" id="iv-date"></div>
+    <div class="field"><label>Garment / Particulars *</label><input id="iv-garment" placeholder="e.g. Bridal Lehenga"></div>
+  </div>
+  <div style="margin-bottom:12px;">
+    <div style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mid);margin-bottom:8px;">Particulars</div>
+    <div style="display:grid;grid-template-columns:1fr 80px 90px 90px;gap:8px;margin-bottom:6px;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--light);padding:0 4px;">
+      <div>Particular</div><div style="text-align:center;">Qty</div><div style="text-align:center;">Rate (₹)</div><div style="text-align:center;">Amount (₹)</div>
+    </div>
+    <div id="iv-rows"></div>
+    <button type="button" onclick="addIvRow()" style="width:100%;padding:8px;border:1px dashed var(--border);background:none;font-family:var(--font-b);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);cursor:pointer;margin-top:4px;" onmouseover="this.style.borderColor='var(--charcoal)';this.style.color='var(--charcoal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--mid)'">+ Add Row</button>
+  </div>
+  <div style="border-top:1px solid var(--border);padding-top:12px;">
+    <div class="fr"><div class="field"><label>Subtotal (₹)</label><input id="iv-subtotal" readonly style="color:var(--mid);font-family:var(--font-d);font-size:15px;"></div><div class="field"><label>Discount (%)</label><input type="number" id="iv-disc" placeholder="0" min="0" max="100" oninput="calcIvTotal()"></div></div>
+    <div class="fr"><div class="field"><label>Discount Amount (₹)</label><input id="iv-discamt" readonly style="color:var(--red);font-family:var(--font-d);font-size:15px;"></div><div class="field"><label>Total After Discount (₹)</label><input id="iv-total" readonly style="font-family:var(--font-d);font-size:15px;font-weight:500;"></div></div>
+    <div class="fr"><div class="field"><label>Advance Received (₹)</label><input type="number" id="iv-advance" placeholder="0" oninput="calcIvTotal()"></div><div class="field"><label>Due Amount (₹)</label><input id="iv-due" readonly style="color:var(--red);font-family:var(--font-d);font-size:16px;font-weight:500;"></div></div>
+    <div class="field"><label>Remarks</label><input id="iv-remarks" placeholder="e.g. Ready by Saturday..."></div>
+  </div>
+  <div class="modal-actions"><button class="btn" onclick="closeM('invoice')">Cancel</button><button class="btn btn-primary" onclick="saveInvoice()">Generate Invoice</button></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- PLAN MANAGEMENT MODAL -->
+<div class="modal-overlay" id="modal-plan">
+<div class="modal" style="width:620px;">
+  <div class="modal-title">Manage Your Plan</div>
+  <div class="modal-sub">Choose a plan that works for your boutique</div>
+
+  <!-- Plan Cards -->
+  <div class="plan-grid">
+    <div class="plan-card" id="pc-free" onclick="selectPlan('free')">
+      <div class="plan-card-name">Free Trial</div>
+      <div class="plan-card-price">₹0</div>
+      <div class="plan-card-period">15 days</div>
+      <div class="plan-card-feat">50 customers</div>
+      <div class="plan-card-feat">Unlimited orders</div>
+      <div class="plan-card-feat">Basic invoices</div>
+    </div>
+    <div class="plan-card selected" id="pc-starter" onclick="selectPlan('starter')">
+      <div class="plan-card-name">Starter</div>
+      <div class="plan-card-price">₹499</div>
+      <div class="plan-card-period">per month</div>
+      <div class="plan-card-feat">Unlimited customers</div>
+      <div class="plan-card-feat">WhatsApp / SMS</div>
+      <div class="plan-card-feat">Professional bills</div>
+    </div>
+    <div class="plan-card" id="pc-pro" onclick="selectPlan('pro')">
+      <div class="plan-card-name">Pro</div>
+      <div class="plan-card-price">₹999</div>
+      <div class="plan-card-period">per month</div>
+      <div class="plan-card-feat">Everything in Starter</div>
+      <div class="plan-card-feat">Multiple staff</div>
+      <div class="plan-card-feat">GST export</div>
+    </div>
+  </div>
+
+  <!-- Selected Plan Summary -->
+  <div style="background:var(--off-white);border:1px solid var(--border);padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="font-size:13px;color:var(--mid);">Selected: <strong id="selected-plan-name" style="color:var(--charcoal);">Starter Plan</strong></div>
+    <div style="font-family:var(--font-d);font-size:20px;font-weight:300;" id="selected-plan-price">₹499 / month</div>
+  </div>
+
+  <!-- Payment Method -->
+  <div style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mid);margin-bottom:10px;">Payment Method</div>
+  <div class="pay-method">
+    <div class="pm-opt sel" id="pm-upi" onclick="selPayMethod(this)">
+      <div class="pm-radio"></div>
+      <div class="pm-icon">📱</div>
+      <div><div class="pm-label">UPI / GPay / PhonePe / Paytm</div><div class="pm-sub">Instant payment — most popular in India</div></div>
+    </div>
+    <div class="pm-opt" id="pm-bank" onclick="selPayMethod(this)">
+      <div class="pm-radio"></div>
+      <div class="pm-icon">🏦</div>
+      <div><div class="pm-label">Bank Transfer (NEFT / IMPS)</div><div class="pm-sub">Transfer directly to our account</div></div>
+    </div>
+    <div class="pm-opt" id="pm-cash" onclick="selPayMethod(this)">
+      <div class="pm-radio"></div>
+      <div class="pm-icon">💵</div>
+      <div><div class="pm-label">Cash Payment</div><div class="pm-sub">Pay in person at our Surat office</div></div>
+    </div>
+  </div>
+
+  <!-- Payment Details (shown based on selection) -->
+  <div id="payment-details" style="background:var(--off-white);border:1px solid var(--border);padding:16px;margin-bottom:14px;">
+    <div style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);margin-bottom:10px;">Payment Details</div>
+    <div id="payment-info"></div>
+  </div>
+
+  <!-- Note -->
+  <div style="background:rgba(74,140,106,0.06);border:1px solid rgba(74,140,106,0.2);padding:10px 14px;font-size:12px;color:var(--green);margin-bottom:4px;line-height:1.6;">
+    ✓ After payment, send a screenshot to our WhatsApp (+91 XXXXXXXXXX) with your registered email. We will activate your plan within 2 hours.
+  </div>
+
+  <div class="modal-actions">
+    <button class="btn" onclick="closeM('plan')">Cancel</button>
+    <a id="pay-whatsapp-btn" href="#" target="_blank" class="btn btn-primary" style="text-decoration:none;" onclick="handlePayNow()">Pay & Notify Us →</a>
+  </div>
+</div>
+</div>
+<div class="loading-overlay" id="loader">Loading…</div>
+
+<script>
+// ══════════════════════════════════════════
+//  CONFIG — SET YOUR BACKEND URL HERE
+// ══════════════════════════════════════════
+const API_URL = 'https://tailorx-backend.onrender.com';
+
+// ══════════════════════════════════════════
+//  API HELPER
+// ══════════════════════════════════════════
+let TOKEN = localStorage.getItem('tx_token') || '';
+
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}) },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API_URL + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'API error ' + res.status);
+  return data;
+}
+
+// ══════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════
+function switchAuthTab(tab) {
+  // hide all tabs and forms
+  ['login','register','forgot','reset'].forEach(t => {
+    const tabEl = document.getElementById('tab-'+t);
+    const formEl = document.getElementById('form-'+t);
+    if(tabEl) tabEl.classList.toggle('active', t===tab);
+    if(formEl) formEl.style.display = t===tab ? 'flex' : 'none';
+  });
+  // show forgot tab in nav only when on forgot screen
+  const forgotTab = document.getElementById('tab-forgot');
+  if(forgotTab) forgotTab.style.display = tab==='forgot' ? 'block' : 'none';
+  // clear all errors
+  ['li-err','rg-err','fp-err','fp-success','rp-err','rp-success'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.remove('show');
+  });
+}
+
+async function doLogin() {
+  const email = document.getElementById('li-email').value.trim();
+  const password = document.getElementById('li-pass').value;
+  const err = document.getElementById('li-err');
+  const btn = document.getElementById('li-btn');
+  err.classList.remove('show');
+  if (!email || !password) { err.textContent = 'Email and password required'; err.classList.add('show'); return; }
+  try {
+    loading(true);
+    btn.textContent = 'Logging in…';
+    btn.disabled = true;
+    const data = await api('POST', '/api/auth/login', { email, password });
+    TOKEN = data.token;
+    localStorage.setItem('tx_token', TOKEN);
+    localStorage.setItem('tx_boutique', JSON.stringify(data.boutique));
+    initApp(data.boutique);
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.add('show');
+  } finally {
+    loading(false);
+    btn.textContent = 'Login →';
+    btn.disabled = false;
+  }
+}
+
+async function doRegister() {
+  const name = document.getElementById('rg-name').value.trim();
+  const email = document.getElementById('rg-email').value.trim();
+  const password = document.getElementById('rg-pass').value;
+  const err = document.getElementById('rg-err');
+  const btn = document.getElementById('rg-btn');
+  err.classList.remove('show');
+  if (!name || !email || !password) { err.textContent = 'Boutique name, email and password required'; err.classList.add('show'); return; }
+  if (password.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.classList.add('show'); return; }
+  if (!email.includes('@')) { err.textContent = 'Please enter a valid email address'; err.classList.add('show'); return; }
+  try {
+    loading(true);
+    btn.textContent = 'Creating account…';
+    btn.disabled = true;
+    await api('POST', '/api/auth/register', {
+      name, ownerName: document.getElementById('rg-owner').value,
+      email, password,
+      phone: document.getElementById('rg-phone').value,
+      city: document.getElementById('rg-city').value || 'Surat',
+      address: document.getElementById('rg-addr').value,
+    });
+    // ✅ After register → redirect to LOGIN (not auto-login)
+    // Clear register form
+    ['rg-name','rg-owner','rg-email','rg-pass','rg-phone','rg-addr'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('rg-city').value = 'Surat';
+    // Switch to login tab and show success message
+    switchAuthTab('login');
+    document.getElementById('li-email').value = email;
+    const loginErr = document.getElementById('li-err');
+    loginErr.style.background = 'rgba(74,140,106,0.08)';
+    loginErr.style.borderColor = 'rgba(74,140,106,0.2)';
+    loginErr.style.color = 'var(--green)';
+    loginErr.textContent = '✓ Account created successfully! Please login with your email and password.';
+    loginErr.classList.add('show');
+    // Reset style after 5 seconds
+    setTimeout(() => { loginErr.classList.remove('show'); loginErr.style = ''; }, 5000);
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.add('show');
+  } finally {
+    loading(false);
+    btn.textContent = 'Create Account →';
+    btn.disabled = false;
+  }
+}
+
+async function doForgotPassword() {
+  const email = document.getElementById('fp-email').value.trim();
+  const err = document.getElementById('fp-err');
+  const success = document.getElementById('fp-success');
+  const btn = document.getElementById('fp-btn');
+  err.classList.remove('show');
+  success.classList.remove('show');
+  if (!email) { err.textContent = 'Please enter your email address'; err.classList.add('show'); return; }
+  if (!email.includes('@')) { err.textContent = 'Please enter a valid email address'; err.classList.add('show'); return; }
+  try {
+    loading(true);
+    btn.textContent = 'Sending…';
+    btn.disabled = true;
+    await api('POST', '/api/auth/forgot-password', { email });
+    success.textContent = '✓ Password reset link sent to ' + email + '. Please check your inbox (and spam folder).';
+    success.classList.add('show');
+    document.getElementById('fp-email').value = '';
+    btn.textContent = 'Sent ✓';
+    setTimeout(() => { btn.textContent = 'Send Reset Link →'; btn.disabled = false; }, 3000);
+  } catch (e) {
+    // Even if email not found, show success for security
+    success.textContent = 'If this email is registered, you will receive a reset link shortly.';
+    success.classList.add('show');
+    btn.textContent = 'Send Reset Link →';
+    btn.disabled = false;
+  } finally {
+    loading(false);
+  }
+}
+
+async function doResetPassword() {
+  const token = document.getElementById('reset-token').value;
+  const pass = document.getElementById('rp-pass').value;
+  const confirm = document.getElementById('rp-confirm').value;
+  const err = document.getElementById('rp-err');
+  const success = document.getElementById('rp-success');
+  const btn = document.getElementById('rp-btn');
+  err.classList.remove('show');
+  success.classList.remove('show');
+  if (!pass) { err.textContent = 'Please enter a new password'; err.classList.add('show'); return; }
+  if (pass.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.classList.add('show'); return; }
+  if (pass !== confirm) { err.textContent = 'Passwords do not match'; err.classList.add('show'); return; }
+  try {
+    loading(true);
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+    await api('POST', '/api/auth/reset-password', { token, newPassword: pass });
+    success.textContent = '✓ Password reset successfully! Redirecting to login…';
+    success.classList.add('show');
+    document.getElementById('rp-pass').value = '';
+    document.getElementById('rp-confirm').value = '';
+    // Redirect to login after 2 seconds
+    setTimeout(() => {
+      // Clear token from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+      switchAuthTab('login');
+    }, 2000);
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.add('show');
+    btn.textContent = 'Set New Password →';
+    btn.disabled = false;
+  } finally {
+    loading(false);
+  }
+}
+
+function doLogout() {
+  TOKEN = '';
+  localStorage.removeItem('tx_token');
+  localStorage.removeItem('tx_boutique');
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
+}
+
+function initApp(boutique) {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'flex';
+  document.getElementById('s-name').textContent = boutique.name || 'Boutique';
+  document.getElementById('s-av').textContent = (boutique.name || 'B')[0].toUpperCase();
+  // Apply saved language
+  const savedLang = localStorage.getItem('tx_lang') || 'en';
+  LANG = savedLang;
+  if(savedLang !== 'en') {
+    document.body.style.direction = savedLang === 'ur' ? 'rtl' : 'ltr';
+  }
+  P('dashboard');
+}
+
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+const STAGE_CLASS = {received:'sp-received',cutting:'sp-cutting',stitching:'sp-stitching',ready:'sp-ready',dispensed:'sp-dispensed'};
+const STAGE_LBL   = {received:'Received',cutting:'Cutting',stitching:'Stitching',ready:'Ready',dispensed:'Dispensed'};
+const STAGE_DOT   = {received:'var(--blue)',cutting:'var(--gold)',stitching:'var(--purple)',ready:'var(--green)',dispensed:'var(--teal)'};
+const CH_COLOR    = {whatsapp:'var(--green)',sms:'var(--blue)',email:'var(--gold)'};
+const CH_ICON     = {whatsapp:'💬',sms:'📩',email:'✉️'};
+
+const ini = n => (n||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+const fmtD = d => { if(!d) return '—'; try { return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); } catch { return d; } };
+const fmtA = n => '₹' + Number(n||0).toLocaleString('en-IN');
+const billNo = id => 'BILL-' + String(id).padStart(4,'0');
+
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (type ? ' '+type : '');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function loading(show) { document.getElementById('loader').classList.toggle('show', show); }
+
+// ══════════════════════════════════════════
+//  PAGE ROUTING
+// ══════════════════════════════════════════
+const PAGES = ['dashboard','orders','customers','profile','measurements','invoices','bill','notifications','settings'];
+
+function P(name) {
+  PAGES.forEach(p => { document.getElementById('page-'+p)?.classList.remove('active'); document.getElementById('nav-'+p)?.classList.remove('active'); });
+  document.getElementById('page-'+name)?.classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+  setTB(name);
+  if(name==='dashboard') renderDash();
+  else if(name==='orders') renderOrders();
+  else if(name==='customers') renderCustomers();
+  else if(name==='measurements') renderMeasure('all');
+  else if(name==='invoices') renderInvoices('all');
+  else if(name==='notifications') { renderNotifs('all'); popNotifRecip(); }
+  else if(name==='settings') renderSets('boutique');
+}
+
+const TB = {
+  dashboard:    {t:'Dashboard',       r:`<button class="btn btn-primary" onclick="P('orders');setTimeout(openOrderModal,150)">+ New Order</button>`},
+  orders:       {t:'Orders',          r:`<input class="search-box" placeholder="⌕ Search orders…" oninput="srchOrders(this.value)"><button class="btn btn-primary" onclick="openOrderModal()">+ New Order</button>`},
+  customers:    {t:'Customers',       r:`<input class="search-box" placeholder="⌕ Search customers…" oninput="srchCust(this.value)"><button class="btn btn-primary" onclick="openCustomerModal()">+ Add Customer</button>`},
+  profile:      {t:'Customer Profile',r:''},
+  measurements: {t:'Measurements',    r:`<input class="search-box" placeholder="⌕ Search…" oninput="srchMeasure(this.value)">`},
+  invoices:     {t:'Invoices',        r:`<input class="search-box" placeholder="⌕ Search invoices…" oninput="srchInv(this.value)"><button class="btn btn-primary" onclick="openInvoiceModal()">+ New Invoice</button>`},
+  bill:         {t:'Bill Preview',    r:''},
+  notifications:{t:'Notifications',   r:''},
+  settings:     {t:'Settings',        r:`<button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>`},
+};
+
+function setTB(name) {
+  const c = TB[name] || {t:name, r:''};
+  document.getElementById('tb-left').innerHTML = `<div class="tb-title">${c.t}</div>`;
+  const logoutBtn = `<button class="btn btn-sm" onclick="doLogout()" style="margin-left:8px;">Logout</button>`;
+  document.getElementById('tb-right').innerHTML = c.r + logoutBtn;
+}
+
+async function badges() {
+  try {
+    const data = await api('GET','/api/dashboard');
+    document.getElementById('badge-orders').textContent = data.orders?.active || 0;
+    document.getElementById('badge-notif').textContent = data.unreadNotifications || 0;
+  } catch {}
+}
+
+// ══════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════
+async function renderDash() {
+  try {
+    loading(true);
+    const [dash, orders, notifs] = await Promise.all([
+      api('GET','/api/dashboard'),
+      api('GET','/api/orders'),
+      api('GET','/api/notifications'),
+    ]);
+    document.getElementById('badge-orders').textContent = dash.orders?.active || 0;
+    document.getElementById('badge-notif').textContent = dash.unreadNotifications || 0;
+
+    document.getElementById('d-stats').innerHTML = `
+      <div class="stat-card gold"><div class="sl">Active Orders</div><div class="sv">${dash.orders?.active||0}</div><div class="sd">${dash.orders?.total||0} total</div></div>
+      <div class="stat-card green"><div class="sl">Ready for Pickup</div><div class="sv">${dash.orders?.stages?.ready||0}</div><div class="sd">Awaiting collection</div></div>
+      <div class="stat-card blue"><div class="sl">Customers</div><div class="sv">${dash.customers||0}</div><div class="sd">Registered</div></div>
+      <div class="stat-card red"><div class="sl">Pending Payment</div><div class="sv sm">${fmtA(dash.invoices?.pendingAmt||0)}</div><div class="sd">${dash.invoices?.pendingCount||0} invoices</div></div>`;
+
+    const rec = orders.slice(0,5);
+    document.getElementById('d-orders').innerHTML = rec.length ? rec.map(o=>`
+      <tr class="clickable" onclick="P('orders')">
+        <td><div style="font-weight:500;">${o.customer_name}</div></td>
+        <td><span class="sp ${STAGE_CLASS[o.stage]||'sp-received'}"><span class="sp-dot"></span>${STAGE_LBL[o.stage]||o.stage}</span></td>
+        <td style="font-size:12px;color:var(--mid);">${fmtD(o.due_date)}</td>
+        <td style="font-family:var(--font-d);font-size:15px;">${fmtA(o.amount)}</td>
+      </tr>`).join('') : `<tr class="empty-row"><td colspan="4">No orders yet</td></tr>`;
+
+    const sc = dash.orders?.stages || {};
+    const tot = dash.orders?.total || 1;
+    const pc = {received:'var(--blue)',cutting:'var(--gold)',stitching:'var(--purple)',ready:'var(--green)',dispensed:'var(--teal)'};
+    document.getElementById('d-pipeline').innerHTML = ['received','cutting','stitching','ready','dispensed'].map(s=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="filterOrders('${s}',null);P('orders')">
+        <div style="font-family:var(--font-d);font-size:22px;font-weight:300;width:30px;text-align:right;">${sc[s]||0}</div>
+        <div style="flex:1;font-size:12px;font-weight:500;">${STAGE_LBL[s]}</div>
+        <div style="width:46px;height:3px;background:var(--border);"><div style="height:100%;background:${pc[s]};width:${Math.round((sc[s]||0)/tot*100)}%;"></div></div>
+      </div>`).join('');
+
+    const due = orders.filter(o=>o.due_date&&o.stage!=='dispensed').sort((a,b)=>new Date(a.due_date)-new Date(b.due_date)).slice(0,3);
+    document.getElementById('d-due').innerHTML = due.length ? due.map(o=>{
+      const d = new Date(o.due_date);
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);">
+        <div style="width:34px;height:34px;background:var(--off-white);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+          <div style="font-family:var(--font-d);font-size:14px;font-weight:300;line-height:1;">${d.getDate()}</div>
+          <div style="font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);">${d.toLocaleDateString('en',{month:'short'})}</div>
+        </div>
+        <div><div style="font-size:12px;font-weight:500;">${o.customer_name}</div><div style="font-size:11px;color:var(--mid);">${o.garment}</div></div>
+      </div>`}).join('') : `<div style="padding:16px;text-align:center;font-size:12px;color:var(--light);">No upcoming due dates</div>`;
+
+    document.getElementById('d-alerts').innerHTML = notifs.slice(0,3).map(n=>`
+      <div style="display:flex;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);">
+        <div style="width:7px;height:7px;border-radius:50%;background:${CH_COLOR[n.type]||'var(--mid)'};flex-shrink:0;margin-top:4px;${n.is_read?'opacity:0.4':''}"></div>
+        <div><div style="font-size:12px;font-weight:${n.is_read?400:500};">${n.title}</div><div style="font-size:10px;color:var(--light);margin-top:2px;">${fmtD(n.created_at)}</div></div>
+      </div>`).join('') || `<div style="padding:16px;text-align:center;font-size:12px;color:var(--light);">No alerts yet</div>`;
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+// ══════════════════════════════════════════
+//  ORDERS
+// ══════════════════════════════════════════
+let ordF='all', ordS='';
+async function renderOrders() {
+  try {
+    loading(true);
+    const orders = await api('GET', `/api/orders?stage=${ordF}&search=${ordS}`);
+    document.getElementById('order-count').textContent = orders.length + ' orders';
+    const tb = document.getElementById('orders-tbody');
+    if(!orders.length) { tb.innerHTML = `<tr class="empty-row"><td colspan="8">No orders found</td></tr>`; return; }
+    tb.innerHTML = orders.map(o=>`
+      <tr class="clickable">
+        <td style="font-size:11px;color:var(--light);font-family:var(--font-d);">#${o.id}</td>
+        <td><div style="font-weight:500;">${o.customer_name}</div><div style="font-size:11px;color:var(--mid);">${o.garment}</div></td>
+        <td style="font-size:12px;color:var(--mid);">${o.fabric||'—'}</td>
+        <td><span class="sp ${STAGE_CLASS[o.stage]||'sp-received'}"><span class="sp-dot"></span>${STAGE_LBL[o.stage]||o.stage}</span></td>
+        <td style="font-size:12px;color:var(--mid);">${fmtD(o.due_date)}</td>
+        <td style="font-family:var(--font-d);font-size:15px;">${fmtA(o.amount)}</td>
+        <td style="font-family:var(--font-d);font-size:15px;color:${o.balance>0?'var(--red)':'var(--green)'};">${o.balance>0?fmtA(o.balance):'Paid ✓'}</td>
+        <td><div style="display:flex;gap:5px;">
+          <button class="btn btn-sm btn-primary" onclick="openStageModal(${o.id},'${o.stage}','${o.customer_name}','${o.garment}')">Stage</button>
+          <button class="btn btn-sm btn-outline" onclick="editOrder(${o.id})">Edit</button>
+        </div></td>
+      </tr>`).join('');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+function filterOrders(f,el) { ordF=f; if(el){document.querySelectorAll('#page-orders .ftab').forEach(t=>t.classList.remove('active'));el.classList.add('active');} renderOrders(); }
+function srchOrders(q) { ordS=q; renderOrders(); }
+
+async function openOrderModal(preCustId) {
+  document.getElementById('om-title').textContent='New Order';
+  document.getElementById('om-id').value='';
+  ['om-garment','om-due','om-fabric','om-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('om-amount').value='';
+  document.getElementById('om-advance').value='';
+  document.getElementById('om-balance').value='';
+  document.querySelectorAll('#modal-order .ssb').forEach((b,i)=>b.classList.toggle('sel',i===0));
+  document.getElementById('ny-yes').classList.add('sel'); document.getElementById('ny-no').classList.remove('sel');
+  try { const custs = await api('GET','/api/customers'); document.getElementById('om-cust').innerHTML = custs.length ? custs.map(c=>`<option value="${c.id}" ${c.id==preCustId?'selected':''}>${c.name}</option>`).join('') : `<option value="">No customers yet</option>`; } catch {}
+  openM('order');
+}
+
+async function editOrder(id) {
+  try {
+    loading(true);
+    const o = await api('GET',`/api/orders/${id}`);
+    document.getElementById('om-title').textContent='Edit Order';
+    document.getElementById('om-id').value=o.id;
+    const custs = await api('GET','/api/customers');
+    document.getElementById('om-cust').innerHTML = custs.map(c=>`<option value="${c.id}" ${c.id==o.customer_id?'selected':''}>${c.name}</option>`).join('');
+    document.getElementById('om-garment').value=o.garment||'';
+    document.getElementById('om-due').value=o.due_date?o.due_date.split('T')[0]:'';
+    document.getElementById('om-fabric').value=o.fabric||'';
+    document.getElementById('om-amount').value=o.amount||'';
+    document.getElementById('om-advance').value=o.advance||'';
+    document.getElementById('om-balance').value=o.balance||'';
+    document.getElementById('om-notes').value=o.notes||'';
+    document.querySelectorAll('#modal-order .ssrow .ssb').forEach(b=>b.classList.toggle('sel',b.textContent.toLowerCase()===o.stage));
+    openM('order');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+function calcOrdBal() { const a=parseFloat(document.getElementById('om-amount').value)||0; const adv=parseFloat(document.getElementById('om-advance').value)||0; document.getElementById('om-balance').value=fmtA(Math.max(0,a-adv)); }
+function selStage(el) { document.querySelectorAll('#modal-order .ssrow .ssb').forEach(b=>b.classList.remove('sel')); el.classList.add('sel'); }
+function selNotifyOrd(y) { document.getElementById('ny-yes').classList.toggle('sel',y); document.getElementById('ny-no').classList.toggle('sel',!y); }
+
+async function saveOrder() {
+  const custId = document.getElementById('om-cust').value;
+  const garment = document.getElementById('om-garment').value.trim();
+  if(!custId||!garment) { toast('Select customer and garment','red'); return; }
+  const custs = await api('GET','/api/customers');
+  const cust = custs.find(c=>c.id==custId);
+  const stage = document.querySelector('#modal-order .ssrow .ssb.sel')?.textContent.toLowerCase()||'received';
+  const notify = document.getElementById('ny-yes').classList.contains('sel');
+  const amt = parseFloat(document.getElementById('om-amount').value)||0;
+  const adv = parseFloat(document.getElementById('om-advance').value)||0;
+  const body = { customer_id:Number(custId), customer_name:cust?.name||'', garment, fabric:document.getElementById('om-fabric').value, due_date:document.getElementById('om-due').value||null, amount:amt, advance:adv, stage, notify, notes:document.getElementById('om-notes').value };
+  try {
+    loading(true);
+    const editId = document.getElementById('om-id').value;
+    if(editId) await api('PUT',`/api/orders/${editId}`, body);
+    else await api('POST','/api/orders', body);
+    closeM('order');
+    toast(`✓ Order ${editId?'updated':'created'} for ${cust?.name}`,'green');
+    renderOrders(); badges();
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+function openStageModal(id, currentStage, custName, garment) {
+  document.getElementById('stage-id').value = id;
+  document.getElementById('stage-sub').textContent = `${custName} — ${garment}`;
+  document.querySelectorAll('#modal-stage .ssb').forEach(b=>b.classList.toggle('sel',b.textContent.toLowerCase()===currentStage));
+  openM('stage');
+}
+function selStageUp(el) { document.querySelectorAll('#modal-stage .ssb').forEach(b=>b.classList.remove('sel')); el.classList.add('sel'); }
+async function saveStageUp() {
+  const id = document.getElementById('stage-id').value;
+  const stage = document.querySelector('#modal-stage .ssb.sel')?.textContent.toLowerCase();
+  if(!stage) return;
+  try {
+    loading(true);
+    await api('PATCH',`/api/orders/${id}/stage`, { stage });
+    closeM('stage');
+    toast(`✓ Stage updated to ${STAGE_LBL[stage]}`,'green');
+    renderOrders(); badges();
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+// ══════════════════════════════════════════
+//  CUSTOMERS
+// ══════════════════════════════════════════
+let cF='all', cS='';
+async function renderCustomers() {
+  try {
+    loading(true);
+    const custs = await api('GET',`/api/customers?gender=${cF==='all'?'':cF}&search=${cS}`);
+    document.getElementById('cust-count').textContent = custs.length + ' customers';
+    const grid = document.getElementById('cust-grid');
+    if(!custs.length) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px;font-family:var(--font-d);font-size:18px;color:var(--light);font-style:italic;">No customers yet — add your first customer</div>`; return; }
+    grid.innerHTML = custs.map(c=>`
+      <div class="cc ${c.gender}" onclick="openProfile(${c.id})">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+          <div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:16px;background:${c.gender==='female'?'rgba(184,151,90,0.12)':'rgba(74,110,140,0.12)'};color:${c.gender==='female'?'var(--gold)':'var(--blue)'};flex-shrink:0;">${ini(c.name)}</div>
+          <div>
+            <div style="font-family:var(--font-d);font-size:17px;">${c.name}</div>
+            <div style="font-size:11px;color:var(--mid);">${c.phone||'—'}</div>
+            <div style="font-size:11px;color:var(--light);">📍 ${c.city||'Surat'}</div>
+            <span class="tag ${c.gender==='female'?'tag-gold':'tag-blue'}" style="margin-top:5px;">${c.gender==='female'?'♀ Female':'♂ Male'}</span>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:11px;color:var(--mid);">Notify: ${c.notify||'WhatsApp'}</span>
+          <span style="font-size:11px;color:var(--light);">📍 ${c.city||'Surat'}</span>
+        </div>
+      </div>`).join('');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+function filterCustomers(f,el) { cF=f; document.querySelectorAll('#page-customers .ftab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderCustomers(); }
+function srchCust(q) { cS=q; renderCustomers(); }
+
+async function openProfile(id) {
+  try {
+    loading(true);
+    const [c, orders] = await Promise.all([api('GET',`/api/customers/${id}`), api('GET',`/api/orders?search=`)]);
+    const custOrders = orders.filter(o=>o.customer_id===id);
+    const top = c.measurements_top || {};
+    const bot = c.measurements_bottom || {};
+    const tGrid = Object.keys(top).length ? Object.entries(top).map(([k,v])=>`<div class="mdf"><div class="mdf-v">${v||'—'}</div><div class="mdf-l">${k}</div></div>`).join('') : `<div style="color:var(--light);font-style:italic;font-family:var(--font-d);">Not recorded</div>`;
+    const bGrid = Object.keys(bot).length ? Object.entries(bot).map(([k,v])=>`<div class="mdf"><div class="mdf-v">${v||'—'}</div><div class="mdf-l">${k}</div></div>`).join('') : `<div style="color:var(--light);font-style:italic;font-family:var(--font-d);">Not recorded</div>`;
+    const oRows = custOrders.length ? custOrders.map(o=>`
+      <tr class="clickable" onclick="P('orders')">
+        <td style="font-family:var(--font-d);font-size:13px;color:var(--light);">#${o.id}</td>
+        <td><div style="font-weight:500;">${o.garment}</div><div style="font-size:11px;color:var(--mid);">${fmtD(o.due_date)}</div></td>
+        <td><span class="sp ${STAGE_CLASS[o.stage]||'sp-received'}"><span class="sp-dot"></span>${STAGE_LBL[o.stage]||o.stage}</span></td>
+        <td style="font-family:var(--font-d);font-size:15px;">${fmtA(o.amount)}</td>
+      </tr>`).join('') : `<tr class="empty-row"><td colspan="4">No orders yet</td></tr>`;
+
+    document.getElementById('profile-inner').innerHTML = `
+      <div>
+        <div class="ph-card">
+          <div class="ph-top ${c.gender}">
+            <div class="ph-av ${c.gender}">${ini(c.name)}</div>
+            <div class="ph-name">${c.name}</div>
+            <div class="ph-sub">${c.gender==='female'?'♀ Female':'♂ Male'} · ${c.city}</div>
+          </div>
+          <div style="padding:14px 18px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c3);">📞 ${c.phone||'—'}</div>
+            ${c.email?`<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c3);">✉️ ${c.email}</div>`:''}
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c3);">📍 ${c.city||'Surat'}, Gujarat</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c3);">${c.notify==='WhatsApp'?'💬':c.notify==='SMS'?'📩':'✉️'} Notify via ${c.notify||'WhatsApp'}</div>
+          </div>
+          <div class="ph-stats">
+            <div class="phs"><div class="phs-n">${custOrders.length}</div><div class="phs-l">Orders</div></div>
+            <div class="phs"><div class="phs-n" style="font-size:16px;">${fmtA(custOrders.reduce((s,o)=>s+Number(o.amount||0),0))}</div><div class="phs-l">Spent</div></div>
+            <div class="phs"><div class="phs-n">${custOrders.filter(o=>o.stage==='dispensed').length}</div><div class="phs-l">Dispensed</div></div>
+          </div>
+          ${c.notes?`<div style="padding:12px 18px;border-top:1px solid var(--border);font-family:var(--font-d);font-size:13px;color:var(--c3);font-style:italic;line-height:1.7;">${c.notes}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Body Measurements</div><span style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);cursor:pointer;" onclick="editCustomer(${id})">Edit →</span></div>
+          <div style="padding:16px 20px;">
+            <div style="font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:8px;">Top<span style="flex:1;height:1px;background:var(--border);display:block;"></span></div>
+            <div class="md-grid" style="margin-bottom:14px;">${tGrid}</div>
+            <div style="font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:8px;">Bottom<span style="flex:1;height:1px;background:var(--border);display:block;"></span></div>
+            <div class="md-grid">${bGrid}</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Order History</div></div>
+          <table class="tbl"><thead><tr><th>#</th><th>Garment</th><th>Stage</th><th>Amount</th></tr></thead><tbody>${oRows}</tbody></table>
+        </div>
+      </div>`;
+
+    document.getElementById('prof-new-ord').onclick = () => { P('orders'); setTimeout(()=>openOrderModal(id),150); };
+    document.getElementById('prof-edit').onclick = () => editCustomer(id);
+    P('profile');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+function openCustomerModal() {
+  document.getElementById('cm-title').textContent='Add Customer';
+  document.getElementById('cm-id').value='';
+  ['cm-name','cm-phone','cm-email','cm-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cm-city').value='Surat';
+  document.getElementById('g-hint').style.display='block';
+  document.getElementById('ms-male').classList.remove('vis');
+  document.getElementById('ms-female').classList.remove('vis');
+  document.getElementById('gm').classList.remove('active');
+  document.getElementById('gf').classList.remove('active');
+  document.querySelectorAll('#modal-customer .no-opt').forEach((o,i)=>o.classList.toggle('sel',i===0));
+  document.querySelectorAll('#modal-customer .mf input').forEach(i=>i.value='');
+  openM('customer');
+}
+
+function selG(g) { document.getElementById('g-hint').style.display='none'; document.getElementById('ms-male').classList.toggle('vis',g==='male'); document.getElementById('ms-female').classList.toggle('vis',g==='female'); document.getElementById('gm').classList.toggle('active',g==='male'); document.getElementById('gf').classList.toggle('active',g==='female'); }
+function selNotify(el) { document.querySelectorAll('#modal-customer .no-opt').forEach(o=>o.classList.remove('sel')); el.classList.add('sel'); }
+
+async function editCustomer(id) {
+  try {
+    loading(true);
+    const c = await api('GET',`/api/customers/${id}`);
+    document.getElementById('cm-title').textContent='Edit Customer';
+    document.getElementById('cm-id').value=c.id;
+    document.getElementById('cm-name').value=c.name||'';
+    document.getElementById('cm-phone').value=c.phone||'';
+    document.getElementById('cm-email').value=c.email||'';
+    document.getElementById('cm-city').value=c.city||'Surat';
+    document.getElementById('cm-notes').value=c.notes||'';
+    selG(c.gender);
+    const mMap={Chest:'m-chest',Shoulder:'m-shldr',Neck:'m-neck',Sleeve:'m-slv','Shirt Length':'m-shirt','Back Width':'m-back',Waist:'m-waist',Hip:'m-hip',Inseam:'m-inseam','Trouser Waist':'m-trwaist',Thigh:'m-thigh','Pant Length':'m-pantlen'};
+    const fMap={Length:'f-len',Front:'f-front','Chest 1':'f-c1','Chest 2':'f-c2',Shoulder:'f-shldr',Sleeve:'f-slv','Sleeve Bottom':'f-slvbot','Blouse Length':'f-blolen','Back Length':'f-backlen','Front Length':'f-frontlen','Neck Depth':'f-neckd',Armhole:'f-arm',Waist:'f-waist',Hip:'f-hip','Skirt Length':'f-skirt',Lehenga:'f-leh','Salwar Length':'f-salwar',Thigh:'f-thigh'};
+    const map=c.gender==='male'?mMap:fMap;
+    const allM={...(c.measurements_top||{}),...(c.measurements_bottom||{})};
+    Object.entries(allM).forEach(([k,v])=>{ if(map[k]) document.getElementById(map[k]).value=v; });
+    const ni={WhatsApp:0,SMS:1,Email:2};
+    document.querySelectorAll('#modal-customer .no-opt').forEach((o,i)=>o.classList.toggle('sel',i===(ni[c.notify]||0)));
+    openM('customer');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+async function saveCustomer() {
+  const name = document.getElementById('cm-name').value.trim();
+  const phone = document.getElementById('cm-phone').value.trim();
+  if(!name||!phone) { toast('Name and phone required','red'); return; }
+  const gender = document.getElementById('gm').classList.contains('active')?'male':document.getElementById('gf').classList.contains('active')?'female':'';
+  const notifyEl = document.querySelector('#modal-customer .no-opt.sel .no-lbl');
+  const notify = notifyEl ? notifyEl.textContent.trim() : 'WhatsApp';
+  let top={}, bottom={};
+  if(gender==='male'){
+    top={Chest:document.getElementById('m-chest').value,Shoulder:document.getElementById('m-shldr').value,Neck:document.getElementById('m-neck').value,Sleeve:document.getElementById('m-slv').value,'Shirt Length':document.getElementById('m-shirt').value,'Back Width':document.getElementById('m-back').value};
+    bottom={Waist:document.getElementById('m-waist').value,Hip:document.getElementById('m-hip').value,Inseam:document.getElementById('m-inseam').value,'Trouser Waist':document.getElementById('m-trwaist').value,Thigh:document.getElementById('m-thigh').value,'Pant Length':document.getElementById('m-pantlen').value};
+  } else if(gender==='female'){
+    top={Length:document.getElementById('f-len').value,Front:document.getElementById('f-front').value,'Chest 1':document.getElementById('f-c1').value,'Chest 2':document.getElementById('f-c2').value,Shoulder:document.getElementById('f-shldr').value,Sleeve:document.getElementById('f-slv').value,'Sleeve Bottom':document.getElementById('f-slvbot').value,'Blouse Length':document.getElementById('f-blolen').value,'Back Length':document.getElementById('f-backlen').value,'Front Length':document.getElementById('f-frontlen').value,'Neck Depth':document.getElementById('f-neckd').value,Armhole:document.getElementById('f-arm').value};
+    bottom={Waist:document.getElementById('f-waist').value,Hip:document.getElementById('f-hip').value,'Skirt Length':document.getElementById('f-skirt').value,Lehenga:document.getElementById('f-leh').value,'Salwar Length':document.getElementById('f-salwar').value,Thigh:document.getElementById('f-thigh').value};
+  }
+  const body = {name,phone,email:document.getElementById('cm-email').value,city:document.getElementById('cm-city').value||'Surat',gender,notify,measurements_top:top,measurements_bottom:bottom,notes:document.getElementById('cm-notes').value};
+  try {
+    loading(true);
+    const editId = document.getElementById('cm-id').value;
+    if(editId) await api('PUT',`/api/customers/${editId}`,body);
+    else await api('POST','/api/customers',body);
+    closeM('customer');
+    toast(`✓ Customer ${editId?'updated':'added'}: ${name}`,'green');
+    renderCustomers();
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+// ══════════════════════════════════════════
+//  MEASUREMENTS PAGE
+// ══════════════════════════════════════════
+let mF='all', mS='';
+async function renderMeasure(f) {
+  mF=f;
+  try {
+    loading(true);
+    const custs = await api('GET',`/api/customers?gender=${mF==='all'?'':mF}&search=${mS}`);
+    const grid = document.getElementById('measure-grid');
+    if(!custs.length) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px;font-family:var(--font-d);font-size:18px;color:var(--light);font-style:italic;">No measurements found</div>`; return; }
+    grid.innerHTML = custs.map(c=>{
+      const top = c.measurements_top||{};
+      const bot = c.measurements_bottom||{};
+      const tE = Object.entries(top).slice(0,6);
+      const bE = Object.entries(bot).slice(0,4);
+      return `<div style="background:var(--white);border:1px solid var(--border);cursor:pointer;position:relative;overflow:hidden;transition:all 0.18s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.07)'" onmouseout="this.style.transform='';this.style.boxShadow=''" onclick="openProfile(${c.id})">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${c.gender==='female'?'var(--gold)':'var(--blue)'}"></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);">
+          <div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:14px;background:${c.gender==='female'?'rgba(184,151,90,0.12)':'rgba(74,110,140,0.12)'};color:${c.gender==='female'?'var(--gold)':'var(--blue)'};">${ini(c.name)}</div>
+          <div><div style="font-family:var(--font-d);font-size:15px;">${c.name}</div><div style="font-size:11px;color:var(--mid);">${c.gender==='female'?'♀ Female':'♂ Male'} · ${c.city||'Surat'}</div></div>
+        </div>
+        <div style="padding:12px 16px;">
+          <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:8px;">Top<span style="flex:1;height:1px;background:var(--border);"></span></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
+            ${tE.length?tE.map(([k,v])=>`<div style="background:var(--off-white);border:1px solid var(--border);padding:6px;text-align:center;"><div style="font-family:var(--font-d);font-size:15px;font-weight:300;">${v||'—'}</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--mid);margin-top:2px;">${k}</div></div>`).join(''):`<div style="color:var(--light);font-size:12px;grid-column:1/-1;font-style:italic;">Not recorded</div>`}
+          </div>
+          <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:8px;">Bottom<span style="flex:1;height:1px;background:var(--border);"></span></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+            ${bE.length?bE.map(([k,v])=>`<div style="background:var(--off-white);border:1px solid var(--border);padding:6px;text-align:center;"><div style="font-family:var(--font-d);font-size:15px;font-weight:300;">${v||'—'}</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--mid);margin-top:2px;">${k}</div></div>`).join(''):`<div style="color:var(--light);font-size:12px;grid-column:1/-1;font-style:italic;">Not recorded</div>`}
+          </div>
+        </div>
+        <div style="padding:8px 16px 10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">
+          <span style="font-size:10px;color:var(--light);">Click for full profile</span>
+          <span style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);cursor:pointer;" onclick="event.stopPropagation();editCustomer(${c.id})">Edit →</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+function filterMeasure(f,el) { document.querySelectorAll('#page-measurements .ftab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderMeasure(f); }
+function srchMeasure(q) { mS=q; renderMeasure(mF); }
+
+// ══════════════════════════════════════════
+//  INVOICES
+// ══════════════════════════════════════════
+let ivF='all', ivS='';
+let ivRows = [];
+
+function buildIvRows() {
+  const wrap = document.getElementById('iv-rows');
+  if(!wrap) return;
+  wrap.innerHTML = ivRows.map((r,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 80px 90px 90px;gap:8px;margin-bottom:6px;">
+      <input style="background:var(--off-white);border:1px solid var(--border);padding:8px 10px;font-family:var(--font-b);font-size:12px;color:var(--charcoal);outline:none;width:100%;" value="${r.desc||''}" placeholder="e.g. Stitching charges" oninput="ivRows[${i}].desc=this.value">
+      <input type="number" style="background:var(--off-white);border:1px solid var(--border);padding:8px 10px;font-family:var(--font-b);font-size:12px;color:var(--charcoal);outline:none;text-align:center;width:100%;" value="${r.qty||1}" oninput="ivRows[${i}].qty=parseFloat(this.value)||0;calcIvTotal()">
+      <input type="number" style="background:var(--off-white);border:1px solid var(--border);padding:8px 10px;font-family:var(--font-b);font-size:12px;color:var(--charcoal);outline:none;text-align:center;width:100%;" value="${r.rate||''}" placeholder="0" oninput="ivRows[${i}].rate=parseFloat(this.value)||0;calcIvTotal()">
+      <input type="number" style="background:var(--off-white);border:1px solid var(--border);padding:8px 10px;font-family:var(--font-d);font-size:13px;color:var(--charcoal);outline:none;text-align:center;width:100%;" value="${(r.qty||1)*(r.rate||0)||''}" readonly>
+    </div>`).join('');
+}
+
+function addIvRow() { ivRows.push({desc:'',qty:1,rate:0}); buildIvRows(); }
+
+function calcIvTotal() {
+  ivRows.forEach(r=>{ r.amt=(r.qty||1)*(r.rate||0); });
+  const amtInputs = document.querySelectorAll('#iv-rows input:last-child');
+  amtInputs.forEach((inp,i)=>{ if(ivRows[i]) inp.value = ivRows[i].amt || ''; });
+  const sub = ivRows.reduce((s,r)=>s+r.amt,0);
+  document.getElementById('iv-subtotal').value = sub ? fmtA(sub) : '';
+  const disc = parseFloat(document.getElementById('iv-disc')?.value)||0;
+  const discAmt = sub*disc/100;
+  document.getElementById('iv-discamt').value = discAmt ? fmtA(discAmt) : '';
+  const total = sub - discAmt;
+  document.getElementById('iv-total').value = total ? fmtA(total) : '';
+  const adv = parseFloat(document.getElementById('iv-advance')?.value)||0;
+  const due = Math.max(0,total-adv);
+  document.getElementById('iv-due').value = total > 0 ? (due <= 0 ? 'Paid ✓' : fmtA(due)) : '';
+}
+
+async function openInvoiceModal() {
+  document.getElementById('iv-id').value='';
+  document.getElementById('iv-garment').value='';
+  document.getElementById('iv-remarks').value='';
+  document.getElementById('iv-disc').value='';
+  document.getElementById('iv-advance').value='';
+  ['iv-subtotal','iv-discamt','iv-total','iv-due'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('iv-date').value = new Date().toISOString().split('T')[0];
+  ivRows = [{desc:'Stitching Charges',qty:1,rate:0},{desc:'Fabric',qty:1,rate:0},{desc:'',qty:1,rate:0}];
+  buildIvRows();
+  try {
+    const custs = await api('GET','/api/customers');
+    document.getElementById('iv-cust').innerHTML = custs.length ? custs.map(c=>`<option value="${c.id}">${c.name}</option>`).join('') : `<option value="">No customers</option>`;
+    await loadCustOrders();
+  } catch {}
+  openM('invoice');
+}
+
+async function loadCustOrders() {
+  const custId = Number(document.getElementById('iv-cust').value);
+  try {
+    const orders = await api('GET',`/api/orders`);
+    const co = orders.filter(o=>o.customer_id===custId);
+    document.getElementById('iv-order').innerHTML = `<option value="">-- Select order (optional) --</option>` + co.map(o=>`<option value="${o.id}">${o.garment} (#${o.id})</option>`).join('');
+  } catch {}
+}
+
+async function fillFromOrder() {
+  const ordId = Number(document.getElementById('iv-order').value);
+  if(!ordId) return;
+  try {
+    const o = await api('GET',`/api/orders/${ordId}`);
+    document.getElementById('iv-garment').value = o.garment||'';
+    if(o.amount>0) { ivRows[0]={desc:'Stitching Charges',qty:1,rate:Number(o.amount||0),amt:Number(o.amount||0)}; buildIvRows(); }
+    document.getElementById('iv-advance').value = o.advance||'';
+    calcIvTotal();
+  } catch {}
+}
+
+async function saveInvoice() {
+  const custId = Number(document.getElementById('iv-cust').value);
+  if(!custId) { toast('Select a customer','red'); return; }
+  const garment = document.getElementById('iv-garment').value.trim();
+  if(!garment) { toast('Enter garment / particulars','red'); return; }
+  try {
+    const custs = await api('GET','/api/customers');
+    const cust = custs.find(c=>c.id===custId);
+    const sub = ivRows.reduce((s,r)=>s+(r.qty||1)*(r.rate||0),0);
+    const disc = parseFloat(document.getElementById('iv-disc').value)||0;
+    const discAmt = sub*disc/100;
+    const total = sub-discAmt;
+    const adv = parseFloat(document.getElementById('iv-advance').value)||0;
+    const due = Math.max(0,total-adv);
+    loading(true);
+    const editId = document.getElementById('iv-id').value;
+    const body = {
+      customer_id:custId, customer_name:cust?.name||'', customer_phone:cust?.phone||'',
+      garment, bill_date:document.getElementById('iv-date').value,
+      items:ivRows.filter(r=>r.desc||r.rate>0).map(r=>({desc:r.desc,qty:r.qty||1,rate:r.rate||0,amt:(r.qty||1)*(r.rate||0)})),
+      subtotal:sub, discount_pct:disc, discount_amt:discAmt, total_amount:total, advance:adv, due_amount:due,
+      remarks:document.getElementById('iv-remarks').value,
+    };
+    const inv = editId ? await api('PUT',`/api/invoices/${editId}`,body) : await api('POST','/api/invoices',body);
+    closeM('invoice');
+    toast('✓ Invoice generated for '+cust?.name,'green');
+    renderInvoices();
+    setTimeout(()=>openBillPreview(editId?Number(editId):inv.id), 500);
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+async function renderInvoices(filter) {
+  ivF=filter||ivF;
+  try {
+    loading(true);
+    const all = await api('GET','/api/invoices');
+    const invs = ivF==='all' ? all : all.filter(i=>i.status===ivF);
+    const pendAmt = all.filter(i=>i.status==='pending').reduce((s,i)=>s+Number(i.due_amount||0),0);
+    const paidAmt = all.filter(i=>i.status==='paid').reduce((s,i)=>s+Number(i.total_amount||0),0);
+    document.getElementById('inv-stats').innerHTML = `
+      <div class="stat-card gold"><div class="sl">Total Invoices</div><div class="sv">${all.length}</div><div class="sd">All time</div></div>
+      <div class="stat-card red"><div class="sl">Pending Payment</div><div class="sv sm">${fmtA(pendAmt)}</div><div class="sd">${all.filter(i=>i.status==='pending').length} invoices</div></div>
+      <div class="stat-card green"><div class="sl">Total Collected</div><div class="sv sm">${fmtA(paidAmt)}</div><div class="sd">${all.filter(i=>i.status==='paid').length} paid</div></div>`;
+    const tb = document.getElementById('inv-tbody');
+    if(!invs.length) { tb.innerHTML=`<tr class="empty-row"><td colspan="10">No invoices found</td></tr>`; return; }
+    tb.innerHTML = invs.map(inv=>{
+      const paid = inv.status==='paid';
+      return `<tr class="clickable">
+        <td style="font-family:var(--font-d);font-size:14px;">${billNo(inv.id)}</td>
+        <td><div style="font-weight:500;">${inv.customer_name}</div><div style="font-size:11px;color:var(--mid);">${inv.customer_phone||''}</div></td>
+        <td style="font-size:12px;color:var(--mid);">${inv.garment}</td>
+        <td style="font-size:12px;color:var(--mid);">${fmtD(inv.bill_date)}</td>
+        <td style="font-family:var(--font-d);font-size:15px;">${fmtA(inv.total_amount)}</td>
+        <td style="font-size:12px;color:var(--mid);">${inv.discount_pct>0?inv.discount_pct+'%':'—'}</td>
+        <td style="font-family:var(--font-d);font-size:14px;color:var(--green);">${inv.advance>0?fmtA(inv.advance):'—'}</td>
+        <td style="font-family:var(--font-d);font-size:15px;color:${paid?'var(--mid)':'var(--red)'};">${paid?'Paid ✓':fmtA(inv.due_amount)}</td>
+        <td>${paid?`<span class="tag tag-green"><span class="tag-dot"></span>Paid</span>`:`<span class="tag tag-gold"><span class="tag-dot"></span>Pending</span>`}</td>
+        <td><div style="display:flex;gap:5px;">
+          <button class="btn btn-sm btn-primary" onclick="openBillPreview(${inv.id})">View Bill</button>
+          ${!paid?`<button class="btn btn-sm btn-outline" onclick="markPaid(${inv.id})">Mark Paid</button>`:''}
+        </div></td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+function filterInv(f,el) { document.querySelectorAll('#page-invoices .ftab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderInvoices(f); }
+function srchInv(q) { ivS=q; renderInvoices(); }
+
+async function openBillPreview(invId) {
+  try {
+    loading(true);
+    const inv = await api('GET',`/api/invoices/${invId}`);
+    if(!inv) { toast('Invoice not found','red'); return; }
+    let boutique = {};
+    try { boutique = await api('GET','/api/auth/me'); } catch {}
+
+    const items = (inv.items||[]).filter(i=>i.desc||i.amt>0);
+    const itemRows = items.map(i=>`
+      <tr>
+        <td style="text-align:left;">${i.desc||'—'}</td>
+        <td>${i.qty||1}</td>
+        <td>${fmtA(i.rate||0)}</td>
+        <td>${fmtA(i.amt||(i.qty||1)*(i.rate||0))}</td>
+      </tr>`).join('');
+
+    document.getElementById('bill-inner').innerHTML = `
+      <div style="background:var(--white);border:1px solid var(--border);padding:32px 36px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:2px solid var(--charcoal);margin-bottom:20px;">
+          <div>
+            <div style="font-family:var(--font-d);font-size:28px;font-weight:300;letter-spacing:0.12em;text-transform:uppercase;">${boutique.name||'Riya Boutique'}</div>
+            <div style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--gold);margin-top:2px;">Bespoke Tailoring · ${boutique.city||'Surat'}</div>
+            <div style="font-size:11px;color:var(--mid);margin-top:6px;line-height:1.7;">📍 ${boutique.address||'Surat, Gujarat'}<br>📞 ${boutique.phone||''}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-bottom:4px;">Tax Invoice</div>
+            <div style="font-family:var(--font-d);font-size:22px;font-weight:400;">${billNo(inv.id)}</div>
+            <div style="font-size:11px;color:var(--mid);margin-top:4px;">Date: ${fmtD(inv.bill_date)}</div>
+            <div style="margin-top:8px;display:inline-block;padding:3px 10px;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;border:1px solid ${inv.status==='paid'?'var(--green)':'var(--charcoal)'};color:${inv.status==='paid'?'var(--green)':'var(--charcoal)'};">${inv.status==='paid'?'PAID ✓':'DUE ON DELIVERY'}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;margin-bottom:20px;">
+          <div style="padding:12px 0;padding-right:20px;border-right:1px solid var(--border);">
+            <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--light);margin-bottom:6px;">Bill To</div>
+            <div style="font-size:14px;font-weight:500;">${inv.customer_name}</div>
+            <div style="font-size:12px;color:var(--mid);margin-top:2px;">${inv.customer_phone||''}</div>
+          </div>
+          <div style="padding:12px 0;padding-left:20px;">
+            <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--light);margin-bottom:6px;">Particulars</div>
+            <div style="font-size:14px;font-weight:500;">${inv.garment}</div>
+            ${inv.remarks?`<div style="font-size:11px;color:var(--mid);margin-top:2px;font-style:italic;">${inv.remarks}</div>`:''}
+          </div>
+        </div>
+        <table class="inv-tbl">
+          <thead><tr><th style="text-align:left;width:45%;">Particulars</th><th style="width:12%;">Qty</th><th style="width:18%;">Rate (₹)</th><th style="width:18%;">Amount (₹)</th></tr></thead>
+          <tbody>${itemRows||`<tr><td style="text-align:left;">${inv.garment}</td><td>1</td><td>${fmtA(inv.total_amount)}</td><td>${fmtA(inv.total_amount)}</td></tr>`}</tbody>
+          <tfoot>
+            <tr><td colspan="3" style="text-align:right;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;">Subtotal</td><td style="font-family:var(--font-d);font-size:15px;">${fmtA(inv.subtotal||inv.total_amount)}</td></tr>
+            ${inv.discount_pct>0?`<tr><td colspan="3" style="text-align:right;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--red);">Discount (${inv.discount_pct}%)</td><td style="font-family:var(--font-d);font-size:15px;color:var(--red);">− ${fmtA(inv.discount_amt)}</td></tr>`:''}
+            ${inv.advance>0?`<tr><td colspan="3" style="text-align:right;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);">Advance Received</td><td style="font-family:var(--font-d);font-size:15px;color:var(--green);">− ${fmtA(inv.advance)}</td></tr>`:''}
+            <tr class="grand"><td colspan="3" style="text-align:right;font-size:12px;letter-spacing:0.15em;text-transform:uppercase;">Balance Due</td><td>${fmtA(inv.due_amount)}</td></tr>
+          </tfoot>
+        </table>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-end;">
+          <div style="font-size:11px;color:var(--mid);font-style:italic;font-family:var(--font-d);">"Thank you for choosing ${boutique.name||'Riya Boutique'}.<br>Please carry this receipt at time of pickup."</div>
+          <div style="font-family:var(--font-d);font-size:13px;font-weight:300;color:var(--light);letter-spacing:0.12em;">TailorX</div>
+        </div>
+      </div>`;
+
+    document.getElementById('bill-send').innerHTML = `
+      <div class="send-opt" onclick="sendBill(this,'WhatsApp','${inv.customer_name}',${inv.id})"><div class="so-icon">💬</div><div class="so-info"><div class="so-title">Send via WhatsApp</div><div class="so-sub">Bill message to ${inv.customer_name}</div></div><div class="so-arrow">→</div></div>
+      <div class="send-opt" onclick="sendBill(this,'SMS','${inv.customer_name}',${inv.id})"><div class="so-icon">📩</div><div class="so-info"><div class="so-title">Send via Text (SMS)</div><div class="so-sub">Bill summary via SMS</div></div><div class="so-arrow">→</div></div>
+      <div class="send-opt" onclick="sendBill(this,'Email','${inv.customer_name}',${inv.id})"><div class="so-icon">✉️</div><div class="so-info"><div class="so-title">Send via Email</div><div class="so-sub">Full invoice to email</div></div><div class="so-arrow">→</div></div>`;
+
+    document.getElementById('bill-paid-wrap').innerHTML = inv.status==='pending' ?
+      `<button class="btn btn-outline" style="width:100%;" onclick="markPaid(${inv.id}).then(()=>P('invoices'))">Mark as Paid ✓</button>` : '';
+
+    P('bill');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+async function sendBill(el, channel, custName, invId) {
+  document.querySelectorAll('.send-opt').forEach(o=>{o.classList.remove('sent');o.querySelector('.so-arrow').textContent='→'});
+  el.classList.add('sent'); el.querySelector('.so-arrow').textContent='✓';
+  try {
+    await api('POST','/api/notifications',{type:channel.toLowerCase()==='whatsapp'?'whatsapp':channel.toLowerCase()==='sms'?'sms':'email',title:`Invoice Sent via ${channel} — ${custName}`,msg:`Bill ${billNo(invId)} sent to ${custName} via ${channel}.`});
+    toast(`✓ Bill sent to ${custName} via ${channel}`,'green');
+    badges();
+  } catch {}
+}
+
+async function markPaid(id) {
+  try { loading(true); await api('PATCH',`/api/invoices/${id}/pay`); toast('✓ Invoice marked as Paid','green'); renderInvoices(); return true; }
+  catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+// ══════════════════════════════════════════
+//  NOTIFICATIONS
+// ══════════════════════════════════════════
+let nF='all';
+async function renderNotifs(f) {
+  nF=f||nF;
+  try {
+    const notifs = await api('GET',`/api/notifications?type=${nF==='all'?'':nF}`);
+    const el = document.getElementById('notif-log');
+    if(!notifs.length) { el.innerHTML=`<div style="padding:24px;text-align:center;font-family:var(--font-d);font-size:16px;color:var(--light);font-style:italic;">No notifications yet</div>`; return; }
+    el.innerHTML = notifs.map(n=>`
+      <div class="ni ${n.is_read?'':'unread'}" onclick="markNR(${n.id})">
+        <div class="ni-dot" style="background:${CH_COLOR[n.type]||'var(--mid)'};${n.is_read?'opacity:0.35':''}"></div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:${n.is_read?400:500};">${n.title}</div>
+          <div style="font-size:12px;color:var(--mid);line-height:1.5;">${n.msg}</div>
+          <div style="font-size:10px;color:var(--light);margin-top:3px;">${fmtD(n.created_at)}</div>
+        </div>
+        <div class="ni-ch">${CH_ICON[n.type]||'📣'} ${n.type}</div>
+      </div>`).join('');
+    badges();
+  } catch(e) { toast(e.message,'red'); }
+}
+function filterNotifs(f,el) { document.querySelectorAll('#page-notifications .ftab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderNotifs(f); }
+async function markNR(id) { try { await api('PATCH',`/api/notifications/${id}/read`); renderNotifs(); } catch {} }
+async function markAllRead() { try { await api('PATCH','/api/notifications/read-all'); renderNotifs(); toast('All marked as read',''); } catch(e) { toast(e.message,'red'); } }
+async function popNotifRecip() {
+  try {
+    const custs = await api('GET','/api/customers');
+    document.getElementById('notif-recipient').innerHTML = `<option value="all">All Customers (${custs.length})</option>` + custs.map(c=>`<option value="${c.id}">${c.name} — ${c.phone||''}</option>`).join('');
+  } catch {}
+}
+async function sendNotif() {
+  const msg = document.getElementById('notif-msg').value.trim();
+  if(!msg) { toast('Type a message first','red'); return; }
+  const rec = document.getElementById('notif-recipient');
+  const custName = rec.options[rec.selectedIndex]?.text || 'Customer';
+  const ch = document.querySelector('#page-notifications .ssb.sel')?.textContent?.trim() || '💬 WA';
+  const type = ch.includes('WA')?'whatsapp':ch.includes('SMS')?'sms':'email';
+  try {
+    await api('POST','/api/notifications',{type,title:`Message to ${custName}`,msg});
+    document.getElementById('notif-msg').value='';
+    toast(`✓ ${type==='whatsapp'?'WhatsApp':type==='sms'?'SMS':'Email'} sent`,'green');
+    renderNotifs();
+  } catch(e) { toast(e.message,'red'); }
+}
+function selCh(el) { document.querySelectorAll('#page-notifications .ssb').forEach(b=>b.classList.remove('sel')); el.classList.add('sel'); }
+const TPLS = {ready:'Your order is ready for pickup at Riya Boutique. Please collect at your convenience. Thank you! 🙏',delay:'We wanted to inform you of a slight delay in your order. We will update you as soon as it is ready.',payment:'Friendly reminder: a balance payment is pending for your order. Please settle at pickup. Thank you.',pickup:'Reminder: Your order has been ready for a few days. Please collect at the earliest. — Riya Boutique'};
+function useTpl(t) { document.getElementById('notif-msg').value=TPLS[t]; }
+
+// ══════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════
+async function renderSets(sec) {
+  if(sec==='boutique') {
+    let b = {};
+    try { b = await api('GET','/api/auth/me'); } catch {}
+    document.getElementById('settings-panel').innerHTML = `
+      <div class="panel"><div class="panel-head"><div class="panel-title">Boutique Profile</div></div><div style="padding:16px 20px;">
+        <div class="fr"><div class="field"><label>Boutique Name</label><input id="s-bn" value="${b.name||''}"></div><div class="field"><label>Owner Name</label><input id="s-on" value="${b.owner_name||''}"></div></div>
+        <div class="fr"><div class="field"><label>Phone</label><input id="s-ph" value="${b.phone||''}"></div><div class="field"><label>Email</label><input id="s-em" value="${b.email||''}" readonly style="color:var(--mid);"></div></div>
+        <div class="field" style="margin-bottom:12px;"><label>Address</label><input id="s-ad" value="${b.address||''}"></div>
+        <div class="fr"><div class="field"><label>City</label><input id="s-ci" value="${b.city||'Surat'}"></div><div class="field"><label>GSTIN</label><input id="s-gs" value="${b.gstin||''}" placeholder="Optional"></div></div>
+      </div></div>`;
+  } else if(sec==='account') {
+    document.getElementById('settings-panel').innerHTML = `<div class="panel"><div class="panel-head"><div class="panel-title">Account</div></div><div style="padding:16px 20px;">
+      <div class="srow"><div><div class="sr-lbl">Logout from this device</div></div><button class="btn btn-sm" onclick="doLogout()">Logout</button></div>
+      <div class="srow" style="border-bottom:none;"><div><div class="sr-lbl">Session</div><div class="sr-sub">Token saved in browser localStorage</div></div><span style="font-size:11px;color:var(--green);">Active ✓</span></div>
+    </div></div>`;
+  } else if(sec==='notif_s') {
+    document.getElementById('settings-panel').innerHTML = `<div class="panel"><div class="panel-head"><div class="panel-title">Notification Settings</div></div><div style="padding:16px 20px;">
+      <div class="srow"><div><div class="sr-lbl">Order Ready Alert</div><div class="sr-sub">Auto-notify when stage = Ready</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+      <div class="srow" style="border-bottom:none;"><div><div class="sr-lbl">Due Date Reminder</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+    </div></div>`;
+  } else if(sec==='billing') {
+    // Get boutique plan info
+    let boutique = {};
+    try { boutique = await api('GET','/api/auth/me'); } catch {}
+    const plan = boutique.plan || 'free';
+    const planName = plan==='pro'?'Pro':plan==='starter'?'Starter':'Free Trial';
+    const planColor = plan==='pro'?'var(--gold)':plan==='starter'?'var(--green)':'var(--blue)';
+    const trialEnd = boutique.trial_ends_at ? new Date(boutique.trial_ends_at) : null;
+    const daysLeft = trialEnd ? Math.max(0, Math.ceil((trialEnd - new Date()) / (1000*60*60*24))) : 0;
+    const subEnd = boutique.subscription_ends_at ? new Date(boutique.subscription_ends_at) : null;
+
+    document.getElementById('settings-panel').innerHTML = `
+      <!-- CURRENT PLAN CARD -->
+      <div class="panel" style="margin-bottom:14px;">
+        <div class="panel-head"><div class="panel-title">Billing & Plan</div></div>
+        <div style="padding:20px;">
+
+          <!-- Plan Status -->
+          <div style="background:var(--off-white);border:1px solid var(--border);padding:18px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+            <div style="display:flex;align-items:center;gap:14px;">
+              <div style="width:44px;height:44px;border:1px solid ${planColor};display:flex;align-items:center;justify-content:center;font-size:20px;">
+                ${plan==='pro'?'👑':plan==='starter'?'⭐':'🆓'}
+              </div>
+              <div>
+                <div style="font-family:var(--font-d);font-size:20px;font-weight:400;">${planName}</div>
+                <div style="font-size:12px;color:var(--mid);margin-top:2px;">
+                  ${plan==='free'
+                    ? (daysLeft > 0 ? `<span style="color:var(--gold)">⏳ ${daysLeft} days left in trial</span>` : `<span style="color:var(--red)">Trial expired</span>`)
+                    : subEnd ? `Active until ${subEnd.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}` : 'Active'}
+                </div>
+              </div>
+            </div>
+            <span style="background:rgba(184,151,90,0.1);border:1px solid ${planColor};color:${planColor};padding:4px 12px;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;">${planName.toUpperCase()}</span>
+          </div>
+
+          <!-- Plan Features -->
+          <div style="margin-bottom:18px;">
+            <div style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mid);margin-bottom:10px;">Your Plan Includes</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+              ${plan==='free' ? `
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Up to 50 customers</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Unlimited orders</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Invoice generation</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> All 4 languages</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--light);"><span style="color:var(--light);">—</span> WhatsApp / SMS alerts</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--light);"><span style="color:var(--light);">—</span> Priority support</div>
+              ` : plan==='starter' ? `
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Unlimited customers</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Unlimited orders</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Professional invoices</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> All 4 languages</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> WhatsApp / SMS alerts</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--light);">— Dedicated support</div>
+              ` : `
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Everything in Starter</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Multiple staff logins</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Advanced reports</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> GST filing export</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> WhatsApp Business API</div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--c3);"><span style="color:var(--green);">✓</span> Dedicated support</div>
+              `}
+            </div>
+          </div>
+
+          <!-- Upgrade button for free/starter -->
+          ${plan !== 'pro' ? `<button class="btn btn-primary" style="width:100%;padding:12px;" onclick="openPlanModal()">
+            ${plan==='free' ? '🚀 Upgrade to Paid Plan' : '👑 Upgrade to Pro'}
+          </button>` : `<button class="btn btn-outline" style="width:100%;padding:12px;" onclick="openPlanModal()">Manage Subscription</button>`}
+        </div>
+      </div>
+
+      <!-- BILLING HISTORY -->
+      <div class="panel" style="margin-bottom:14px;">
+        <div class="panel-head"><div class="panel-title">Billing History</div></div>
+        <div style="padding:0;">
+          <table class="tbl">
+            <thead><tr><th>Date</th><th>Plan</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody id="billing-history">
+              <tr class="empty-row"><td colspan="4">No billing history yet</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CONTACT TO UPGRADE -->
+      <div style="background:var(--charcoal);padding:20px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-family:var(--font-d);font-size:17px;color:var(--white);margin-bottom:4px;">Need help choosing a plan?</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.45);">Contact us on WhatsApp for assistance</div>
+        </div>
+        <a href="https://wa.me/91XXXXXXXXXX" target="_blank" class="btn btn-gold btn-sm" style="text-decoration:none;">💬 WhatsApp Us</a>
+      </div>
+    `;
+  } else if(sec==='appear') {
+    document.getElementById('settings-panel').innerHTML = `
+      <div class="panel"><div class="panel-head"><div class="panel-title">${t('set.appearance')}</div></div><div style="padding:16px 20px;">
+        <div class="srow">
+          <div><div class="sr-lbl">${t('set.language')}</div><div class="sr-sub">Select your preferred language</div></div>
+          <select onchange="applyLanguage(this.value)" style="background:var(--off-white);border:1px solid var(--border);padding:9px 14px;font-family:var(--font-b);font-size:13px;color:var(--charcoal);outline:none;cursor:pointer;width:210px;border-radius:0;">
+            <option value="en" ${LANG==='en'?'selected':''}>🇬🇧  English</option>
+            <option value="gu" ${LANG==='gu'?'selected':''}>🇮🇳  ગુજરાતી (Gujarati)</option>
+            <option value="hi" ${LANG==='hi'?'selected':''}>🇮🇳  हिन्दी (Hindi)</option>
+            <option value="ur" ${LANG==='ur'?'selected':''}>🇵🇰  اردو (Urdu)</option>
+          </select>
+        </div>
+        <div class="srow" style="border-bottom:none;"><div><div class="sr-lbl">${t('set.unit')}</div></div><select style="background:var(--off-white);border:1px solid var(--border);padding:7px 11px;font-family:var(--font-b);font-size:12px;outline:none;appearance:none;"><option>Inches (in)</option><option>Centimetres (cm)</option></select></div>
+      </div></div>`;
+  } else if(sec==='integrations') {
+    document.getElementById('settings-panel').innerHTML = `<div class="panel"><div class="panel-head"><div class="panel-title">Integrations</div></div><div style="padding:16px 20px;">
+      <div class="srow"><div><div class="sr-lbl">WhatsApp Business API</div><div class="sr-sub">via Gupshup</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+      <div class="srow"><div><div class="sr-lbl">MSG91 SMS Gateway</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+      <div class="srow" style="border-bottom:none;"><div><div class="sr-lbl">Razorpay UPI Billing</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+    </div></div>`;
+  }
+}
+
+function swSet(el, sec) { document.querySelectorAll('.sn-item').forEach(i=>i.classList.remove('active')); el.classList.add('active'); renderSets(sec); }
+async function saveSettings() {
+  const bn = document.getElementById('s-bn')?.value;
+  if(!bn) return;
+  try {
+    loading(true);
+    const updated = await api('PUT','/api/auth/me',{name:bn,ownerName:document.getElementById('s-on')?.value||'',phone:document.getElementById('s-ph')?.value||'',city:document.getElementById('s-ci')?.value||'Surat',address:document.getElementById('s-ad')?.value||'',gstin:document.getElementById('s-gs')?.value||''});
+    document.getElementById('s-name').textContent = updated.name;
+    document.getElementById('s-av').textContent = updated.name[0].toUpperCase();
+    localStorage.setItem('tx_boutique', JSON.stringify(updated));
+    toast('✓ Settings saved','green');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+function togSet(w) { const t=w.querySelector('.tog-track'); const l=w.querySelector('.tog-lbl'); const on=t.classList.toggle('on'); w.classList.toggle('on',on); if(l) l.textContent=on?'On':'Off'; }
+
+// ══════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════
+function openM(name) { document.getElementById('modal-'+name).classList.add('open'); }
+function closeM(name) { document.getElementById('modal-'+name).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+function togBlk(h) { h.classList.toggle('col'); h.nextElementSibling.classList.toggle('hid'); }
+
+// ══════════════════════════════════════════
+//  INIT — check if already logged in
+// ══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  // Check if URL has a reset token (user clicked reset link from email)
+  const urlParams = new URLSearchParams(window.location.search);
+  const resetToken = urlParams.get('reset_token');
+
+  if (resetToken) {
+    // Show reset password form
+    document.getElementById('reset-token').value = resetToken;
+    document.getElementById('auth-screen').style.display = 'flex';
+    document.getElementById('main-app').style.display = 'none';
+    switchAuthTab('reset');
+    // Update tab label
+    const forgotTab = document.getElementById('tab-forgot');
+    if(forgotTab) { forgotTab.textContent = 'Reset Password'; forgotTab.style.display = 'block'; }
+    return;
+  }
+
+  // Normal flow — check if already logged in
+  const savedToken = localStorage.getItem('tx_token');
+  const savedBoutique = localStorage.getItem('tx_boutique');
+  if(savedToken && savedBoutique) {
+    try {
+      const b = JSON.parse(savedBoutique);
+      TOKEN = savedToken;
+      initApp(b);
+    } catch {
+      doLogout();
+    }
+  }
+});
+
+// ══════════════════════════════════════════
+//  BILLING & PLAN MANAGEMENT
+// ══════════════════════════════════════════
+
+let selectedPlan = 'starter';
+
+const PLAN_DETAILS = {
+  free:    { name:'Free Trial',  price:'₹0',    period:'15 days',   amount:0 },
+  starter: { name:'Starter',     price:'₹499',  period:'per month', amount:499 },
+  pro:     { name:'Pro',         price:'₹999',  period:'per month', amount:999 },
+};
+
+const PAYMENT_INFO = {
+  upi: `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--mid);">UPI ID</span>
+        <span style="font-size:13px;font-weight:500;color:var(--charcoal);font-family:var(--font-d);">tailorx@upi</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--mid);">Name</span>
+        <span style="font-size:13px;color:var(--charcoal);">TailorX Software</span>
+      </div>
+      <div style="font-size:12px;color:var(--mid);margin-top:4px;">Open GPay / PhonePe / Paytm → Send to UPI ID above → Take screenshot → Send to our WhatsApp</div>
+    </div>`,
+  bank: `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--mid);">Account Name</span>
+        <span style="font-size:13px;font-weight:500;color:var(--charcoal);">TailorX Software Pvt Ltd</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--mid);">Account Number</span>
+        <span style="font-size:13px;font-family:var(--font-d);color:var(--charcoal);">XXXX XXXX XXXX</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:12px;color:var(--mid);">IFSC Code</span>
+        <span style="font-size:13px;font-family:var(--font-d);color:var(--charcoal);">SBIN0XXXXXX</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
+        <span style="font-size:12px;color:var(--mid);">Bank</span>
+        <span style="font-size:13px;color:var(--charcoal);">State Bank of India</span>
+      </div>
+    </div>`,
+  cash: `
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="font-size:16px;">📍</span>
+        <div><div style="font-size:13px;font-weight:500;color:var(--charcoal);">Our Surat Office</div><div style="font-size:12px;color:var(--mid);margin-top:2px;">Adajan, Surat, Gujarat 395009</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;">
+        <span style="font-size:16px;">🕐</span>
+        <div><div style="font-size:13px;font-weight:500;color:var(--charcoal);">Mon–Sat, 10am–7pm</div><div style="font-size:12px;color:var(--mid);margin-top:2px;">Call before visiting: +91 XXXXXXXXXX</div></div>
+      </div>
+    </div>`,
+};
+
+function openPlanModal() {
+  // Set current plan as selected
+  const boutique = JSON.parse(localStorage.getItem('tx_boutique') || '{}');
+  selectedPlan = boutique.plan || 'starter';
+  updatePlanSelection(selectedPlan);
+  updatePaymentInfo('upi');
+  openM('plan');
+}
+
+function selectPlan(plan) {
+  selectedPlan = plan;
+  updatePlanSelection(plan);
+}
+
+function updatePlanSelection(plan) {
+  ['free','starter','pro'].forEach(p => {
+    const card = document.getElementById('pc-'+p);
+    if(card) card.classList.toggle('selected', p===plan);
+  });
+  const d = PLAN_DETAILS[plan];
+  const nameEl = document.getElementById('selected-plan-name');
+  const priceEl = document.getElementById('selected-plan-price');
+  if(nameEl) nameEl.textContent = d.name + ' Plan';
+  if(priceEl) priceEl.textContent = d.price + (d.period !== '15 days' ? ' / month' : ' — Free');
+}
+
+function selPayMethod(el) {
+  document.querySelectorAll('.pm-opt').forEach(o => o.classList.remove('sel'));
+  el.classList.add('sel');
+  const method = el.id.replace('pm-','');
+  updatePaymentInfo(method);
+}
+
+function updatePaymentInfo(method) {
+  const el = document.getElementById('payment-info');
+  if(el) el.innerHTML = PAYMENT_INFO[method] || '';
+}
+
+function handlePayNow() {
+  const plan = PLAN_DETAILS[selectedPlan];
+  const boutique = JSON.parse(localStorage.getItem('tx_boutique') || '{}');
+  const msg = encodeURIComponent(
+    `Hello TailorX Team! 👋
+
+I want to upgrade my plan:
+
+` +
+    `📋 Plan: ${plan.name}
+` +
+    `💰 Amount: ${plan.price}${selectedPlan!=='free'?' per month':''}
+` +
+    `📧 Email: ${boutique.email || 'my email'}
+` +
+    `🏪 Boutique: ${boutique.name || 'my boutique'}
+
+` +
+    `Please activate my account after payment. Thank you!`
+  );
+  const waUrl = `https://wa.me/91XXXXXXXXXX?text=${msg}`;
+  window.open(waUrl, '_blank');
+  closeM('plan');
+  toast('✓ Opening WhatsApp — send payment screenshot to activate', 'green');
+}
+
+// ══════════════════════════════════════════
+//  LANGUAGE / TRANSLATION SYSTEM
+// ══════════════════════════════════════════
+
+const TRANSLATIONS = {
+  en: {
+    // Sidebar
+    'nav.dashboard':'Dashboard','nav.orders':'Orders','nav.customers':'Customers',
+    'nav.measurements':'Measurements','nav.invoices':'Invoices','nav.notifications':'Notifications',
+    'nav.settings':'Settings','nav.main':'Main','nav.manage':'Manage','nav.account':'Account',
+    // Topbar titles
+    'page.dashboard':'Dashboard','page.orders':'Orders','page.customers':'Customers',
+    'page.profile':'Customer Profile','page.measurements':'Measurements','page.invoices':'Invoices',
+    'page.bill':'Bill Preview','page.notifications':'Notifications','page.settings':'Settings',
+    // Buttons
+    'btn.new_order':'+ New Order','btn.add_customer':'+ Add Customer','btn.new_invoice':'+ New Invoice',
+    'btn.save':'Save Changes','btn.logout':'Logout','btn.view_all':'View All →',
+    'btn.update_stage':'Update Stage','btn.edit':'Edit','btn.view_bill':'View Bill',
+    'btn.mark_paid':'Mark Paid','btn.mark_paid_check':'Mark as Paid ✓','btn.print':'🖨️   Print Bill',
+    'btn.send_reset':'Send Reset Link →','btn.login':'Login →','btn.register':'Create Account →',
+    'btn.back_invoices':'← Back to Invoices','btn.back_customers':'← Customers',
+    'btn.new_order_profile':'+ New Order','btn.edit_profile':'Edit Profile',
+    'btn.mark_all_read':'Mark All Read','btn.send':'Send →','btn.add_row':'+ Add Row',
+    'btn.generate_invoice':'Generate Invoice','btn.save_order':'Save Order',
+    'btn.save_customer':'Save Customer','btn.cancel':'Cancel',
+    // Dashboard
+    'dash.active_orders':'Active Orders','dash.total':'total',
+    'dash.ready_pickup':'Ready for Pickup','dash.awaiting':'Awaiting collection',
+    'dash.customers':'Customers','dash.registered':'Registered',
+    'dash.pending_payment':'Pending Payment','dash.invoices':'invoices',
+    'dash.recent_orders':'Recent Orders','dash.pipeline':'Pipeline',
+    'dash.quick_actions':'Quick Actions','dash.due_soon':'Due Soon',
+    'dash.recent_alerts':'Recent Alerts','dash.no_orders':'No orders yet',
+    'dash.no_due':'No upcoming due dates','dash.no_alerts':'No alerts yet',
+    'dash.new_order':'New Order','dash.new_invoice':'New Invoice',
+    'dash.add_customer':'Add Customer','dash.notifications':'Notifications',
+    // Orders
+    'orders.customer':'Customer','orders.garment':'Garment','orders.stage':'Stage',
+    'orders.due_date':'Due Date','orders.amount':'Amount','orders.balance':'Balance',
+    'orders.actions':'Actions','orders.no_orders':'No orders found',
+    'orders.filter.all':'All','orders.filter.received':'Received','orders.filter.cutting':'Cutting',
+    'orders.filter.stitching':'Stitching','orders.filter.ready':'Ready','orders.filter.dispensed':'Dispensed',
+    'orders.orders':'orders',
+    // Stages
+    'stage.received':'Received','stage.cutting':'Cutting','stage.stitching':'Stitching',
+    'stage.ready':'Ready','stage.dispensed':'Dispensed',
+    // Customers
+    'cust.filter.all':'All','cust.filter.female':'Female','cust.filter.male':'Male',
+    'cust.customers':'customers','cust.no_customers':'No customers yet — add your first customer',
+    'cust.orders':'Orders','cust.spent':'Spent','cust.dispensed':'Dispensed',
+    'cust.notify':'Notify','cust.female':'♀ Female','cust.male':'♂ Male',
+    // Measurements
+    'meas.top':'Top','meas.bottom':'Bottom','meas.not_recorded':'Not recorded',
+    'meas.click_profile':'Click for full profile',
+    // Invoices
+    'inv.bill_no':'Bill No','inv.customer':'Customer','inv.garment':'Garment',
+    'inv.date':'Date','inv.total':'Total','inv.discount':'Disc%','inv.advance':'Advance',
+    'inv.due':'Due','inv.status':'Status','inv.action':'Action',
+    'inv.all_invoices':'All Invoices','inv.saved_note':'Saved for future reference — no deletes',
+    'inv.total_invoices':'Total Invoices','inv.all_time':'All time',
+    'inv.pending_payment':'Pending Payment','inv.total_collected':'Total Collected',
+    'inv.paid':'paid','inv.paid_check':'Paid ✓','inv.pending':'Pending',
+    'inv.no_invoices':'No invoices found',
+    // Invoice Modal
+    'inv.generate':'Generate Invoice','inv.create_bill':'Create a proper bill for a customer',
+    'inv.cust_label':'Customer *','inv.order_label':'Order (optional)',
+    'inv.bill_date':'Bill Date *','inv.garment_label':'Garment / Particulars *',
+    'inv.particulars':'Particulars','inv.particular':'Particular','inv.qty':'Qty',
+    'inv.rate':'Rate (₹)','inv.amount_col':'Amount (₹)','inv.subtotal':'Subtotal (₹)',
+    'inv.disc_pct':'Discount (%)','inv.disc_amt':'Discount Amount (₹)',
+    'inv.total_after':'Total After Discount (₹)','inv.advance_recv':'Advance Received (₹)',
+    'inv.due_amount':'Due Amount (₹)','inv.remarks':'Remarks',
+    // Bill Preview
+    'bill.tax_invoice':'Tax Invoice','bill.bill_to':'Bill To','bill.particulars':'Particulars',
+    'bill.paid_stamp':'PAID ✓','bill.due_stamp':'DUE ON DELIVERY',
+    'bill.subtotal':'Subtotal','bill.discount':'Discount','bill.advance':'Advance Received',
+    'bill.balance_due':'Balance Due','bill.deliver':'Deliver Bill','bill.choose_send':'Choose how to send',
+    'bill.whatsapp':'Send via WhatsApp','bill.sms':'Send via Text (SMS)',
+    'bill.email':'Send via Email','bill.full_invoice':'Full invoice to email',
+    'bill.bill_summary':'Bill summary via SMS',
+    // Notifications
+    'notif.all':'All','notif.send':'Send Notification','notif.recipient':'Recipient',
+    'notif.channel':'Channel','notif.templates':'Templates','notif.message':'Message',
+    'notif.order_ready':'Order Ready','notif.delay':'Delay Notice',
+    'notif.payment':'Payment Due','notif.pickup':'Pickup Reminder',
+    'notif.auto_alerts':'Auto Alerts','notif.no_notifs':'No notifications yet',
+    // Settings
+    'set.boutique':'🏪 Boutique','set.account':'👤 Account','set.notifications':'🔔 Notifications',
+    'set.billing':'💳 Billing','set.appearance':'🎨 Appearance','set.integrations':'🔗 Integrations',
+    'set.boutique_profile':'Boutique Profile','set.boutique_name':'Boutique Name',
+    'set.owner_name':'Owner Name','set.phone':'Phone','set.email':'Email',
+    'set.address':'Address','set.city':'City','set.gstin':'GSTIN',
+    'set.language':'Language','set.unit':'Measurement Unit','set.date_format':'Date Format',
+    'set.save':'Save Changes',
+    // Auth
+    'auth.login':'Login','auth.register':'Register','auth.email':'Email',
+    'auth.password':'Password','auth.forgot':'Forgot password?',
+    'auth.boutique_name':'Boutique Name *','auth.owner':'Owner Name',
+    'auth.create':'Create Account →','auth.reset_title':'Reset Your Password',
+    'auth.new_pass':'New Password *','auth.confirm_pass':'Confirm New Password *',
+    // Update stage modal
+    'modal.update_stage':'Update Stage','modal.stage_note':'Setting to Ready auto-notifies customer. Dispensed = handed over to customer.',
+    // Order modal
+    'modal.new_order':'New Order','modal.edit_order':'Edit Order',
+    'modal.create_order':'Create an order for a customer',
+    'modal.customer':'Customer *','modal.garment':'Garment *','modal.due_date':'Due Date',
+    'modal.fabric':'Fabric / Material','modal.amount':'Amount (₹)','modal.advance':'Advance Paid (₹)',
+    'modal.balance':'Balance Due (₹)','modal.initial_stage':'Initial Stage','modal.notify':'Notify Customer When Ready?',
+    'modal.yes_notify':'✓ Yes','modal.skip':'✗ Skip','modal.notes':'Notes',
+    // Customer modal
+    'modal.add_customer':'Add Customer','modal.edit_customer':'Edit Customer',
+    'modal.fill_details':'Fill in details and body measurements',
+    'modal.full_name':'Full Name *','modal.mobile':'Mobile *','modal.city':'City',
+    'modal.gender':'Gender','modal.male':'♂ Male','modal.female':'♀ Female',
+    'modal.select_gender':'Select gender to load measurement form',
+    'modal.notify_pref':'Preferred Notification','modal.fitting_notes':'Fitting Notes',
+    'modal.special_inst':'Special instructions...',
+  },
+
+  gu: {
+    // Sidebar
+    'nav.dashboard':'ડૅશબોર્ડ','nav.orders':'ઓર્ડર','nav.customers':'ગ્રાહકો',
+    'nav.measurements':'માપ','nav.invoices':'ઇન્વૉઇસ','nav.notifications':'સૂચનાઓ',
+    'nav.settings':'સેટિંગ્સ','nav.main':'મુખ્ય','nav.manage':'મૅનેજ','nav.account':'ખાતું',
+    // Topbar
+    'page.dashboard':'ડૅશબોર્ડ','page.orders':'ઓર્ડર','page.customers':'ગ્રાહકો',
+    'page.profile':'ગ્રાહક પ્રોફાઇલ','page.measurements':'માપ','page.invoices':'ઇન્વૉઇસ',
+    'page.bill':'બિલ પ્રિવ્યૂ','page.notifications':'સૂચનાઓ','page.settings':'સેટિંગ્સ',
+    // Buttons
+    'btn.new_order':'+ નવો ઓર્ડર','btn.add_customer':'+ ગ્રાહક ઉમેરો','btn.new_invoice':'+ નવો ઇન્વૉઇસ',
+    'btn.save':'ફેરફારો સેવ કરો','btn.logout':'લૉગ આઉટ','btn.view_all':'બધા જુઓ →',
+    'btn.update_stage':'સ્ટેજ અપડેટ','btn.edit':'સંપાદિત','btn.view_bill':'બિલ જુઓ',
+    'btn.mark_paid':'પેઇડ માર્ક','btn.mark_paid_check':'પેઇડ માર્ક ✓','btn.print':'🖨️   બિલ છાપો',
+    'btn.send_reset':'રીસેટ લિંક મોકલો →','btn.login':'લૉગિન →','btn.register':'ખાતું બનાવો →',
+    'btn.back_invoices':'← ઇન્વૉઇસ','btn.back_customers':'← ગ્રાહકો',
+    'btn.new_order_profile':'+ નવો ઓર્ડર','btn.edit_profile':'પ્રોફાઇલ સંપાદિત',
+    'btn.mark_all_read':'બધા વાંચ્યા','btn.send':'મોકલો →','btn.add_row':'+ પંક્તિ ઉમેરો',
+    'btn.generate_invoice':'ઇન્વૉઇસ બનાવો','btn.save_order':'ઓર્ડર સેવ','btn.save_customer':'ગ્રાહક સેવ','btn.cancel':'રદ કરો',
+    // Dashboard
+    'dash.active_orders':'સક્રિય ઓર્ડર','dash.total':'કુલ',
+    'dash.ready_pickup':'પિકઅપ માટે તૈયાર','dash.awaiting':'સંગ્રહની રાહ',
+    'dash.customers':'ગ્રાહકો','dash.registered':'નોંધાયેલ',
+    'dash.pending_payment':'બાકી ચૂકવણી','dash.invoices':'ઇન્વૉઇસ',
+    'dash.recent_orders':'તાજેતરના ઓર્ડર','dash.pipeline':'પાઇપલાઇન',
+    'dash.quick_actions':'ઝડપી ક્રિયાઓ','dash.due_soon':'ટૂંક સમયમાં',
+    'dash.recent_alerts':'તાજેતરની ચેતવણી','dash.no_orders':'હજી કોઇ ઓર્ડર નથી',
+    'dash.no_due':'કોઇ આગામી તારીખ નથી','dash.no_alerts':'હજી કોઇ ચેતવણી નથી',
+    'dash.new_order':'નવો ઓર્ડર','dash.new_invoice':'નવો ઇન્વૉઇસ',
+    'dash.add_customer':'ગ્રાહક ઉમેરો','dash.notifications':'સૂચનાઓ',
+    // Orders
+    'orders.customer':'ગ્રાહક','orders.garment':'કપડું','orders.stage':'સ્ટેજ',
+    'orders.due_date':'બાકી તારીખ','orders.amount':'રકમ','orders.balance':'બાકી',
+    'orders.actions':'ક્રિયાઓ','orders.no_orders':'કોઇ ઓર્ડર મળ્યો નથી','orders.orders':'ઓર્ડર',
+    'orders.filter.all':'બધા','orders.filter.received':'મળ્યો','orders.filter.cutting':'કટિંગ',
+    'orders.filter.stitching':'સ્ટિચિંગ','orders.filter.ready':'તૈયાર','orders.filter.dispensed':'સોંપ્યો',
+    // Stages
+    'stage.received':'મળ્યો','stage.cutting':'કટિંગ','stage.stitching':'સ્ટિચિંગ',
+    'stage.ready':'તૈયાર','stage.dispensed':'સોંપ્યો',
+    // Customers
+    'cust.filter.all':'બધા','cust.filter.female':'મહિલા','cust.filter.male':'પુરુષ',
+    'cust.customers':'ગ્રાહકો','cust.no_customers':'હજી કોઇ ગ્રાહક નથી',
+    'cust.orders':'ઓર્ડર','cust.spent':'ખર્ચ','cust.dispensed':'સોંપ્યો',
+    'cust.notify':'સૂચના','cust.female':'♀ મહિલા','cust.male':'♂ પુરુષ',
+    // Measurements
+    'meas.top':'ઉપર','meas.bottom':'નીચે','meas.not_recorded':'નોંધ્યું નથી',
+    'meas.click_profile':'સંપૂર્ણ પ્રોફાઇલ માટે ક્લિક કરો',
+    // Invoices
+    'inv.bill_no':'બિલ નં','inv.customer':'ગ્રાહક','inv.garment':'કપડું',
+    'inv.date':'તારીખ','inv.total':'કુલ','inv.discount':'ડિસ્કાઉન્ટ%','inv.advance':'અગ્રિમ',
+    'inv.due':'બાકી','inv.status':'સ્ટેટસ','inv.action':'ક્રિયા',
+    'inv.all_invoices':'બધા ઇન્વૉઇસ','inv.saved_note':'ભવિષ્ય સંદર્ભ માટે સેવ',
+    'inv.total_invoices':'કુલ ઇન્વૉઇસ','inv.all_time':'બધો સમય',
+    'inv.pending_payment':'બાકી ચૂકવણી','inv.total_collected':'કુલ વસૂલ',
+    'inv.paid':'પેઇડ','inv.paid_check':'પેઇડ ✓','inv.pending':'બાકી',
+    'inv.no_invoices':'કોઇ ઇન્વૉઇસ મળ્યો નથી',
+    // Invoice Modal
+    'inv.generate':'ઇન્વૉઇસ બનાવો','inv.create_bill':'ગ્રાહક માટે બિલ બનાવો',
+    'inv.cust_label':'ગ્રાહક *','inv.order_label':'ઓર્ડર (વૈકલ્પિક)',
+    'inv.bill_date':'બિલ તારીખ *','inv.garment_label':'કપડું / વિગત *',
+    'inv.particulars':'વિગત','inv.particular':'વિગત','inv.qty':'જથ્થો',
+    'inv.rate':'દર (₹)','inv.amount_col':'રકમ (₹)','inv.subtotal':'કુલ (₹)',
+    'inv.disc_pct':'ડિસ્કાઉન્ટ (%)','inv.disc_amt':'ડિસ્કાઉન્ટ (₹)',
+    'inv.total_after':'ડિસ્કાઉન્ટ પછી (₹)','inv.advance_recv':'અગ્રિમ (₹)',
+    'inv.due_amount':'બાકી (₹)','inv.remarks':'ટિપ્પણી',
+    // Bill
+    'bill.tax_invoice':'ટૅક્સ ઇન્વૉઇસ','bill.bill_to':'બિલ ટુ','bill.particulars':'વિગત',
+    'bill.paid_stamp':'પેઇડ ✓','bill.due_stamp':'ડિલિવરી પર',
+    'bill.subtotal':'સબટૉટલ','bill.discount':'ડિસ્કાઉન્ટ','bill.advance':'અગ્રિમ',
+    'bill.balance_due':'બાકી','bill.deliver':'બિલ મોકલો','bill.choose_send':'કેવી રીતે મોકલવું',
+    'bill.whatsapp':'વૉટ્સઍપ દ્વારા','bill.sms':'SMS દ્વારા','bill.email':'ઇમેઇલ દ્વારા',
+    'bill.full_invoice':'ઇમેઇલ પર','bill.bill_summary':'SMS સારાંશ',
+    // Notifications
+    'notif.all':'બધા','notif.send':'સૂચના મોકલો','notif.recipient':'મેળવનાર',
+    'notif.channel':'ચૅનલ','notif.templates':'નમૂના','notif.message':'સંદેશ',
+    'notif.order_ready':'ઓર્ડર તૈયાર','notif.delay':'વિલંબ','notif.payment':'ચૂકવણી',
+    'notif.pickup':'પિકઅપ રિમાઇન્ડર','notif.auto_alerts':'ઑટો ચેતવણી',
+    'notif.no_notifs':'હજી કોઇ સૂચના નથી',
+    // Settings
+    'set.boutique':'🏪 બૂટીક','set.account':'👤 ખાતું','set.notifications':'🔔 સૂચનાઓ',
+    'set.billing':'💳 બિલિંગ','set.appearance':'🎨 દેખાવ','set.integrations':'🔗 ઇન્ટિગ્રેશન',
+    'set.boutique_profile':'બૂટીક પ્રોફાઇલ','set.boutique_name':'બૂટીક નામ',
+    'set.owner_name':'માલિક નામ','set.phone':'ફોન','set.email':'ઇમેઇલ',
+    'set.address':'સરનામું','set.city':'શહેર','set.gstin':'GSTIN',
+    'set.language':'ભાષા','set.unit':'માપ એકમ','set.date_format':'તારીખ ફૉર્મૅટ','set.save':'ફેરફારો સેવ',
+    // Auth
+    'auth.login':'લૉગિન','auth.register':'નોંધણી','auth.email':'ઇમેઇલ',
+    'auth.password':'પાસવર્ડ','auth.forgot':'પાસવર્ડ ભૂલ્યા?',
+    'auth.boutique_name':'બૂટીક નામ *','auth.owner':'માલિક નામ',
+    'auth.create':'ખાતું બનાવો →','auth.reset_title':'નવો પાસવર્ડ સેટ કરો',
+    'auth.new_pass':'નવો પાસવર્ડ *','auth.confirm_pass':'પાસવર્ડ ફરી',
+    // Modals
+    'modal.update_stage':'સ્ટેજ અપડેટ','modal.stage_note':'તૈયાર = ગ્રાહકને સૂચના. સોંપ્યો = ગ્રાહકને આપ્યો.',
+    'modal.new_order':'નવો ઓર્ડર','modal.edit_order':'ઓર્ડર સંપાદિત','modal.create_order':'ગ્રાહક માટે ઓર્ડર',
+    'modal.customer':'ગ્રાહક *','modal.garment':'કપડું *','modal.due_date':'બાકી તારીખ',
+    'modal.fabric':'કાપડ','modal.amount':'રકમ (₹)','modal.advance':'અગ્રિમ (₹)',
+    'modal.balance':'બાકી (₹)','modal.initial_stage':'પ્રારંભિક સ્ટેજ','modal.notify':'ગ્રાહકને સૂચના?',
+    'modal.yes_notify':'✓ હા','modal.skip':'✗ છોડો','modal.notes':'નોંધ',
+    'modal.add_customer':'ગ્રાહક ઉમેરો','modal.edit_customer':'ગ્રાહક સંપાદિત',
+    'modal.fill_details':'વિગત અને માપ ભરો','modal.full_name':'પૂરું નામ *',
+    'modal.mobile':'મોબાઇલ *','modal.city':'શહેર','modal.gender':'લિંગ',
+    'modal.male':'♂ પુરુષ','modal.female':'♀ મહિલા','modal.select_gender':'માપ ફૉર્મ માટે લિંગ પસંદ કરો',
+    'modal.notify_pref':'સૂચના પ્રાધાન્ય','modal.fitting_notes':'ફિટિંગ નોંધ',
+    'modal.special_inst':'ખાસ સૂચનાઓ...',
+  },
+
+  hi: {
+    'nav.dashboard':'डैशबोर्ड','nav.orders':'ऑर्डर','nav.customers':'ग्राहक',
+    'nav.measurements':'माप','nav.invoices':'इनवॉइस','nav.notifications':'सूचनाएं',
+    'nav.settings':'सेटिंग्स','nav.main':'मुख्य','nav.manage':'प्रबंधन','nav.account':'खाता',
+    'page.dashboard':'डैशबोर्ड','page.orders':'ऑर्डर','page.customers':'ग्राहक',
+    'page.profile':'ग्राहक प्रोफाइल','page.measurements':'माप','page.invoices':'इनवॉइस',
+    'page.bill':'बिल प्रीव्यू','page.notifications':'सूचनाएं','page.settings':'सेटिंग्स',
+    'btn.new_order':'+ नया ऑर्डर','btn.add_customer':'+ ग्राहक जोड़ें','btn.new_invoice':'+ नया इनवॉइस',
+    'btn.save':'बदलाव सेव करें','btn.logout':'लॉग आउट','btn.view_all':'सभी देखें →',
+    'btn.update_stage':'स्टेज अपडेट','btn.edit':'संपादित','btn.view_bill':'बिल देखें',
+    'btn.mark_paid':'पेड मार्क','btn.mark_paid_check':'पेड मार्क ✓','btn.print':'🖨️   बिल प्रिंट',
+    'btn.send_reset':'रीसेट लिंक भेजें →','btn.login':'लॉगिन →','btn.register':'खाता बनाएं →',
+    'btn.back_invoices':'← इनवॉइस','btn.back_customers':'← ग्राहक',
+    'btn.new_order_profile':'+ नया ऑर्डर','btn.edit_profile':'प्रोफाइल संपादित',
+    'btn.mark_all_read':'सभी पढ़े','btn.send':'भेजें →','btn.add_row':'+ पंक्ति जोड़ें',
+    'btn.generate_invoice':'इनवॉइस बनाएं','btn.save_order':'ऑर्डर सेव','btn.save_customer':'ग्राहक सेव','btn.cancel':'रद्द करें',
+    'dash.active_orders':'सक्रिय ऑर्डर','dash.total':'कुल',
+    'dash.ready_pickup':'पिकअप के लिए तैयार','dash.awaiting':'संग्रह की प्रतीक्षा',
+    'dash.customers':'ग्राहक','dash.registered':'पंजीकृत',
+    'dash.pending_payment':'बकाया भुगतान','dash.invoices':'इनवॉइस',
+    'dash.recent_orders':'हाल के ऑर्डर','dash.pipeline':'पाइपलाइन',
+    'dash.quick_actions':'त्वरित कार्य','dash.due_soon':'जल्द देय',
+    'dash.recent_alerts':'हाल की सूचनाएं','dash.no_orders':'अभी कोई ऑर्डर नहीं',
+    'dash.no_due':'कोई आगामी तिथि नहीं','dash.no_alerts':'अभी कोई सूचना नहीं',
+    'dash.new_order':'नया ऑर्डर','dash.new_invoice':'नया इनवॉइस',
+    'dash.add_customer':'ग्राहक जोड़ें','dash.notifications':'सूचनाएं',
+    'orders.customer':'ग्राहक','orders.garment':'कपड़ा','orders.stage':'स्टेज',
+    'orders.due_date':'देय तिथि','orders.amount':'राशि','orders.balance':'शेष',
+    'orders.actions':'कार्य','orders.no_orders':'कोई ऑर्डर नहीं मिला','orders.orders':'ऑर्डर',
+    'orders.filter.all':'सभी','orders.filter.received':'मिला','orders.filter.cutting':'कटिंग',
+    'orders.filter.stitching':'सिलाई','orders.filter.ready':'तैयार','orders.filter.dispensed':'दिया',
+    'stage.received':'मिला','stage.cutting':'कटिंग','stage.stitching':'सिलाई',
+    'stage.ready':'तैयार','stage.dispensed':'दिया',
+    'cust.filter.all':'सभी','cust.filter.female':'महिला','cust.filter.male':'पुरुष',
+    'cust.customers':'ग्राहक','cust.no_customers':'अभी कोई ग्राहक नहीं',
+    'cust.orders':'ऑर्डर','cust.spent':'खर्च','cust.dispensed':'दिया',
+    'cust.notify':'सूचना','cust.female':'♀ महिला','cust.male':'♂ पुरुष',
+    'meas.top':'ऊपर','meas.bottom':'नीचे','meas.not_recorded':'दर्ज नहीं',
+    'meas.click_profile':'पूरी प्रोफाइल के लिए क्लिक करें',
+    'inv.bill_no':'बिल नं','inv.customer':'ग्राहक','inv.garment':'कपड़ा',
+    'inv.date':'तिथि','inv.total':'कुल','inv.discount':'छूट%','inv.advance':'अग्रिम',
+    'inv.due':'बकाया','inv.status':'स्टेटस','inv.action':'कार्य',
+    'inv.all_invoices':'सभी इनवॉइस','inv.saved_note':'भविष्य संदर्भ के लिए सेव',
+    'inv.total_invoices':'कुल इनवॉइस','inv.all_time':'सभी समय',
+    'inv.pending_payment':'बकाया भुगतान','inv.total_collected':'कुल वसूल',
+    'inv.paid':'पेड','inv.paid_check':'पेड ✓','inv.pending':'बकाया',
+    'inv.no_invoices':'कोई इनवॉइस नहीं मिला',
+    'inv.generate':'इनवॉइस बनाएं','inv.create_bill':'ग्राहक के लिए बिल बनाएं',
+    'inv.cust_label':'ग्राहक *','inv.order_label':'ऑर्डर (वैकल्पिक)',
+    'inv.bill_date':'बिल तिथि *','inv.garment_label':'कपड़ा / विवरण *',
+    'inv.particulars':'विवरण','inv.particular':'विवरण','inv.qty':'मात्रा',
+    'inv.rate':'दर (₹)','inv.amount_col':'राशि (₹)','inv.subtotal':'कुल (₹)',
+    'inv.disc_pct':'छूट (%)','inv.disc_amt':'छूट राशि (₹)',
+    'inv.total_after':'छूट के बाद (₹)','inv.advance_recv':'अग्रिम (₹)',
+    'inv.due_amount':'बकाया (₹)','inv.remarks':'टिप्पणी',
+    'bill.tax_invoice':'टैक्स इनवॉइस','bill.bill_to':'बिल टु','bill.particulars':'विवरण',
+    'bill.paid_stamp':'पेड ✓','bill.due_stamp':'डिलीवरी पर',
+    'bill.subtotal':'उपकुल','bill.discount':'छूट','bill.advance':'अग्रिम',
+    'bill.balance_due':'बकाया','bill.deliver':'बिल भेजें','bill.choose_send':'कैसे भेजें',
+    'bill.whatsapp':'वॉट्सऐप से','bill.sms':'SMS से','bill.email':'ईमेल से',
+    'bill.full_invoice':'ईमेल पर','bill.bill_summary':'SMS सारांश',
+    'notif.all':'सभी','notif.send':'सूचना भेजें','notif.recipient':'प्राप्तकर्ता',
+    'notif.channel':'चैनल','notif.templates':'टेम्पलेट','notif.message':'संदेश',
+    'notif.order_ready':'ऑर्डर तैयार','notif.delay':'देरी','notif.payment':'भुगतान',
+    'notif.pickup':'पिकअप रिमाइंडर','notif.auto_alerts':'ऑटो सूचना',
+    'notif.no_notifs':'अभी कोई सूचना नहीं',
+    'set.boutique':'🏪 बुटीक','set.account':'👤 खाता','set.notifications':'🔔 सूचनाएं',
+    'set.billing':'💳 बिलिंग','set.appearance':'🎨 दिखावट','set.integrations':'🔗 इंटीग्रेशन',
+    'set.boutique_profile':'बुटीक प्रोफाइल','set.boutique_name':'बुटीक नाम',
+    'set.owner_name':'मालिक का नाम','set.phone':'फोन','set.email':'ईमेल',
+    'set.address':'पता','set.city':'शहर','set.gstin':'GSTIN',
+    'set.language':'भाषा','set.unit':'माप इकाई','set.date_format':'तिथि प्रारूप','set.save':'बदलाव सेव',
+    'auth.login':'लॉगिन','auth.register':'पंजीकरण','auth.email':'ईमेल',
+    'auth.password':'पासवर्ड','auth.forgot':'पासवर्ड भूले?',
+    'auth.boutique_name':'बुटीक नाम *','auth.owner':'मालिक नाम',
+    'auth.create':'खाता बनाएं →','auth.reset_title':'नया पासवर्ड सेट करें',
+    'auth.new_pass':'नया पासवर्ड *','auth.confirm_pass':'पासवर्ड दोबारा',
+    'modal.update_stage':'स्टेज अपडेट','modal.stage_note':'तैयार = ग्राहक को सूचना। दिया = ग्राहक को दे दिया।',
+    'modal.new_order':'नया ऑर्डर','modal.edit_order':'ऑर्डर संपादित','modal.create_order':'ग्राहक के लिए ऑर्डर',
+    'modal.customer':'ग्राहक *','modal.garment':'कपड़ा *','modal.due_date':'देय तिथि',
+    'modal.fabric':'कपड़ा','modal.amount':'राशि (₹)','modal.advance':'अग्रिम (₹)',
+    'modal.balance':'बकाया (₹)','modal.initial_stage':'प्रारंभिक स्टेज','modal.notify':'ग्राहक को सूचना?',
+    'modal.yes_notify':'✓ हाँ','modal.skip':'✗ छोड़ें','modal.notes':'नोट',
+    'modal.add_customer':'ग्राहक जोड़ें','modal.edit_customer':'ग्राहक संपादित',
+    'modal.fill_details':'विवरण और माप भरें','modal.full_name':'पूरा नाम *',
+    'modal.mobile':'मोबाइल *','modal.city':'शहर','modal.gender':'लिंग',
+    'modal.male':'♂ पुरुष','modal.female':'♀ महिला','modal.select_gender':'माप फॉर्म के लिए लिंग चुनें',
+    'modal.notify_pref':'सूचना प्राथमिकता','modal.fitting_notes':'फिटिंग नोट',
+    'modal.special_inst':'विशेष निर्देश...',
+  },
+
+  ur: {
+    'nav.dashboard':'ڈیش بورڈ','nav.orders':'آرڈر','nav.customers':'گاہک',
+    'nav.measurements':'پیمائش','nav.invoices':'انوائس','nav.notifications':'اطلاعات',
+    'nav.settings':'ترتیبات','nav.main':'مرکزی','nav.manage':'انتظام','nav.account':'اکاؤنٹ',
+    'page.dashboard':'ڈیش بورڈ','page.orders':'آرڈر','page.customers':'گاہک',
+    'page.profile':'گاہک پروفائل','page.measurements':'پیمائش','page.invoices':'انوائس',
+    'page.bill':'بل پیش نظارہ','page.notifications':'اطلاعات','page.settings':'ترتیبات',
+    'btn.new_order':'+ نیا آرڈر','btn.add_customer':'+ گاہک شامل کریں','btn.new_invoice':'+ نئی انوائس',
+    'btn.save':'تبدیلیاں محفوظ','btn.logout':'لاگ آؤٹ','btn.view_all':'سب دیکھیں →',
+    'btn.update_stage':'اسٹیج اپ ڈیٹ','btn.edit':'ترمیم','btn.view_bill':'بل دیکھیں',
+    'btn.mark_paid':'ادا شدہ','btn.mark_paid_check':'ادا شدہ ✓','btn.print':'🖨️   بل پرنٹ',
+    'btn.send_reset':'ری سیٹ لنک بھیجیں →','btn.login':'لاگ ان →','btn.register':'اکاؤنٹ بنائیں →',
+    'btn.back_invoices':'← انوائس','btn.back_customers':'← گاہک',
+    'btn.new_order_profile':'+ نیا آرڈر','btn.edit_profile':'پروفائل ترمیم',
+    'btn.mark_all_read':'سب پڑھے','btn.send':'بھیجیں →','btn.add_row':'+ قطار شامل',
+    'btn.generate_invoice':'انوائس بنائیں','btn.save_order':'آرڈر محفوظ','btn.save_customer':'گاہک محفوظ','btn.cancel':'منسوخ',
+    'dash.active_orders':'فعال آرڈر','dash.total':'کل',
+    'dash.ready_pickup':'پک اپ کے لیے تیار','dash.awaiting':'انتظار میں',
+    'dash.customers':'گاہک','dash.registered':'رجسٹرڈ',
+    'dash.pending_payment':'باقی ادائیگی','dash.invoices':'انوائس',
+    'dash.recent_orders':'حالیہ آرڈر','dash.pipeline':'پائپ لائن',
+    'dash.quick_actions':'فوری اقدامات','dash.due_soon':'جلد واجب',
+    'dash.recent_alerts':'حالیہ اطلاعات','dash.no_orders':'ابھی کوئی آرڈر نہیں',
+    'dash.no_due':'کوئی آنے والی تاریخ نہیں','dash.no_alerts':'ابھی کوئی اطلاع نہیں',
+    'dash.new_order':'نیا آرڈر','dash.new_invoice':'نئی انوائس',
+    'dash.add_customer':'گاہک شامل','dash.notifications':'اطلاعات',
+    'orders.customer':'گاہک','orders.garment':'لباس','orders.stage':'اسٹیج',
+    'orders.due_date':'واجب تاریخ','orders.amount':'رقم','orders.balance':'باقی',
+    'orders.actions':'اقدامات','orders.no_orders':'کوئی آرڈر نہیں ملا','orders.orders':'آرڈر',
+    'orders.filter.all':'سب','orders.filter.received':'ملا','orders.filter.cutting':'کٹنگ',
+    'orders.filter.stitching':'سلائی','orders.filter.ready':'تیار','orders.filter.dispensed':'دیا',
+    'stage.received':'ملا','stage.cutting':'کٹنگ','stage.stitching':'سلائی',
+    'stage.ready':'تیار','stage.dispensed':'دیا',
+    'cust.filter.all':'سب','cust.filter.female':'خاتون','cust.filter.male':'مرد',
+    'cust.customers':'گاہک','cust.no_customers':'ابھی کوئی گاہک نہیں',
+    'cust.orders':'آرڈر','cust.spent':'خرچ','cust.dispensed':'دیا',
+    'cust.notify':'اطلاع','cust.female':'♀ خاتون','cust.male':'♂ مرد',
+    'meas.top':'اوپر','meas.bottom':'نیچے','meas.not_recorded':'درج نہیں',
+    'meas.click_profile':'مکمل پروفائل کے لیے کلک کریں',
+    'inv.bill_no':'بل نمبر','inv.customer':'گاہک','inv.garment':'لباس',
+    'inv.date':'تاریخ','inv.total':'کل','inv.discount':'رعایت%','inv.advance':'پیشگی',
+    'inv.due':'باقی','inv.status':'حیثیت','inv.action':'اقدام',
+    'inv.all_invoices':'تمام انوائس','inv.saved_note':'مستقبل کے حوالے کے لیے محفوظ',
+    'inv.total_invoices':'کل انوائس','inv.all_time':'ہمیشہ',
+    'inv.pending_payment':'باقی ادائیگی','inv.total_collected':'کل وصول',
+    'inv.paid':'ادا','inv.paid_check':'ادا ✓','inv.pending':'باقی',
+    'inv.no_invoices':'کوئی انوائس نہیں ملی',
+    'inv.generate':'انوائس بنائیں','inv.create_bill':'گاہک کا بل بنائیں',
+    'inv.cust_label':'گاہک *','inv.order_label':'آرڈر (اختیاری)',
+    'inv.bill_date':'بل تاریخ *','inv.garment_label':'لباس / تفصیل *',
+    'inv.particulars':'تفصیل','inv.particular':'تفصیل','inv.qty':'تعداد',
+    'inv.rate':'شرح (₹)','inv.amount_col':'رقم (₹)','inv.subtotal':'کل (₹)',
+    'inv.disc_pct':'رعایت (%)','inv.disc_amt':'رعایت (₹)',
+    'inv.total_after':'رعایت کے بعد (₹)','inv.advance_recv':'پیشگی (₹)',
+    'inv.due_amount':'باقی (₹)','inv.remarks':'تبصرہ',
+    'bill.tax_invoice':'ٹیکس انوائس','bill.bill_to':'بل برائے','bill.particulars':'تفصیل',
+    'bill.paid_stamp':'ادا ✓','bill.due_stamp':'ڈیلیوری پر',
+    'bill.subtotal':'ذیلی کل','bill.discount':'رعایت','bill.advance':'پیشگی',
+    'bill.balance_due':'باقی','bill.deliver':'بل بھیجیں','bill.choose_send':'کیسے بھیجیں',
+    'bill.whatsapp':'واٹس ایپ سے','bill.sms':'SMS سے','bill.email':'ای میل سے',
+    'bill.full_invoice':'ای میل پر','bill.bill_summary':'SMS خلاصہ',
+    'notif.all':'سب','notif.send':'اطلاع بھیجیں','notif.recipient':'وصول کنندہ',
+    'notif.channel':'چینل','notif.templates':'سانچے','notif.message':'پیغام',
+    'notif.order_ready':'آرڈر تیار','notif.delay':'تاخیر','notif.payment':'ادائیگی',
+    'notif.pickup':'پک اپ یاددہانی','notif.auto_alerts':'خودکار اطلاع',
+    'notif.no_notifs':'ابھی کوئی اطلاع نہیں',
+    'set.boutique':'🏪 بوتیک','set.account':'👤 اکاؤنٹ','set.notifications':'🔔 اطلاعات',
+    'set.billing':'💳 بلنگ','set.appearance':'🎨 ظاہری شکل','set.integrations':'🔗 انضمام',
+    'set.boutique_profile':'بوتیک پروفائل','set.boutique_name':'بوتیک نام',
+    'set.owner_name':'مالک نام','set.phone':'فون','set.email':'ای میل',
+    'set.address':'پتہ','set.city':'شہر','set.gstin':'GSTIN',
+    'set.language':'زبان','set.unit':'پیمائش اکائی','set.date_format':'تاریخ فارمیٹ','set.save':'تبدیلیاں محفوظ',
+    'auth.login':'لاگ ان','auth.register':'رجسٹریشن','auth.email':'ای میل',
+    'auth.password':'پاس ورڈ','auth.forgot':'پاس ورڈ بھول گئے؟',
+    'auth.boutique_name':'بوتیک نام *','auth.owner':'مالک نام',
+    'auth.create':'اکاؤنٹ بنائیں →','auth.reset_title':'نیا پاس ورڈ سیٹ کریں',
+    'auth.new_pass':'نیا پاس ورڈ *','auth.confirm_pass':'پاس ورڈ دوبارہ',
+    'modal.update_stage':'اسٹیج اپ ڈیٹ','modal.stage_note':'تیار = گاہک کو اطلاع۔ دیا = گاہک کو دے دیا۔',
+    'modal.new_order':'نیا آرڈر','modal.edit_order':'آرڈر ترمیم','modal.create_order':'گاہک کے لیے آرڈر',
+    'modal.customer':'گاہک *','modal.garment':'لباس *','modal.due_date':'واجب تاریخ',
+    'modal.fabric':'کپڑا','modal.amount':'رقم (₹)','modal.advance':'پیشگی (₹)',
+    'modal.balance':'باقی (₹)','modal.initial_stage':'ابتدائی اسٹیج','modal.notify':'گاہک کو اطلاع؟',
+    'modal.yes_notify':'✓ ہاں','modal.skip':'✗ چھوڑیں','modal.notes':'نوٹ',
+    'modal.add_customer':'گاہک شامل','modal.edit_customer':'گاہک ترمیم',
+    'modal.fill_details':'تفصیل اور پیمائش بھریں','modal.full_name':'پورا نام *',
+    'modal.mobile':'موبائل *','modal.city':'شہر','modal.gender':'جنس',
+    'modal.male':'♂ مرد','modal.female':'♀ خاتون','modal.select_gender':'پیمائش فارم کے لیے جنس منتخب کریں',
+    'modal.notify_pref':'اطلاع ترجیح','modal.fitting_notes':'فٹنگ نوٹ',
+    'modal.special_inst':'خصوصی ہدایات...',
+  }
+};
+
+// Current language — load from localStorage
+let LANG = localStorage.getItem('tx_lang') || 'en';
+
+// Translate function
+function t(key) {
+  const lang = TRANSLATIONS[LANG] || TRANSLATIONS.en;
+  return lang[key] || TRANSLATIONS.en[key] || key;
+}
+
+// Apply language to entire page
+function applyLanguage(lang) {
+  LANG = lang;
+  localStorage.setItem('tx_lang', lang);
+
+  // RTL for Urdu
+  document.body.style.direction = lang === 'ur' ? 'rtl' : 'ltr';
+  document.body.style.textAlign = lang === 'ur' ? 'right' : 'left';
+
+  // Sidebar nav items
+  document.getElementById('nav-dashboard') && (document.getElementById('nav-dashboard').innerHTML = `▣ &nbsp;${t('nav.dashboard')}`);
+  document.getElementById('nav-orders') && (document.getElementById('nav-orders').innerHTML = `◈ &nbsp;${t('nav.orders')} <span class="nav-badge" id="badge-orders">${document.getElementById('badge-orders')?.textContent||'0'}</span>`);
+  document.getElementById('nav-customers') && (document.getElementById('nav-customers').innerHTML = `◉ &nbsp;${t('nav.customers')}`);
+  document.getElementById('nav-measurements') && (document.getElementById('nav-measurements').innerHTML = `◫ &nbsp;${t('nav.measurements')}`);
+  document.getElementById('nav-invoices') && (document.getElementById('nav-invoices').innerHTML = `◻ &nbsp;${t('nav.invoices')}`);
+  document.getElementById('nav-notifications') && (document.getElementById('nav-notifications').innerHTML = `◎ &nbsp;${t('nav.notifications')} <span class="nav-badge" id="badge-notif">${document.getElementById('badge-notif')?.textContent||'0'}</span>`);
+  document.getElementById('nav-settings') && (document.getElementById('nav-settings').innerHTML = `◷ &nbsp;${t('nav.settings')}`);
+
+  // Nav section labels
+  document.querySelectorAll('.nav-sec').forEach((el, i) => {
+    if(i===0) el.textContent = t('nav.main');
+    if(i===1) el.textContent = t('nav.manage');
+    if(i===2) el.textContent = t('nav.account');
+  });
+
+  // Filter tabs — Orders
+  const orderTabs = document.querySelectorAll('#page-orders .ftab');
+  const orderFilters = ['all','received','cutting','stitching','ready','dispensed'];
+  orderTabs.forEach((tab, i) => { if(orderFilters[i]) tab.textContent = t('orders.filter.'+orderFilters[i]); });
+
+  // Filter tabs — Customers
+  const custTabs = document.querySelectorAll('#page-customers .ftab');
+  ['all','female','male'].forEach((f, i) => { if(custTabs[i]) custTabs[i].textContent = t('cust.filter.'+f); });
+
+  // Filter tabs — Invoices
+  const invTabs = document.querySelectorAll('#page-invoices .ftab');
+  ['all','pending','paid'].forEach((f, i) => { if(invTabs[i]) invTabs[i].textContent = t('inv.'+f==='all'?'filter_all':f==='pending'?'pending':'paid'); });
+
+  // Filter tabs — Notifications
+  const notifTabs = document.querySelectorAll('#page-notifications .ftab');
+  if(notifTabs[0]) notifTabs[0].textContent = t('notif.all');
+
+  // Settings sidebar
+  document.querySelectorAll('.sn-item').forEach((el, i) => {
+    const keys = ['set.boutique','set.account','set.notifications','set.billing','set.appearance','set.integrations'];
+    if(keys[i]) el.textContent = t(keys[i]);
+  });
+
+  // Re-render current page to apply translations
+  const activePage = document.querySelector('.page.active');
+  if(activePage) {
+    const pageId = activePage.id.replace('page-','');
+    if(pageId === 'dashboard') renderDash();
+    else if(pageId === 'orders') renderOrders();
+    else if(pageId === 'customers') renderCustomers();
+    else if(pageId === 'measurements') renderMeasure(mF||'all');
+    else if(pageId === 'invoices') renderInvoices(ivF||'all');
+    else if(pageId === 'notifications') renderNotifs(nF||'all');
+    else if(pageId === 'settings') renderSets('appear');
+  }
+
+  // Update topbar title
+  const pageNames = ['dashboard','orders','customers','profile','measurements','invoices','bill','notifications','settings'];
+  pageNames.forEach(p => {
+    const pageEl = document.getElementById('page-'+p);
+    if(pageEl && pageEl.classList.contains('active')) setTB(p);
+  });
+
+  toast(`✓ Language changed to ${lang==='en'?'English':lang==='gu'?'ગુજરાતી':lang==='hi'?'हिन्दी':'اردو'}`, 'green');
+}
+
+// Override setTB to use translations
+const _origSetTB = setTB;
+// Override page titles with translations
+const TB_KEYS = {
+  dashboard:'page.dashboard', orders:'page.orders', customers:'page.customers',
+  profile:'page.profile', measurements:'page.measurements', invoices:'page.invoices',
+  bill:'page.bill', notifications:'page.notifications', settings:'page.settings'
+};
+
+</script>
+</body>
+</html>

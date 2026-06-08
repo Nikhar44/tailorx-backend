@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TailorX — Boutique Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --white:#FFFFFF;--off-white:#F7F6F4;--charcoal:#1C1C1C;--c2:#2E2E2E;--c3:#3D3D3D;
+  --mid:#8A8680;--light:#C8C4BC;--border:#E2DDD7;
+  --gold:#B8975A;--green:#4A8C6A;--red:#B05555;--blue:#4A6E8C;--purple:#7A6BAF;--teal:#3D8C8C;
+  --font-d:'Cormorant Garamond',serif;--font-b:'DM Sans',sans-serif;
+}
+html,body{background:var(--off-white);color:var(--charcoal);font-family:var(--font-b);font-size:13px;height:100%;overflow:hidden}
+.app{display:flex;height:100vh}
+
+/* ── AUTH SCREEN ── */
+#auth-screen{position:fixed;inset:0;background:var(--charcoal);display:flex;align-items:center;justify-content:center;z-index:2000}
+.auth-box{background:var(--white);width:420px;padding:40px;border:1px solid var(--border)}
+.auth-logo{font-family:var(--font-d);font-size:28px;font-weight:300;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:4px}
+.auth-sub{font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-bottom:32px}
+.auth-tabs{display:flex;margin-bottom:24px;border-bottom:1px solid var(--border)}
+.auth-tab{flex:1;padding:10px;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--mid);cursor:pointer;text-align:center;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.2s}
+.auth-tab.active{color:var(--charcoal);border-bottom-color:var(--charcoal)}
+.auth-form{display:flex;flex-direction:column;gap:12px}
+.auth-field{display:flex;flex-direction:column;gap:5px}
+.auth-field label{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mid)}
+.auth-field input{background:var(--off-white);border:1px solid var(--border);padding:10px 12px;font-family:var(--font-b);font-size:13px;color:var(--charcoal);outline:none;transition:border-color 0.2s;width:100%}
+.auth-field input:focus{border-color:var(--charcoal);background:var(--white)}
+.auth-btn{background:var(--charcoal);color:var(--white);border:none;padding:13px;font-family:var(--font-b);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;transition:background 0.2s;margin-top:6px}
+.auth-btn:hover{background:var(--c2)}
+.auth-err{font-size:12px;color:var(--red);padding:8px 12px;background:rgba(176,85,85,0.08);border:1px solid rgba(176,85,85,0.2);display:none}
+.auth-err.show{display:block}
+.api-notice{font-size:11px;color:var(--mid);margin-top:14px;padding:10px 12px;background:var(--off-white);border:1px solid var(--border);line-height:1.6}
+
+/* ── SIDEBAR ── */
+.sidebar{width:220px;min-width:220px;background:var(--charcoal);display:flex;flex-direction:column;flex-shrink:0}
+.logo-wrap{padding:26px 24px 20px;border-bottom:1px solid rgba(255,255,255,0.07)}
+.logo-mark{font-family:var(--font-d);font-size:22px;font-weight:300;letter-spacing:0.15em;color:var(--white);text-transform:uppercase}
+.logo-sub{font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-top:3px}
+.sidebar-nav{padding:14px 0;flex:1;overflow-y:auto}
+.nav-sec{font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.25);padding:0 24px;margin-bottom:4px;margin-top:14px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 24px;font-size:12.5px;color:rgba(255,255,255,0.45);cursor:pointer;transition:all 0.18s;position:relative}
+.nav-item:hover{color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.03)}
+.nav-item.active{color:var(--white);background:rgba(255,255,255,0.07)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2px;height:18px;background:var(--gold);border-radius:0 2px 2px 0}
+.nav-badge{margin-left:auto;background:var(--gold);color:var(--charcoal);font-size:9px;font-weight:500;padding:2px 6px;border-radius:10px;min-width:18px;text-align:center}
+.sidebar-bottom{padding:12px 16px;border-top:1px solid rgba(255,255,255,0.07)}
+.b-badge{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.b-badge:hover{background:rgba(255,255,255,0.08)}
+.b-av{width:30px;height:30px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:14px;font-weight:500;color:var(--charcoal);flex-shrink:0}
+.b-name{font-size:12px;color:var(--white)}
+.b-plan{font-size:10px;color:var(--gold);margin-top:1px}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px}
+.tb-title{font-family:var(--font-d);font-size:20px;font-weight:400;letter-spacing:0.02em;white-space:nowrap}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.search-box{background:var(--off-white);border:1px solid var(--border);padding:8px 12px;font-size:12px;color:var(--mid);width:190px;font-family:var(--font-b);outline:none;transition:border-color 0.2s}
+.search-box:focus{border-color:var(--charcoal);background:var(--white);color:var(--charcoal)}
+
+/* BUTTONS */
+.btn{padding:9px 16px;font-family:var(--font-b);font-size:11px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:all 0.2s;border:1px solid var(--border);background:var(--white);color:var(--mid);white-space:nowrap}
+.btn:hover{border-color:var(--charcoal);color:var(--charcoal)}
+.btn-primary{background:var(--charcoal);color:var(--white);border-color:var(--charcoal)}.btn-primary:hover{background:var(--c2)}
+.btn-outline{border-color:var(--charcoal);color:var(--charcoal)}
+.btn-sm{padding:6px 12px;font-size:10px}
+.btn-divider{width:1px;height:26px;background:var(--border);flex-shrink:0}
+
+/* PAGES */
+.page{display:none;flex:1;flex-direction:column;overflow:hidden}
+.page.active{display:flex}
+.scroll{flex:1;overflow-y:auto;padding:22px 24px}
+
+/* PANEL */
+.panel{background:var(--white);border:1px solid var(--border)}
+.panel-head{padding:15px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.panel-title{font-family:var(--font-d);font-size:17px;font-weight:400;color:var(--charcoal);letter-spacing:0.03em}
+.panel-sub{font-size:11px;color:var(--mid);margin-top:2px}
+
+/* FIELD */
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mid);font-weight:500}
+.field input,.field select,.field textarea{background:var(--off-white);border:1px solid var(--border);padding:9px 11px;font-family:var(--font-b);font-size:13px;color:var(--charcoal);outline:none;transition:border-color 0.2s;appearance:none;-webkit-appearance:none;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--charcoal);background:var(--white)}
+.field input::placeholder,.field textarea::placeholder{color:var(--light)}
+.field textarea{resize:vertical;min-height:65px}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fdiv{height:1px;background:var(--border);margin:16px 0}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--light);font-weight:500;text-align:left;padding:9px 16px;border-bottom:1px solid var(--border)}
+.tbl td{padding:11px 16px;border-bottom:1px solid var(--border);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr.clickable{cursor:pointer;transition:background 0.15s}
+.tbl tr.clickable:hover td{background:var(--off-white)}
+.empty-row td{text-align:center;padding:32px;font-family:var(--font-d);font-size:16px;color:var(--light);font-style:italic}
+
+/* TAGS */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;border:1px solid;white-space:nowrap;font-weight:500}
+.tag-green{color:var(--green);border-color:var(--green);background:rgba(74,140,106,0.07)}
+.tag-gold{color:var(--gold);border-color:var(--gold);background:rgba(184,151,90,0.08)}
+.tag-red{color:var(--red);border-color:var(--red);background:rgba(176,85,85,0.07)}
+.tag-blue{color:var(--blue);border-color:var(--blue);background:rgba(74,110,140,0.07)}
+.tag-mid{color:var(--mid);border-color:var(--border);background:var(--off-white)}
+.tag-teal{color:var(--teal);border-color:var(--teal);background:rgba(61,140,140,0.07)}
+.tag-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* FILTER TABS */
+.ftabs{display:flex;gap:0;flex-wrap:wrap}
+.ftab{padding:7px 14px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid);border:1px solid var(--border);background:var(--off-white);cursor:pointer;transition:all 0.15s;margin-right:-1px}
+.ftab.active{background:var(--charcoal);color:var(--white);border-color:var(--charcoal);z-index:1}
+.ftab:hover:not(.active){color:var(--charcoal);border-color:var(--charcoal);z-index:1}
+
+/* STAT CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat-grid.c3{grid-template-columns:repeat(3,1fr)}
+.stat-card{background:var(--white);border:1px solid var(--border);padding:18px 20px;position:relative;overflow:hidden}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.gold::after{background:var(--gold)}.stat-card.green::after{background:var(--green)}
+.stat-card.blue::after{background:var(--blue)}.stat-card.red::after{background:var(--red)}
+.sl{font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-bottom:8px}
+.sv{font-family:var(--font-d);font-size:34px;font-weight:300;color:var(--charcoal);line-height:1}
+.sv.sm{font-size:22px}
+.sd{font-size:11px;margin-top:8px;color:var(--mid)}
+
+/* STAGE PILLS */
+.sp{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;font-weight:500;border:1px solid;white-space:nowrap}
+.sp-received{color:var(--blue);border-color:var(--blue);background:rgba(74,110,140,0.06)}
+.sp-cutting{color:var(--gold);border-color:var(--gold);background:rgba(184,151,90,0.08)}
+.sp-stitching{color:var(--purple);border-color:var(--purple);background:rgba(122,107,175,0.08)}
+.sp-ready{color:var(--green);border-color:var(--green);background:rgba(74,140,106,0.07)}
+.sp-dispensed{color:var(--teal);border-color:var(--teal);background:rgba(61,140,140,0.07)}
+.sp-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+/* GENDER */
+.g-toggle{display:flex}
+.g-btn{flex:1;padding:10px;font-family:var(--font-b);font-size:11px;font-weight:500;letter-spacing:0.15em;text-transform:uppercase;cursor:pointer;border:1px solid var(--border);background:var(--off-white);color:var(--mid);transition:all 0.2s;text-align:center}
+.g-btn:first-child{border-right:none}
+.g-btn.active{background:var(--charcoal);color:var(--white);border-color:var(--charcoal)}
+
+/* MEASUREMENTS */
+.msec{display:none}.msec.vis{display:block;animation:fadeUp 0.25s ease both}
+.g-hint{font-size:14px;color:var(--light);text-align:center;padding:18px 0;font-style:italic;font-family:var(--font-d)}
+.mb-head{display:flex;align-items:center;gap:10px;font-size:9px;letter-spacing:0.2em;text-transform:uppercase;font-weight:500;margin-bottom:12px;cursor:pointer;user-select:none;padding-top:12px}
+.mb-head .bl{color:var(--gold);white-space:nowrap}
+.mb-head .bline{flex:1;height:1px;background:var(--border)}
+.mb-head .btog{font-size:11px;color:var(--light);transition:transform 0.2s}
+.mb-head.col .btog{transform:rotate(-90deg)}
+.mb-body{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+.mb-body.hid{display:none}
+.mf{display:flex;flex-direction:column;gap:3px}
+.mf label{font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid)}
+.mf input{background:var(--off-white);border:1px solid var(--border);padding:8px;font-family:var(--font-d);font-size:14px;font-weight:300;color:var(--charcoal);outline:none;text-align:center;transition:border-color 0.2s;width:100%}
+.mf input:focus{border-color:var(--charcoal);background:var(--white)}
+.mf-unit{font-size:9px;color:var(--light);text-align:center;margin-top:1px}
+
+/* NOTIFY OPTS */
+.no-opt{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border:1px solid var(--border);background:var(--off-white);cursor:pointer;transition:all 0.2s;margin-bottom:7px}
+.no-opt:last-child{margin-bottom:0}
+.no-opt.sel{border-color:var(--charcoal);background:var(--white)}
+.no-opt:hover{border-color:var(--charcoal)}
+.no-lbl{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--c3)}
+.no-radio{width:13px;height:13px;border:1.5px solid var(--light);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.no-opt.sel .no-radio{border-color:var(--charcoal)}
+.no-opt.sel .no-radio::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--charcoal)}
+
+/* STAGE SELECT */
+.ssrow{display:grid;gap:8px;margin-top:4px}
+.ssb{padding:9px;border:1px solid var(--border);background:var(--off-white);font-family:var(--font-b);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);cursor:pointer;text-align:center;transition:all 0.2s}
+.ssb:hover{border-color:var(--charcoal);color:var(--charcoal)}
+.ssb.sel{background:var(--charcoal);color:var(--white);border-color:var(--charcoal)}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--white);border:1px solid var(--border);padding:26px;width:560px;max-width:100%;max-height:90vh;overflow-y:auto;animation:fadeUp 0.2s ease both}
+.modal-title{font-family:var(--font-d);font-size:22px;font-weight:400;margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--mid);margin-bottom:20px}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px;border-top:1px solid var(--border);padding-top:14px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--charcoal);color:var(--white);padding:11px 18px;font-size:12px;display:flex;align-items:center;gap:10px;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none;z-index:9999}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.green{background:var(--green)}.toast.gold{background:var(--gold)}.toast.red{background:var(--red)}
+
+/* LOADING */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.7);display:none;align-items:center;justify-content:center;z-index:900;font-family:var(--font-d);font-size:18px;color:var(--mid)}
+.loading-overlay.show{display:flex}
+
+/* INVOICE BILL */
+@media print{.sidebar,.main>.topbar,.page:not(.active),.action-bar,.bill-controls{display:none!important}.scroll{padding:0!important;overflow:visible!important}}
+.inv-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.inv-tbl th{background:var(--charcoal);color:var(--white);padding:9px 12px;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;font-weight:500;text-align:center}
+.inv-tbl th:first-child{text-align:left}
+.inv-tbl td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+.inv-tbl td:first-child{text-align:left}
+.inv-tbl tr:last-child td{border-bottom:none}
+.inv-tbl tfoot td{background:var(--off-white);font-weight:500}
+.inv-tbl tfoot .grand td{background:var(--charcoal);color:var(--white)}
+.inv-tbl tfoot .grand td:last-child{font-family:var(--font-d);font-size:18px;font-weight:300}
+
+/* SEND OPTIONS */
+.send-opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);background:var(--white);cursor:pointer;transition:all 0.18s;margin-bottom:8px}
+.send-opt:last-child{margin-bottom:0}
+.send-opt:hover{border-color:var(--charcoal);background:var(--off-white)}
+.send-opt.sent{border-color:var(--green);background:rgba(74,140,106,0.04)}
+.so-icon{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;border:1px solid var(--border);background:var(--off-white);flex-shrink:0}
+.so-info{flex:1}.so-title{font-size:12px;font-weight:500;color:var(--charcoal)}.so-sub{font-size:11px;color:var(--mid);margin-top:1px}
+.so-arrow{font-size:12px;color:var(--light);transition:all 0.15s}
+.send-opt:hover .so-arrow,.send-opt.sent .so-arrow{color:var(--charcoal);transform:translateX(3px)}
+.send-opt.sent .so-arrow{color:var(--green)}
+
+/* SETTINGS */
+.settings-layout{display:grid;grid-template-columns:185px 1fr;gap:16px;align-items:start}
+.sn-wrap{background:var(--white);border:1px solid var(--border)}
+.sn-item{display:flex;align-items:center;gap:8px;padding:11px 16px;font-size:12px;color:var(--mid);cursor:pointer;border-bottom:1px solid var(--border);transition:all 0.15s;position:relative}
+.sn-item:last-child{border-bottom:none}
+.sn-item:hover{background:var(--off-white);color:var(--charcoal)}
+.sn-item.active{color:var(--charcoal);background:var(--off-white)}
+.sn-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:2px;height:14px;background:var(--gold)}
+
+/* NOTIF */
+.notif-split{display:grid;grid-template-columns:1fr 310px;gap:16px;align-items:start}
+.ni{display:flex;gap:12px;padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s}
+.ni:last-child{border-bottom:none}
+.ni:hover{background:var(--off-white)}
+.ni.unread{background:rgba(184,151,90,0.04)}
+.ni-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.tpl-chip{padding:5px 10px;font-size:11px;border:1px solid var(--border);background:var(--off-white);color:var(--mid);cursor:pointer;transition:all 0.15s}
+.tpl-chip:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ACTION BAR */
+.action-bar{background:var(--white);border-top:1px solid var(--border);padding:13px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--border)}
+.srow:last-child{border-bottom:none}
+.sr-lbl{font-size:13px;font-weight:500;color:var(--charcoal)}
+.sr-sub{font-size:11px;color:var(--mid);margin-top:2px}
+.tog-wrap{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.tog-track{width:34px;height:18px;background:var(--border);border-radius:9px;position:relative;transition:background 0.2s;flex-shrink:0}
+.tog-track.on{background:var(--green)}
+.tog-knob{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--white);transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.tog-track.on .tog-knob{transform:translateX(16px)}
+.tog-lbl{font-size:11px;color:var(--mid)}
+.tog-wrap.on .tog-lbl{color:var(--green)}
+
+.cc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.cc{background:var(--white);border:1px solid var(--border);padding:18px;cursor:pointer;transition:all 0.18s;position:relative;overflow:hidden}
+.cc:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.07);border-color:var(--charcoal)}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.cc.female::before{background:var(--gold)}.cc.male::before{background:var(--blue)}
+.profile-grid{display:grid;grid-template-columns:290px 1fr;gap:16px;align-items:start}
+.ph-card{background:var(--white);border:1px solid var(--border)}
+.ph-top{padding:24px 20px 18px;text-align:center;border-bottom:1px solid var(--border);position:relative}
+.ph-top::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.ph-top.female::before{background:linear-gradient(90deg,var(--gold),rgba(184,151,90,0.2))}
+.ph-top.male::before{background:linear-gradient(90deg,var(--blue),rgba(74,110,140,0.2))}
+.ph-av{width:60px;height:60px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:22px;font-weight:300}
+.ph-av.female{background:rgba(184,151,90,0.12);color:var(--gold)}
+.ph-av.male{background:rgba(74,110,140,0.12);color:var(--blue)}
+.ph-name{font-family:var(--font-d);font-size:22px;font-weight:400}
+.ph-sub{font-size:11px;color:var(--mid);margin-top:4px}
+.ph-stats{display:grid;grid-template-columns:1fr 1fr 1fr;padding:14px 18px}
+.phs{text-align:center;padding:0 4px}
+.phs:not(:last-child){border-right:1px solid var(--border)}
+.phs-n{font-family:var(--font-d);font-size:20px;font-weight:300}
+.phs-l{font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--light);margin-top:2px}
+.md-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mdf{background:var(--off-white);border:1px solid var(--border);padding:8px;text-align:center}
+.mdf-v{font-family:var(--font-d);font-size:17px;font-weight:300;line-height:1}
+.mdf-l{font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid);margin-top:4px}
+
+.qa-btn{padding:14px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;font-size:16px;transition:background 0.15s;text-align:center;}
+.qa-btn:nth-child(even){border-right:none}
+.qa-btn:nth-last-child(-n+2){border-bottom:none}
+.qa-btn:hover{background:var(--off-white)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.page.active .scroll>*{animation:fadeUp 0.3s ease both}
+</style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">Tailor<span style="color:var(--gold)">X</span></div>
+    <div class="auth-sub">Boutique Management</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Login</div>
+      <div class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Register</div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="form-login" class="auth-form">
+      <div class="auth-field"><label>Email</label><input id="li-email" type="email" placeholder="you@boutique.com" autocomplete="email"></div>
+      <div class="auth-field"><label>Password</label><input id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+      <div class="auth-err" id="li-err"></div>
+      <button class="auth-btn" onclick="doLogin()">Login →</button>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="form-register" class="auth-form" style="display:none;">
+      <div class="fr" style="gap:12px;"><div class="auth-field"><label>Boutique Name *</label><input id="rg-name" placeholder="e.g. Riya Boutique"></div><div class="auth-field"><label>Owner Name</label><input id="rg-owner" placeholder="Your name"></div></div>
+      <div class="auth-field"><label>Email *</label><input id="rg-email" type="email" placeholder="you@boutique.com"></div>
+      <div class="fr" style="gap:12px;"><div class="auth-field"><label>Password *</label><input id="rg-pass" type="password" placeholder="Min 8 characters"></div><div class="auth-field"><label>Phone</label><input id="rg-phone" placeholder="+91 98765 43210"></div></div>
+      <div class="fr" style="gap:12px;"><div class="auth-field"><label>City</label><input id="rg-city" value="Surat"></div><div class="auth-field"><label>Address</label><input id="rg-addr" placeholder="Shop address"></div></div>
+      <div class="auth-err" id="rg-err"></div>
+      <button class="auth-btn" onclick="doRegister()">Create Account →</button>
+    </div>
+
+    <div class="api-notice">
+      <strong>Backend setup required.</strong> This app connects to your PostgreSQL API.<br>
+      Set <code>API_URL</code> in the script below to your deployed backend URL.<br>
+      See the included <code>server.js</code> and <code>schema.sql</code> to deploy.
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP (hidden until logged in) -->
+<div class="app" id="main-app" style="display:none;">
+<div class="sidebar">
+  <div class="logo-wrap">
+    <div class="logo-mark">Tailor<span style="color:var(--gold)">X</span></div>
+    <div class="logo-sub">Boutique Management</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-sec">Main</div>
+    <div class="nav-item" id="nav-dashboard" onclick="P('dashboard')">▣ &nbsp;Dashboard</div>
+    <div class="nav-item" id="nav-orders" onclick="P('orders')">◈ &nbsp;Orders <span class="nav-badge" id="badge-orders">0</span></div>
+    <div class="nav-item" id="nav-customers" onclick="P('customers')">◉ &nbsp;Customers</div>
+    <div class="nav-item" id="nav-measurements" onclick="P('measurements')">◫ &nbsp;Measurements</div>
+    <div class="nav-sec">Manage</div>
+    <div class="nav-item" id="nav-invoices" onclick="P('invoices')">◻ &nbsp;Invoices</div>
+    <div class="nav-item" id="nav-notifications" onclick="P('notifications')">◎ &nbsp;Notifications <span class="nav-badge" id="badge-notif">0</span></div>
+    <div class="nav-sec">Account</div>
+    <div class="nav-item" id="nav-settings" onclick="P('settings')">◷ &nbsp;Settings</div>
+  </nav>
+  <div class="sidebar-bottom">
+    <div class="b-badge" onclick="P('settings');swSet(document.querySelector('.sn-item'),'boutique')">
+      <div class="b-av" id="s-av">N</div>
+      <div><div class="b-name" id="s-name">Nikhar Boutique</div><div class="b-plan">Pro Plan · Active</div></div>
+    </div>
+  </div>
+</div>
+<div class="main">
+  <div class="topbar">
+    <div id="tb-left" style="display:flex;align-items:center;gap:12px;"></div>
+    <div class="topbar-right" id="tb-right">
+      <button class="btn btn-sm" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page" id="page-dashboard">
+    <div class="scroll">
+      <div class="stat-grid" id="d-stats"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 270px;gap:14px;">
+        <div class="panel"><div class="panel-head"><div class="panel-title">Recent Orders</div><span style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);cursor:pointer;" onclick="P('orders')">View All →</span></div><table class="tbl"><thead><tr><th>Customer</th><th>Stage</th><th>Due</th><th>Amount</th></tr></thead><tbody id="d-orders"></tbody></table></div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="panel"><div class="panel-head"><div class="panel-title">Pipeline</div></div><div id="d-pipeline"></div></div>
+          <div class="panel"><div class="panel-head"><div class="panel-title">Quick Actions</div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;">
+              <div class="qa-btn" onclick="P('orders');setTimeout(openOrderModal,150)">✚<div style="font-size:12px;font-weight:500;margin-top:4px;">New Order</div></div>
+              <div class="qa-btn" onclick="P('invoices');setTimeout(openInvoiceModal,150)">◻<div style="font-size:12px;font-weight:500;margin-top:4px;">New Invoice</div></div>
+              <div class="qa-btn" onclick="P('customers');setTimeout(openCustomerModal,150)">◉<div style="font-size:12px;font-weight:500;margin-top:4px;">Add Customer</div></div>
+              <div class="qa-btn" onclick="P('notifications')">◎<div style="font-size:12px;font-weight:500;margin-top:4px;">Notifications</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="panel"><div class="panel-head"><div class="panel-title">Due Soon</div></div><div id="d-due"></div></div>
+          <div class="panel"><div class="panel-head"><div class="panel-title">Recent Alerts</div></div><div id="d-alerts"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDERS -->
+  <div class="page" id="page-orders">
+    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;">
+      <div class="ftabs"><div class="ftab active" onclick="filterOrders('all',this)">All</div><div class="ftab" onclick="filterOrders('received',this)">Received</div><div class="ftab" onclick="filterOrders('cutting',this)">Cutting</div><div class="ftab" onclick="filterOrders('stitching',this)">Stitching</div><div class="ftab" onclick="filterOrders('ready',this)">Ready</div><div class="ftab" onclick="filterOrders('dispensed',this)">Dispensed</div></div>
+      <span style="font-size:11px;color:var(--light);" id="order-count">0 orders</span>
+    </div>
+    <div class="scroll"><div class="panel"><table class="tbl"><thead><tr><th>#</th><th>Customer</th><th>Garment</th><th>Stage</th><th>Due Date</th><th>Amount</th><th>Balance</th><th>Actions</th></tr></thead><tbody id="orders-tbody"></tbody></table></div></div>
+  </div>
+
+  <!-- CUSTOMERS -->
+  <div class="page" id="page-customers">
+    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;">
+      <div class="ftabs"><div class="ftab active" onclick="filterCustomers('all',this)">All</div><div class="ftab" onclick="filterCustomers('female',this)">Female</div><div class="ftab" onclick="filterCustomers('male',this)">Male</div></div>
+      <span style="font-size:11px;color:var(--light);" id="cust-count">0 customers</span>
+    </div>
+    <div class="scroll"><div class="cc-grid" id="cust-grid"></div></div>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="page" id="page-profile">
+    <div class="scroll"><div class="profile-grid" id="profile-inner"></div></div>
+    <div class="action-bar"><button class="btn" onclick="P('customers')">← Customers</button><div style="display:flex;gap:8px;"><button class="btn" id="prof-new-ord">+ New Order</button><button class="btn btn-primary" id="prof-edit">Edit Profile</button></div></div>
+  </div>
+
+  <!-- MEASUREMENTS -->
+  <div class="page" id="page-measurements">
+    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <div class="ftabs"><div class="ftab active" onclick="filterMeasure('all',this)">All</div><div class="ftab" onclick="filterMeasure('female',this)">Female</div><div class="ftab" onclick="filterMeasure('male',this)">Male</div></div>
+    </div>
+    <div class="scroll"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px;" id="measure-grid"></div></div>
+  </div>
+
+  <!-- INVOICES -->
+  <div class="page" id="page-invoices">
+    <div style="background:var(--white);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:10px;">
+      <div class="ftabs"><div class="ftab active" onclick="filterInv('all',this)">All</div><div class="ftab" onclick="filterInv('pending',this)">Pending</div><div class="ftab" onclick="filterInv('paid',this)">Paid</div></div>
+    </div>
+    <div class="scroll">
+      <div class="stat-grid c3" id="inv-stats"></div>
+      <div class="panel">
+        <div class="panel-head"><div><div class="panel-title">All Invoices</div><div class="panel-sub">Saved for future reference — no deletes</div></div><button class="btn btn-primary" onclick="openInvoiceModal()">+ New Invoice</button></div>
+        <table class="tbl"><thead><tr><th>Bill No</th><th>Customer</th><th>Garment</th><th>Date</th><th>Total</th><th>Disc%</th><th>Advance</th><th>Due</th><th>Status</th><th>Action</th></tr></thead><tbody id="inv-tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BILL PREVIEW -->
+  <div class="page" id="page-bill">
+    <div class="scroll">
+      <div style="display:grid;grid-template-columns:1fr 290px;gap:18px;align-items:start;">
+        <div id="bill-inner"></div>
+        <div class="bill-controls">
+          <div class="panel" style="margin-bottom:14px;"><div class="panel-head"><div class="panel-title">Deliver Bill</div><div class="panel-sub">Choose how to send</div></div><div style="padding:12px 16px;" id="bill-send"></div></div>
+          <button class="btn btn-primary" style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;" onclick="window.print()">🖨️ &nbsp; Print Bill</button>
+          <div style="margin-top:10px;" id="bill-paid-wrap"></div>
+        </div>
+      </div>
+    </div>
+    <div class="action-bar"><button class="btn" onclick="P('invoices')">← Back to Invoices</button></div>
+  </div>
+
+  <!-- NOTIFICATIONS -->
+  <div class="page" id="page-notifications">
+    <div class="scroll">
+      <div class="notif-split">
+        <div>
+          <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;">
+            <div class="ftabs"><div class="ftab active" onclick="filterNotifs('all',this)">All</div><div class="ftab" onclick="filterNotifs('whatsapp',this)">WhatsApp</div><div class="ftab" onclick="filterNotifs('sms',this)">SMS</div><div class="ftab" onclick="filterNotifs('email',this)">Email</div></div>
+            <button class="btn btn-sm" onclick="markAllRead()">Mark All Read</button>
+          </div>
+          <div class="panel" id="notif-log"></div>
+        </div>
+        <div>
+          <div class="panel" style="padding:18px 20px;">
+            <div style="font-family:var(--font-d);font-size:18px;margin-bottom:14px;">Send Notification</div>
+            <div class="field" style="margin-bottom:10px;"><label>Recipient</label><select id="notif-recipient"></select></div>
+            <div class="field" style="margin-bottom:10px;"><label>Channel</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:4px;">
+                <div class="ssb sel" onclick="selCh(this)">💬 WA</div>
+                <div class="ssb" onclick="selCh(this)">📩 SMS</div>
+                <div class="ssb" onclick="selCh(this)">✉️ Email</div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:8px;"><label>Templates</label>
+              <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;">
+                <div class="tpl-chip" onclick="useTpl('ready')">Order Ready</div>
+                <div class="tpl-chip" onclick="useTpl('delay')">Delay Notice</div>
+                <div class="tpl-chip" onclick="useTpl('payment')">Payment Due</div>
+                <div class="tpl-chip" onclick="useTpl('pickup')">Pickup Reminder</div>
+              </div>
+            </div>
+            <div class="field" style="margin-bottom:10px;"><label>Message</label>
+              <textarea id="notif-msg" style="width:100%;background:var(--off-white);border:1px solid var(--border);padding:9px 11px;font-family:var(--font-b);font-size:13px;color:var(--charcoal);outline:none;resize:vertical;min-height:80px;" placeholder="Type message..."></textarea>
+            </div>
+            <button class="btn btn-primary" style="width:100%;" onclick="sendNotif()">Send →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="scroll">
+      <div class="settings-layout">
+        <div class="sn-wrap">
+          <div class="sn-item active" onclick="swSet(this,'boutique')">🏪 Boutique</div>
+          <div class="sn-item" onclick="swSet(this,'account')">👤 Account</div>
+          <div class="sn-item" onclick="swSet(this,'notif_s')">🔔 Notifications</div>
+          <div class="sn-item" onclick="swSet(this,'billing')">💳 Billing</div>
+          <div class="sn-item" onclick="swSet(this,'appear')">🎨 Appearance</div>
+          <div class="sn-item" onclick="swSet(this,'integrations')">🔗 Integrations</div>
+        </div>
+        <div id="settings-panel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- MODALS -->
+<!-- Customer Modal -->
+<div class="modal-overlay" id="modal-customer">
+<div class="modal">
+  <div class="modal-title" id="cm-title">Add Customer</div>
+  <div class="modal-sub">Fill in details and body measurements</div>
+  <input type="hidden" id="cm-id">
+  <div class="fr"><div class="field"><label>Full Name *</label><input id="cm-name" placeholder="e.g. Priya Mehta"></div><div class="field"><label>Mobile *</label><input id="cm-phone" placeholder="+91 98765 43210"></div></div>
+  <div class="fr"><div class="field"><label>Email</label><input id="cm-email" placeholder="optional"></div><div class="field"><label>City</label><input id="cm-city" value="Surat"></div></div>
+  <div class="fdiv"></div>
+  <div class="field" style="margin-bottom:14px;"><label>Gender</label>
+    <div class="g-toggle"><div class="g-btn" id="gm" onclick="selG('male')">♂ Male</div><div class="g-btn" id="gf" onclick="selG('female')">♀ Female</div></div>
+  </div>
+  <div class="g-hint" id="g-hint">Select gender to load measurement form</div>
+  <div class="msec" id="ms-male">
+    <div class="mb-head" onclick="togBlk(this)"><span class="bl">Top</span><div class="bline"></div><span class="btog">▾</span></div>
+    <div class="mb-body"><div class="mf"><label>Chest</label><input type="number" id="m-chest" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Shoulder</label><input type="number" id="m-shldr" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Neck</label><input type="number" id="m-neck" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Sleeve</label><input type="number" id="m-slv" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Shirt Length</label><input type="number" id="m-shirt" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Back Width</label><input type="number" id="m-back" placeholder="—"><div class="mf-unit">in</div></div></div>
+    <div class="mb-head" onclick="togBlk(this)"><span class="bl">Bottom</span><div class="bline"></div><span class="btog">▾</span></div>
+    <div class="mb-body"><div class="mf"><label>Waist</label><input type="number" id="m-waist" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Hip</label><input type="number" id="m-hip" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Inseam</label><input type="number" id="m-inseam" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Trouser Waist</label><input type="number" id="m-trwaist" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Thigh</label><input type="number" id="m-thigh" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Pant Length</label><input type="number" id="m-pantlen" placeholder="—"><div class="mf-unit">in</div></div></div>
+  </div>
+  <div class="msec" id="ms-female">
+    <div class="mb-head" onclick="togBlk(this)"><span class="bl">Top</span><div class="bline"></div><span class="btog">▾</span></div>
+    <div class="mb-body"><div class="mf"><label>Length</label><input type="number" id="f-len" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Front</label><input type="number" id="f-front" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Chest 1</label><input type="number" id="f-c1" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Chest 2</label><input type="number" id="f-c2" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Shoulder</label><input type="number" id="f-shldr" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Sleeve</label><input type="number" id="f-slv" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Sleeve Bottom</label><input type="number" id="f-slvbot" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Blouse Length</label><input type="number" id="f-blolen" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Back Length</label><input type="number" id="f-backlen" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Front Length</label><input type="number" id="f-frontlen" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Neck Depth</label><input type="number" id="f-neckd" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Armhole</label><input type="number" id="f-arm" placeholder="—"><div class="mf-unit">in</div></div></div>
+    <div class="mb-head" onclick="togBlk(this)"><span class="bl">Bottom</span><div class="bline"></div><span class="btog">▾</span></div>
+    <div class="mb-body"><div class="mf"><label>Waist</label><input type="number" id="f-waist" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Hip</label><input type="number" id="f-hip" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Skirt Length</label><input type="number" id="f-skirt" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Lehenga</label><input type="number" id="f-leh" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Salwar Length</label><input type="number" id="f-salwar" placeholder="—"><div class="mf-unit">in</div></div><div class="mf"><label>Thigh</label><input type="number" id="f-thigh" placeholder="—"><div class="mf-unit">in</div></div></div>
+  </div>
+  <div class="field" style="margin-top:14px;margin-bottom:10px;"><label>Preferred Notification</label>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px;">
+      <div class="no-opt sel" onclick="selNotify(this)"><div class="no-lbl"><span>💬</span> WhatsApp</div><div class="no-radio"></div></div>
+      <div class="no-opt" onclick="selNotify(this)"><div class="no-lbl"><span>📩</span> SMS</div><div class="no-radio"></div></div>
+      <div class="no-opt" onclick="selNotify(this)"><div class="no-lbl"><span>✉️</span> Email</div><div class="no-radio"></div></div>
+    </div>
+  </div>
+  <div class="field"><label>Fitting Notes</label><textarea id="cm-notes" placeholder="Special instructions..."></textarea></div>
+  <div class="modal-actions"><button class="btn" onclick="closeM('customer')">Cancel</button><button class="btn btn-primary" onclick="saveCustomer()">Save Customer</button></div>
+</div>
+</div>
+
+<!-- Order Modal -->
+<div class="modal-overlay" id="modal-order">
+<div class="modal">
+  <div class="modal-title" id="om-title">New Order</div>
+  <div class="modal-sub">Create an order for a customer</div>
+  <input type="hidden" id="om-id">
+  <div class="fr">
+    <div class="field"><label>Customer *</label><select id="om-cust"></select></div>
+    <div class="field"><label>Garment *</label><select id="om-garment"><option value="">Select...</option><option>Sherwani</option><option>Bandhgala Suit</option><option>Kurta Pyjama</option><option>Shirt + Trouser</option><option>Blouse</option><option>Salwar Suit</option><option>Lehenga</option><option>Saree Blouse</option><option>Kurti</option><option>Custom</option></select></div>
+  </div>
+  <div class="fr">
+    <div class="field"><label>Due Date</label><input type="date" id="om-due"></div>
+    <div class="field"><label>Fabric / Material</label><input id="om-fabric" placeholder="e.g. Silk, Cotton"></div>
+  </div>
+  <div class="fr">
+    <div class="field"><label>Amount (₹)</label><input type="number" id="om-amount" placeholder="0" oninput="calcOrdBal()"></div>
+    <div class="field"><label>Advance Paid (₹)</label><input type="number" id="om-advance" placeholder="0" oninput="calcOrdBal()"></div>
+  </div>
+  <div class="field" style="margin-bottom:12px;"><label>Balance Due (₹)</label><input id="om-balance" readonly style="color:var(--mid);"></div>
+  <div class="field" style="margin-bottom:12px;"><label>Initial Stage</label>
+    <div class="ssrow" style="grid-template-columns:repeat(5,1fr);">
+      <div class="ssb sel" onclick="selStage(this)">Received</div><div class="ssb" onclick="selStage(this)">Cutting</div><div class="ssb" onclick="selStage(this)">Stitching</div><div class="ssb" onclick="selStage(this)">Ready</div><div class="ssb" onclick="selStage(this)">Dispensed</div>
+    </div>
+  </div>
+  <div class="field" style="margin-bottom:10px;"><label>Notify Customer When Ready?</label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+      <div class="ssb sel" id="ny-yes" onclick="selNotifyOrd(true)">✓ Yes</div>
+      <div class="ssb" id="ny-no" onclick="selNotifyOrd(false)">✗ Skip</div>
+    </div>
+  </div>
+  <div class="field"><label>Notes</label><textarea id="om-notes" placeholder="Special instructions..."></textarea></div>
+  <div class="modal-actions"><button class="btn" onclick="closeM('order')">Cancel</button><button class="btn btn-primary" onclick="saveOrder()">Save Order</button></div>
+</div>
+</div>
+
+<!-- Stage Modal -->
+<div class="modal-overlay" id="modal-stage">
+<div class="modal" style="width:400px;">
+  <div class="modal-title">Update Stage</div>
+  <div class="modal-sub" id="stage-sub"></div>
+  <input type="hidden" id="stage-id">
+  <div class="ssrow" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px;">
+    <div class="ssb" onclick="selStageUp(this)">Received</div><div class="ssb" onclick="selStageUp(this)">Cutting</div><div class="ssb" onclick="selStageUp(this)">Stitching</div><div class="ssb" onclick="selStageUp(this)">Ready</div><div class="ssb" onclick="selStageUp(this)">Dispensed</div>
+  </div>
+  <div style="padding:10px 14px;background:var(--off-white);border:1px solid var(--border);font-size:12px;color:var(--mid);">Setting to <strong>Ready</strong> auto-notifies customer. <strong>Dispensed</strong> = handed over to customer.</div>
+  <div class="modal-actions"><button class="btn" onclick="closeM('stage')">Cancel</button><button class="btn btn-primary" onclick="saveStageUp()">Update Stage</button></div>
+</div>
+</div>
+
+<!-- Invoice Modal -->
+<div class="modal-overlay" id="modal-invoice">
+<div class="modal" style="width:640px;">
+  <div class="modal-title">Generate Invoice</div>
+  <div class="modal-sub">Create a proper bill for a customer</div>
+  <input type="hidden" id="iv-id">
+  <div class="fr">
+    <div class="field"><label>Customer *</label><select id="iv-cust" onchange="loadCustOrders()"></select></div>
+    <div class="field"><label>Order (optional)</label><select id="iv-order" onchange="fillFromOrder()"></select></div>
+  </div>
+  <div class="fr">
+    <div class="field"><label>Bill Date *</label><input type="date" id="iv-date"></div>
+    <div class="field"><label>Garment / Particulars *</label><input id="iv-garment" placeholder="e.g. Bridal Lehenga"></div>
+  </div>
+  <div style="margin-bottom:12px;">
+    <div style="font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--mid);margin-bottom:8px;">Particulars</div>
+    <div style="display:grid;grid-template-columns:1fr 80px 90px 90px;gap:8px;margin-bottom:6px;font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--light);padding:0 4px;">
+      <div>Particular</div><div style="text-align:center;">Qty</div><div style="text-align:center;">Rate (₹)</div><div style="text-align:center;">Amount (₹)</div>
+    </div>
+    <div id="iv-rows"></div>
+    <button type="button" onclick="addIvRow()" style="width:100%;padding:8px;border:1px dashed var(--border);background:none;font-family:var(--font-b);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);cursor:pointer;margin-top:4px;" onmouseover="this.style.borderColor='var(--charcoal)';this.style.color='var(--charcoal)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--mid)'">+ Add Row</button>
+  </div>
+  <div style="border-top:1px solid var(--border);padding-top:12px;">
+    <div class="fr"><div class="field"><label>Subtotal (₹)</label><input id="iv-subtotal" readonly style="color:var(--mid);font-family:var(--font-d);font-size:15px;"></div><div class="field"><label>Discount (%)</label><input type="number" id="iv-disc" placeholder="0" min="0" max="100" oninput="calcIvTotal()"></div></div>
+    <div class="fr"><div class="field"><label>Discount Amount (₹)</label><input id="iv-discamt" readonly style="color:var(--red);font-family:var(--font-d);font-size:15px;"></div><div class="field"><label>Total After Discount (₹)</label><input id="iv-total" readonly style="font-family:var(--font-d);font-size:15px;font-weight:500;"></div></div>
+    <div class="fr"><div class="field"><label>Advance Received (₹)</label><input type="number" id="iv-advance" placeholder="0" oninput="calcIvTotal()"></div><div class="field"><label>Due Amount (₹)</label><input id="iv-due" readonly style="color:var(--red);font-family:var(--font-d);font-size:16px;font-weight:500;"></div></div>
+    <div class="field"><label>Remarks</label><input id="iv-remarks" placeholder="e.g. Ready by Saturday..."></div>
+  </div>
+  <div class="modal-actions"><button class="btn" onclick="closeM('invoice')">Cancel</button><button class="btn btn-primary" onclick="saveInvoice()">Generate Invoice</button></div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="loading-overlay" id="loader">Loading…</div>
+
+<script>
+// ══════════════════════════════════════════
+//  CONFIG — SET YOUR BACKEND URL HERE
+// ══════════════════════════════════════════
+const API_URL = 'https://tailorx-backend.onrender.com'; // ← change this after deploying backend
+
+// ══════════════════════════════════════════
+//  API HELPER
+// ══════════════════════════════════════════
+let TOKEN = localStorage.getItem('tx_token') || '';
+
+async function api(method, path, body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(TOKEN ? { Authorization: 'Bearer ' + TOKEN } : {}) },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API_URL + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'API error ' + res.status);
+  return data;
+}
+
+// ══════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════
+function switchAuthTab(tab) {
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+  document.getElementById('form-login').style.display = tab === 'login' ? 'flex' : 'none';
+  document.getElementById('form-register').style.display = tab === 'register' ? 'flex' : 'none';
+}
+
+async function doLogin() {
+  const email = document.getElementById('li-email').value.trim();
+  const password = document.getElementById('li-pass').value;
+  const err = document.getElementById('li-err');
+  err.classList.remove('show');
+  if (!email || !password) { err.textContent = 'Email and password required'; err.classList.add('show'); return; }
+  try {
+    loading(true);
+    const data = await api('POST', '/api/auth/login', { email, password });
+    TOKEN = data.token;
+    localStorage.setItem('tx_token', TOKEN);
+    localStorage.setItem('tx_boutique', JSON.stringify(data.boutique));
+    initApp(data.boutique);
+  } catch (e) {
+    err.textContent = e.message; err.classList.add('show');
+  } finally { loading(false); }
+}
+
+async function doRegister() {
+  const name = document.getElementById('rg-name').value.trim();
+  const email = document.getElementById('rg-email').value.trim();
+  const password = document.getElementById('rg-pass').value;
+  const err = document.getElementById('rg-err');
+  err.classList.remove('show');
+  if (!name || !email || !password) { err.textContent = 'Name, email and password required'; err.classList.add('show'); return; }
+  if (password.length < 8) { err.textContent = 'Password must be at least 8 characters'; err.classList.add('show'); return; }
+  try {
+    loading(true);
+    const data = await api('POST', '/api/auth/register', {
+      name, ownerName: document.getElementById('rg-owner').value,
+      email, password,
+      phone: document.getElementById('rg-phone').value,
+      city: document.getElementById('rg-city').value || 'Surat',
+      address: document.getElementById('rg-addr').value,
+    });
+    TOKEN = data.token;
+    localStorage.setItem('tx_token', TOKEN);
+    localStorage.setItem('tx_boutique', JSON.stringify(data.boutique));
+    initApp(data.boutique);
+  } catch (e) {
+    err.textContent = e.message; err.classList.add('show');
+  } finally { loading(false); }
+}
+
+function doLogout() {
+  TOKEN = '';
+  localStorage.removeItem('tx_token');
+  localStorage.removeItem('tx_boutique');
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('main-app').style.display = 'none';
+}
+
+function initApp(boutique) {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'flex';
+  document.getElementById('s-name').textContent = boutique.name || 'Boutique';
+  document.getElementById('s-av').textContent = (boutique.name || 'B')[0].toUpperCase();
+  P('dashboard');
+}
+
+// ══════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════
+const STAGE_CLASS = {received:'sp-received',cutting:'sp-cutting',stitching:'sp-stitching',ready:'sp-ready',dispensed:'sp-dispensed'};
+const STAGE_LBL   = {received:'Received',cutting:'Cutting',stitching:'Stitching',ready:'Ready',dispensed:'Dispensed'};
+const STAGE_DOT   = {received:'var(--blue)',cutting:'var(--gold)',stitching:'var(--purple)',ready:'var(--green)',dispensed:'var(--teal)'};
+const CH_COLOR    = {whatsapp:'var(--green)',sms:'var(--blue)',email:'var(--gold)'};
+const CH_ICON     = {whatsapp:'💬',sms:'📩',email:'✉️'};
+
+const ini = n => (n||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+const fmtD = d => { if(!d) return '—'; try { return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); } catch { return d; } };
+const fmtA = n => '₹' + Number(n||0).toLocaleString('en-IN');
+const billNo = id => 'BILL-' + String(id).padStart(4,'0');
+
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (type ? ' '+type : '');
+  clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function loading(show) { document.getElementById('loader').classList.toggle('show', show); }
+
+// ══════════════════════════════════════════
+//  PAGE ROUTING
+// ══════════════════════════════════════════
+const PAGES = ['dashboard','orders','customers','profile','measurements','invoices','bill','notifications','settings'];
+
+function P(name) {
+  PAGES.forEach(p => { document.getElementById('page-'+p)?.classList.remove('active'); document.getElementById('nav-'+p)?.classList.remove('active'); });
+  document.getElementById('page-'+name)?.classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+  setTB(name);
+  if(name==='dashboard') renderDash();
+  else if(name==='orders') renderOrders();
+  else if(name==='customers') renderCustomers();
+  else if(name==='measurements') renderMeasure('all');
+  else if(name==='invoices') renderInvoices('all');
+  else if(name==='notifications') { renderNotifs('all'); popNotifRecip(); }
+  else if(name==='settings') renderSets('boutique');
+}
+
+const TB = {
+  dashboard:    {t:'Dashboard',       r:`<button class="btn btn-primary" onclick="P('orders');setTimeout(openOrderModal,150)">+ New Order</button>`},
+  orders:       {t:'Orders',          r:`<input class="search-box" placeholder="⌕ Search orders…" oninput="srchOrders(this.value)"><button class="btn btn-primary" onclick="openOrderModal()">+ New Order</button>`},
+  customers:    {t:'Customers',       r:`<input class="search-box" placeholder="⌕ Search customers…" oninput="srchCust(this.value)"><button class="btn btn-primary" onclick="openCustomerModal()">+ Add Customer</button>`},
+  profile:      {t:'Customer Profile',r:''},
+  measurements: {t:'Measurements',    r:`<input class="search-box" placeholder="⌕ Search…" oninput="srchMeasure(this.value)">`},
+  invoices:     {t:'Invoices',        r:`<input class="search-box" placeholder="⌕ Search invoices…" oninput="srchInv(this.value)"><button class="btn btn-primary" onclick="openInvoiceModal()">+ New Invoice</button>`},
+  bill:         {t:'Bill Preview',    r:''},
+  notifications:{t:'Notifications',   r:''},
+  settings:     {t:'Settings',        r:`<button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>`},
+};
+
+function setTB(name) {
+  const c = TB[name] || {t:name, r:''};
+  document.getElementById('tb-left').innerHTML = `<div class="tb-title">${c.t}</div>`;
+  const logoutBtn = `<button class="btn btn-sm" onclick="doLogout()" style="margin-left:8px;">Logout</button>`;
+  document.getElementById('tb-right').innerHTML = c.r + logoutBtn;
+}
+
+async function badges() {
+  try {
+    const data = await api('GET','/api/dashboard');
+    document.getElementById('badge-orders').textContent = data.orders?.active || 0;
+    document.getElementById('badge-notif').textContent = data.unreadNotifications || 0;
+  } catch {}
+}
+
+// ══════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════
+async function renderDash() {
+  try {
+    loading(true);
+    const [dash, orders, notifs] = await Promise.all([
+      api('GET','/api/dashboard'),
+      api('GET','/api/orders'),
+      api('GET','/api/notifications'),
+    ]);
+    document.getElementById('badge-orders').textContent = dash.orders?.active || 0;
+    document.getElementById('badge-notif').textContent = dash.unreadNotifications || 0;
+
+    document.getElementById('d-stats').innerHTML = `
+      <div class="stat-card gold"><div class="sl">Active Orders</div><div class="sv">${dash.orders?.active||0}</div><div class="sd">${dash.orders?.total||0} total</div></div>
+      <div class="stat-card green"><div class="sl">Ready for Pickup</div><div class="sv">${dash.orders?.stages?.ready||0}</div><div class="sd">Awaiting collection</div></div>
+      <div class="stat-card blue"><div class="sl">Customers</div><div class="sv">${dash.customers||0}</div><div class="sd">Registered</div></div>
+      <div class="stat-card red"><div class="sl">Pending Payment</div><div class="sv sm">${fmtA(dash.invoices?.pendingAmt||0)}</div><div class="sd">${dash.invoices?.pendingCount||0} invoices</div></div>`;
+
+    const rec = orders.slice(0,5);
+    document.getElementById('d-orders').innerHTML = rec.length ? rec.map(o=>`
+      <tr class="clickable" onclick="P('orders')">
+        <td><div style="font-weight:500;">${o.customer_name}</div></td>
+        <td><span class="sp ${STAGE_CLASS[o.stage]||'sp-received'}"><span class="sp-dot"></span>${STAGE_LBL[o.stage]||o.stage}</span></td>
+        <td style="font-size:12px;color:var(--mid);">${fmtD(o.due_date)}</td>
+        <td style="font-family:var(--font-d);font-size:15px;">${fmtA(o.amount)}</td>
+      </tr>`).join('') : `<tr class="empty-row"><td colspan="4">No orders yet</td></tr>`;
+
+    const sc = dash.orders?.stages || {};
+    const tot = dash.orders?.total || 1;
+    const pc = {received:'var(--blue)',cutting:'var(--gold)',stitching:'var(--purple)',ready:'var(--green)',dispensed:'var(--teal)'};
+    document.getElementById('d-pipeline').innerHTML = ['received','cutting','stitching','ready','dispensed'].map(s=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border);cursor:pointer;" onclick="filterOrders('${s}',null);P('orders')">
+        <div style="font-family:var(--font-d);font-size:22px;font-weight:300;width:30px;text-align:right;">${sc[s]||0}</div>
+        <div style="flex:1;font-size:12px;font-weight:500;">${STAGE_LBL[s]}</div>
+        <div style="width:46px;height:3px;background:var(--border);"><div style="height:100%;background:${pc[s]};width:${Math.round((sc[s]||0)/tot*100)}%;"></div></div>
+      </div>`).join('');
+
+    const due = orders.filter(o=>o.due_date&&o.stage!=='dispensed').sort((a,b)=>new Date(a.due_date)-new Date(b.due_date)).slice(0,3);
+    document.getElementById('d-due').innerHTML = due.length ? due.map(o=>{
+      const d = new Date(o.due_date);
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);">
+        <div style="width:34px;height:34px;background:var(--off-white);border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">
+          <div style="font-family:var(--font-d);font-size:14px;font-weight:300;line-height:1;">${d.getDate()}</div>
+          <div style="font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);">${d.toLocaleDateString('en',{month:'short'})}</div>
+        </div>
+        <div><div style="font-size:12px;font-weight:500;">${o.customer_name}</div><div style="font-size:11px;color:var(--mid);">${o.garment}</div></div>
+      </div>`}).join('') : `<div style="padding:16px;text-align:center;font-size:12px;color:var(--light);">No upcoming due dates</div>`;
+
+    document.getElementById('d-alerts').innerHTML = notifs.slice(0,3).map(n=>`
+      <div style="display:flex;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);">
+        <div style="width:7px;height:7px;border-radius:50%;background:${CH_COLOR[n.type]||'var(--mid)'};flex-shrink:0;margin-top:4px;${n.is_read?'opacity:0.4':''}"></div>
+        <div><div style="font-size:12px;font-weight:${n.is_read?400:500};">${n.title}</div><div style="font-size:10px;color:var(--light);margin-top:2px;">${fmtD(n.created_at)}</div></div>
+      </div>`).join('') || `<div style="padding:16px;text-align:center;font-size:12px;color:var(--light);">No alerts yet</div>`;
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+// ══════════════════════════════════════════
+//  ORDERS
+// ══════════════════════════════════════════
+let ordF='all', ordS='';
+async function renderOrders() {
+  try {
+    loading(true);
+    const orders = await api('GET', `/api/orders?stage=${ordF}&search=${ordS}`);
+    document.getElementById('order-count').textContent = orders.length + ' orders';
+    const tb = document.getElementById('orders-tbody');
+    if(!orders.length) { tb.innerHTML = `<tr class="empty-row"><td colspan="8">No orders found</td></tr>`; return; }
+    tb.innerHTML = orders.map(o=>`
+      <tr class="clickable">
+        <td style="font-size:11px;color:var(--light);font-family:var(--font-d);">#${o.id}</td>
+        <td><div style="font-weight:500;">${o.customer_name}</div><div style="font-size:11px;color:var(--mid);">${o.garment}</div></td>
+        <td style="font-size:12px;color:var(--mid);">${o.fabric||'—'}</td>
+        <td><span class="sp ${STAGE_CLASS[o.stage]||'sp-received'}"><span class="sp-dot"></span>${STAGE_LBL[o.stage]||o.stage}</span></td>
+        <td style="font-size:12px;color:var(--mid);">${fmtD(o.due_date)}</td>
+        <td style="font-family:var(--font-d);font-size:15px;">${fmtA(o.amount)}</td>
+        <td style="font-family:var(--font-d);font-size:15px;color:${o.balance>0?'var(--red)':'var(--green)'};">${o.balance>0?fmtA(o.balance):'Paid ✓'}</td>
+        <td><div style="display:flex;gap:5px;">
+          <button class="btn btn-sm btn-primary" onclick="openStageModal(${o.id},'${o.stage}','${o.customer_name}','${o.garment}')">Stage</button>
+          <button class="btn btn-sm btn-outline" onclick="editOrder(${o.id})">Edit</button>
+        </div></td>
+      </tr>`).join('');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+function filterOrders(f,el) { ordF=f; if(el){document.querySelectorAll('#page-orders .ftab').forEach(t=>t.classList.remove('active'));el.classList.add('active');} renderOrders(); }
+function srchOrders(q) { ordS=q; renderOrders(); }
+
+async function openOrderModal(preCustId) {
+  document.getElementById('om-title').textContent='New Order';
+  document.getElementById('om-id').value='';
+  ['om-garment','om-due','om-fabric','om-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('om-amount').value='';
+  document.getElementById('om-advance').value='';
+  document.getElementById('om-balance').value='';
+  document.querySelectorAll('#modal-order .ssb').forEach((b,i)=>b.classList.toggle('sel',i===0));
+  document.getElementById('ny-yes').classList.add('sel'); document.getElementById('ny-no').classList.remove('sel');
+  try { const custs = await api('GET','/api/customers'); document.getElementById('om-cust').innerHTML = custs.length ? custs.map(c=>`<option value="${c.id}" ${c.id==preCustId?'selected':''}>${c.name}</option>`).join('') : `<option value="">No customers yet</option>`; } catch {}
+  openM('order');
+}
+
+async function editOrder(id) {
+  try {
+    loading(true);
+    const o = await api('GET',`/api/orders/${id}`);
+    document.getElementById('om-title').textContent='Edit Order';
+    document.getElementById('om-id').value=o.id;
+    const custs = await api('GET','/api/customers');
+    document.getElementById('om-cust').innerHTML = custs.map(c=>`<option value="${c.id}" ${c.id==o.customer_id?'selected':''}>${c.name}</option>`).join('');
+    document.getElementById('om-garment').value=o.garment||'';
+    document.getElementById('om-due').value=o.due_date?o.due_date.split('T')[0]:'';
+    document.getElementById('om-fabric').value=o.fabric||'';
+    document.getElementById('om-amount').value=o.amount||'';
+    document.getElementById('om-advance').value=o.advance||'';
+    document.getElementById('om-balance').value=o.balance||'';
+    document.getElementById('om-notes').value=o.notes||'';
+    document.querySelectorAll('#modal-order .ssrow .ssb').forEach(b=>b.classList.toggle('sel',b.textContent.toLowerCase()===o.stage));
+    openM('order');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+function calcOrdBal() { const a=parseFloat(document.getElementById('om-amount').value)||0; const adv=parseFloat(document.getElementById('om-advance').value)||0; document.getElementById('om-balance').value=fmtA(Math.max(0,a-adv)); }
+function selStage(el) { document.querySelectorAll('#modal-order .ssrow .ssb').forEach(b=>b.classList.remove('sel')); el.classList.add('sel'); }
+function selNotifyOrd(y) { document.getElementById('ny-yes').classList.toggle('sel',y); document.getElementById('ny-no').classList.toggle('sel',!y); }
+
+async function saveOrder() {
+  const custId = document.getElementById('om-cust').value;
+  const garment = document.getElementById('om-garment').value.trim();
+  if(!custId||!garment) { toast('Select customer and garment','red'); return; }
+  const custs = await api('GET','/api/customers');
+  const cust = custs.find(c=>c.id==custId);
+  const stage = document.querySelector('#modal-order .ssrow .ssb.sel')?.textContent.toLowerCase()||'received';
+  const notify = document.getElementById('ny-yes').classList.contains('sel');
+  const amt = parseFloat(document.getElementById('om-amount').value)||0;
+  const adv = parseFloat(document.getElementById('om-advance').value)||0;
+  const body = { customer_id:Number(custId), customer_name:cust?.name||'', garment, fabric:document.getElementById('om-fabric').value, due_date:document.getElementById('om-due').value||null, amount:amt, advance:adv, stage, notify, notes:document.getElementById('om-notes').value };
+  try {
+    loading(true);
+    const editId = document.getElementById('om-id').value;
+    if(editId) await api('PUT',`/api/orders/${editId}`, body);
+    else await api('POST','/api/orders', body);
+    closeM('order');
+    toast(`✓ Order ${editId?'updated':'created'} for ${cust?.name}`,'green');
+    renderOrders(); badges();
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+function openStageModal(id, currentStage, custName, garment) {
+  document.getElementById('stage-id').value = id;
+  document.getElementById('stage-sub').textContent = `${custName} — ${garment}`;
+  document.querySelectorAll('#modal-stage .ssb').forEach(b=>b.classList.toggle('sel',b.textContent.toLowerCase()===currentStage));
+  openM('stage');
+}
+function selStageUp(el) { document.querySelectorAll('#modal-stage .ssb').forEach(b=>b.classList.remove('sel')); el.classList.add('sel'); }
+async function saveStageUp() {
+  const id = document.getElementById('stage-id').value;
+  const stage = document.querySelector('#modal-stage .ssb.sel')?.textContent.toLowerCase();
+  if(!stage) return;
+  try {
+    loading(true);
+    await api('PATCH',`/api/orders/${id}/stage`, { stage });
+    closeM('stage');
+    toast(`✓ Stage updated to ${STAGE_LBL[stage]}`,'green');
+    renderOrders(); badges();
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+// ══════════════════════════════════════════
+//  CUSTOMERS
+// ══════════════════════════════════════════
+let cF='all', cS='';
+async function renderCustomers() {
+  try {
+    loading(true);
+    const custs = await api('GET',`/api/customers?gender=${cF==='all'?'':cF}&search=${cS}`);
+    document.getElementById('cust-count').textContent = custs.length + ' customers';
+    const grid = document.getElementById('cust-grid');
+    if(!custs.length) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px;font-family:var(--font-d);font-size:18px;color:var(--light);font-style:italic;">No customers yet — add your first customer</div>`; return; }
+    grid.innerHTML = custs.map(c=>`
+      <div class="cc ${c.gender}" onclick="openProfile(${c.id})">
+        <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;">
+          <div style="width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:16px;background:${c.gender==='female'?'rgba(184,151,90,0.12)':'rgba(74,110,140,0.12)'};color:${c.gender==='female'?'var(--gold)':'var(--blue)'};flex-shrink:0;">${ini(c.name)}</div>
+          <div>
+            <div style="font-family:var(--font-d);font-size:17px;">${c.name}</div>
+            <div style="font-size:11px;color:var(--mid);">${c.phone||'—'}</div>
+            <div style="font-size:11px;color:var(--light);">📍 ${c.city||'Surat'}</div>
+            <span class="tag ${c.gender==='female'?'tag-gold':'tag-blue'}" style="margin-top:5px;">${c.gender==='female'?'♀ Female':'♂ Male'}</span>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:11px;color:var(--mid);">Notify: ${c.notify||'WhatsApp'}</span>
+          <span style="font-size:11px;color:var(--light);">📍 ${c.city||'Surat'}</span>
+        </div>
+      </div>`).join('');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+function filterCustomers(f,el) { cF=f; document.querySelectorAll('#page-customers .ftab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderCustomers(); }
+function srchCust(q) { cS=q; renderCustomers(); }
+
+async function openProfile(id) {
+  try {
+    loading(true);
+    const [c, orders] = await Promise.all([api('GET',`/api/customers/${id}`), api('GET',`/api/orders?search=`)]);
+    const custOrders = orders.filter(o=>o.customer_id===id);
+    const top = c.measurements_top || {};
+    const bot = c.measurements_bottom || {};
+    const tGrid = Object.keys(top).length ? Object.entries(top).map(([k,v])=>`<div class="mdf"><div class="mdf-v">${v||'—'}</div><div class="mdf-l">${k}</div></div>`).join('') : `<div style="color:var(--light);font-style:italic;font-family:var(--font-d);">Not recorded</div>`;
+    const bGrid = Object.keys(bot).length ? Object.entries(bot).map(([k,v])=>`<div class="mdf"><div class="mdf-v">${v||'—'}</div><div class="mdf-l">${k}</div></div>`).join('') : `<div style="color:var(--light);font-style:italic;font-family:var(--font-d);">Not recorded</div>`;
+    const oRows = custOrders.length ? custOrders.map(o=>`
+      <tr class="clickable" onclick="P('orders')">
+        <td style="font-family:var(--font-d);font-size:13px;color:var(--light);">#${o.id}</td>
+        <td><div style="font-weight:500;">${o.garment}</div><div style="font-size:11px;color:var(--mid);">${fmtD(o.due_date)}</div></td>
+        <td><span class="sp ${STAGE_CLASS[o.stage]||'sp-received'}"><span class="sp-dot"></span>${STAGE_LBL[o.stage]||o.stage}</span></td>
+        <td style="font-family:var(--font-d);font-size:15px;">${fmtA(o.amount)}</td>
+      </tr>`).join('') : `<tr class="empty-row"><td colspan="4">No orders yet</td></tr>`;
+
+    document.getElementById('profile-inner').innerHTML = `
+      <div>
+        <div class="ph-card">
+          <div class="ph-top ${c.gender}">
+            <div class="ph-av ${c.gender}">${ini(c.name)}</div>
+            <div class="ph-name">${c.name}</div>
+            <div class="ph-sub">${c.gender==='female'?'♀ Female':'♂ Male'} · ${c.city}</div>
+          </div>
+          <div style="padding:14px 18px;display:flex;flex-direction:column;gap:9px;border-bottom:1px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c3);">📞 ${c.phone||'—'}</div>
+            ${c.email?`<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c3);">✉️ ${c.email}</div>`:''}
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c3);">📍 ${c.city||'Surat'}, Gujarat</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:var(--c3);">${c.notify==='WhatsApp'?'💬':c.notify==='SMS'?'📩':'✉️'} Notify via ${c.notify||'WhatsApp'}</div>
+          </div>
+          <div class="ph-stats">
+            <div class="phs"><div class="phs-n">${custOrders.length}</div><div class="phs-l">Orders</div></div>
+            <div class="phs"><div class="phs-n" style="font-size:16px;">${fmtA(custOrders.reduce((s,o)=>s+Number(o.amount||0),0))}</div><div class="phs-l">Spent</div></div>
+            <div class="phs"><div class="phs-n">${custOrders.filter(o=>o.stage==='dispensed').length}</div><div class="phs-l">Dispensed</div></div>
+          </div>
+          ${c.notes?`<div style="padding:12px 18px;border-top:1px solid var(--border);font-family:var(--font-d);font-size:13px;color:var(--c3);font-style:italic;line-height:1.7;">${c.notes}</div>`:''}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Body Measurements</div><span style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);cursor:pointer;" onclick="editCustomer(${id})">Edit →</span></div>
+          <div style="padding:16px 20px;">
+            <div style="font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:8px;">Top<span style="flex:1;height:1px;background:var(--border);display:block;"></span></div>
+            <div class="md-grid" style="margin-bottom:14px;">${tGrid}</div>
+            <div style="font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;display:flex;align-items:center;gap:8px;">Bottom<span style="flex:1;height:1px;background:var(--border);display:block;"></span></div>
+            <div class="md-grid">${bGrid}</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><div class="panel-title">Order History</div></div>
+          <table class="tbl"><thead><tr><th>#</th><th>Garment</th><th>Stage</th><th>Amount</th></tr></thead><tbody>${oRows}</tbody></table>
+        </div>
+      </div>`;
+
+    document.getElementById('prof-new-ord').onclick = () => { P('orders'); setTimeout(()=>openOrderModal(id),150); };
+    document.getElementById('prof-edit').onclick = () => editCustomer(id);
+    P('profile');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+function openCustomerModal() {
+  document.getElementById('cm-title').textContent='Add Customer';
+  document.getElementById('cm-id').value='';
+  ['cm-name','cm-phone','cm-email','cm-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cm-city').value='Surat';
+  document.getElementById('g-hint').style.display='block';
+  document.getElementById('ms-male').classList.remove('vis');
+  document.getElementById('ms-female').classList.remove('vis');
+  document.getElementById('gm').classList.remove('active');
+  document.getElementById('gf').classList.remove('active');
+  document.querySelectorAll('#modal-customer .no-opt').forEach((o,i)=>o.classList.toggle('sel',i===0));
+  document.querySelectorAll('#modal-customer .mf input').forEach(i=>i.value='');
+  openM('customer');
+}
+
+function selG(g) { document.getElementById('g-hint').style.display='none'; document.getElementById('ms-male').classList.toggle('vis',g==='male'); document.getElementById('ms-female').classList.toggle('vis',g==='female'); document.getElementById('gm').classList.toggle('active',g==='male'); document.getElementById('gf').classList.toggle('active',g==='female'); }
+function selNotify(el) { document.querySelectorAll('#modal-customer .no-opt').forEach(o=>o.classList.remove('sel')); el.classList.add('sel'); }
+
+async function editCustomer(id) {
+  try {
+    loading(true);
+    const c = await api('GET',`/api/customers/${id}`);
+    document.getElementById('cm-title').textContent='Edit Customer';
+    document.getElementById('cm-id').value=c.id;
+    document.getElementById('cm-name').value=c.name||'';
+    document.getElementById('cm-phone').value=c.phone||'';
+    document.getElementById('cm-email').value=c.email||'';
+    document.getElementById('cm-city').value=c.city||'Surat';
+    document.getElementById('cm-notes').value=c.notes||'';
+    selG(c.gender);
+    const mMap={Chest:'m-chest',Shoulder:'m-shldr',Neck:'m-neck',Sleeve:'m-slv','Shirt Length':'m-shirt','Back Width':'m-back',Waist:'m-waist',Hip:'m-hip',Inseam:'m-inseam','Trouser Waist':'m-trwaist',Thigh:'m-thigh','Pant Length':'m-pantlen'};
+    const fMap={Length:'f-len',Front:'f-front','Chest 1':'f-c1','Chest 2':'f-c2',Shoulder:'f-shldr',Sleeve:'f-slv','Sleeve Bottom':'f-slvbot','Blouse Length':'f-blolen','Back Length':'f-backlen','Front Length':'f-frontlen','Neck Depth':'f-neckd',Armhole:'f-arm',Waist:'f-waist',Hip:'f-hip','Skirt Length':'f-skirt',Lehenga:'f-leh','Salwar Length':'f-salwar',Thigh:'f-thigh'};
+    const map=c.gender==='male'?mMap:fMap;
+    const allM={...(c.measurements_top||{}),...(c.measurements_bottom||{})};
+    Object.entries(allM).forEach(([k,v])=>{ if(map[k]) document.getElementById(map[k]).value=v; });
+    const ni={WhatsApp:0,SMS:1,Email:2};
+    document.querySelectorAll('#modal-customer .no-opt').forEach((o,i)=>o.classList.toggle('sel',i===(ni[c.notify]||0)));
+    openM('customer');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+async function saveCustomer() {
+  const name = document.getElementById('cm-name').value.trim();
+  const phone = document.getElementById('cm-phone').value.trim();
+  if(!name||!phone) { toast('Name and phone required','red'); return; }
+  const gender = document.getElementById('gm').classList.contains('active')?'male':document.getElementById('gf').classList.contains('active')?'female':'';
+  const notifyEl = document.querySelector('#modal-customer .no-opt.sel .no-lbl');
+  const notify = notifyEl ? notifyEl.textContent.trim() : 'WhatsApp';
+  let top={}, bottom={};
+  if(gender==='male'){
+    top={Chest:document.getElementById('m-chest').value,Shoulder:document.getElementById('m-shldr').value,Neck:document.getElementById('m-neck').value,Sleeve:document.getElementById('m-slv').value,'Shirt Length':document.getElementById('m-shirt').value,'Back Width':document.getElementById('m-back').value};
+    bottom={Waist:document.getElementById('m-waist').value,Hip:document.getElementById('m-hip').value,Inseam:document.getElementById('m-inseam').value,'Trouser Waist':document.getElementById('m-trwaist').value,Thigh:document.getElementById('m-thigh').value,'Pant Length':document.getElementById('m-pantlen').value};
+  } else if(gender==='female'){
+    top={Length:document.getElementById('f-len').value,Front:document.getElementById('f-front').value,'Chest 1':document.getElementById('f-c1').value,'Chest 2':document.getElementById('f-c2').value,Shoulder:document.getElementById('f-shldr').value,Sleeve:document.getElementById('f-slv').value,'Sleeve Bottom':document.getElementById('f-slvbot').value,'Blouse Length':document.getElementById('f-blolen').value,'Back Length':document.getElementById('f-backlen').value,'Front Length':document.getElementById('f-frontlen').value,'Neck Depth':document.getElementById('f-neckd').value,Armhole:document.getElementById('f-arm').value};
+    bottom={Waist:document.getElementById('f-waist').value,Hip:document.getElementById('f-hip').value,'Skirt Length':document.getElementById('f-skirt').value,Lehenga:document.getElementById('f-leh').value,'Salwar Length':document.getElementById('f-salwar').value,Thigh:document.getElementById('f-thigh').value};
+  }
+  const body = {name,phone,email:document.getElementById('cm-email').value,city:document.getElementById('cm-city').value||'Surat',gender,notify,measurements_top:top,measurements_bottom:bottom,notes:document.getElementById('cm-notes').value};
+  try {
+    loading(true);
+    const editId = document.getElementById('cm-id').value;
+    if(editId) await api('PUT',`/api/customers/${editId}`,body);
+    else await api('POST','/api/customers',body);
+    closeM('customer');
+    toast(`✓ Customer ${editId?'updated':'added'}: ${name}`,'green');
+    renderCustomers();
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+// ══════════════════════════════════════════
+//  MEASUREMENTS PAGE
+// ══════════════════════════════════════════
+let mF='all', mS='';
+async function renderMeasure(f) {
+  mF=f;
+  try {
+    loading(true);
+    const custs = await api('GET',`/api/customers?gender=${mF==='all'?'':mF}&search=${mS}`);
+    const grid = document.getElementById('measure-grid');
+    if(!custs.length) { grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:40px;font-family:var(--font-d);font-size:18px;color:var(--light);font-style:italic;">No measurements found</div>`; return; }
+    grid.innerHTML = custs.map(c=>{
+      const top = c.measurements_top||{};
+      const bot = c.measurements_bottom||{};
+      const tE = Object.entries(top).slice(0,6);
+      const bE = Object.entries(bot).slice(0,4);
+      return `<div style="background:var(--white);border:1px solid var(--border);cursor:pointer;position:relative;overflow:hidden;transition:all 0.18s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,0.07)'" onmouseout="this.style.transform='';this.style.boxShadow=''" onclick="openProfile(${c.id})">
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${c.gender==='female'?'var(--gold)':'var(--blue)'}"></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);">
+          <div style="width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:14px;background:${c.gender==='female'?'rgba(184,151,90,0.12)':'rgba(74,110,140,0.12)'};color:${c.gender==='female'?'var(--gold)':'var(--blue)'};">${ini(c.name)}</div>
+          <div><div style="font-family:var(--font-d);font-size:15px;">${c.name}</div><div style="font-size:11px;color:var(--mid);">${c.gender==='female'?'♀ Female':'♂ Male'} · ${c.city||'Surat'}</div></div>
+        </div>
+        <div style="padding:12px 16px;">
+          <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:8px;">Top<span style="flex:1;height:1px;background:var(--border);"></span></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px;">
+            ${tE.length?tE.map(([k,v])=>`<div style="background:var(--off-white);border:1px solid var(--border);padding:6px;text-align:center;"><div style="font-family:var(--font-d);font-size:15px;font-weight:300;">${v||'—'}</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--mid);margin-top:2px;">${k}</div></div>`).join(''):`<div style="color:var(--light);font-size:12px;grid-column:1/-1;font-style:italic;">Not recorded</div>`}
+          </div>
+          <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:8px;">Bottom<span style="flex:1;height:1px;background:var(--border);"></span></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;">
+            ${bE.length?bE.map(([k,v])=>`<div style="background:var(--off-white);border:1px solid var(--border);padding:6px;text-align:center;"><div style="font-family:var(--font-d);font-size:15px;font-weight:300;">${v||'—'}</div><div style="font-size:9px;text-transform:uppercase;letter-spacing:0.08em;color:var(--mid);margin-top:2px;">${k}</div></div>`).join(''):`<div style="color:var(--light);font-size:12px;grid-column:1/-1;font-style:italic;">Not recorded</div>`}
+          </div>
+        </div>
+        <div style="padding:8px 16px 10px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">
+          <span style="font-size:10px;color:var(--light);">Click for full profile</span>
+          <span style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);cursor:pointer;" onclick="event.stopPropagation();editCustomer(${c.id})">Edit →</span>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+function filterMeasure(f,el) { document.querySelectorAll('#page-measurements .ftab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderMeasure(f); }
+function srchMeasure(q) { mS=q; renderMeasure(mF); }
+
+// ══════════════════════════════════════════
+//  INVOICES
+// ══════════════════════════════════════════
+let ivF='all', ivS='';
+let ivRows = [];
+
+function buildIvRows() {
+  const wrap = document.getElementById('iv-rows');
+  if(!wrap) return;
+  wrap.innerHTML = ivRows.map((r,i)=>`
+    <div style="display:grid;grid-template-columns:1fr 80px 90px 90px;gap:8px;margin-bottom:6px;">
+      <input style="background:var(--off-white);border:1px solid var(--border);padding:8px 10px;font-family:var(--font-b);font-size:12px;color:var(--charcoal);outline:none;width:100%;" value="${r.desc||''}" placeholder="e.g. Stitching charges" oninput="ivRows[${i}].desc=this.value">
+      <input type="number" style="background:var(--off-white);border:1px solid var(--border);padding:8px 10px;font-family:var(--font-b);font-size:12px;color:var(--charcoal);outline:none;text-align:center;width:100%;" value="${r.qty||1}" oninput="ivRows[${i}].qty=parseFloat(this.value)||0;calcIvTotal()">
+      <input type="number" style="background:var(--off-white);border:1px solid var(--border);padding:8px 10px;font-family:var(--font-b);font-size:12px;color:var(--charcoal);outline:none;text-align:center;width:100%;" value="${r.rate||''}" placeholder="0" oninput="ivRows[${i}].rate=parseFloat(this.value)||0;calcIvTotal()">
+      <input type="number" style="background:var(--off-white);border:1px solid var(--border);padding:8px 10px;font-family:var(--font-d);font-size:13px;color:var(--charcoal);outline:none;text-align:center;width:100%;" value="${(r.qty||1)*(r.rate||0)||''}" readonly>
+    </div>`).join('');
+}
+
+function addIvRow() { ivRows.push({desc:'',qty:1,rate:0}); buildIvRows(); }
+
+function calcIvTotal() {
+  ivRows.forEach(r=>{ r.amt=(r.qty||1)*(r.rate||0); });
+  const amtInputs = document.querySelectorAll('#iv-rows input:last-child');
+  amtInputs.forEach((inp,i)=>{ if(ivRows[i]) inp.value = ivRows[i].amt || ''; });
+  const sub = ivRows.reduce((s,r)=>s+r.amt,0);
+  document.getElementById('iv-subtotal').value = sub ? fmtA(sub) : '';
+  const disc = parseFloat(document.getElementById('iv-disc')?.value)||0;
+  const discAmt = sub*disc/100;
+  document.getElementById('iv-discamt').value = discAmt ? fmtA(discAmt) : '';
+  const total = sub - discAmt;
+  document.getElementById('iv-total').value = total ? fmtA(total) : '';
+  const adv = parseFloat(document.getElementById('iv-advance')?.value)||0;
+  const due = Math.max(0,total-adv);
+  document.getElementById('iv-due').value = total > 0 ? (due <= 0 ? 'Paid ✓' : fmtA(due)) : '';
+}
+
+async function openInvoiceModal() {
+  document.getElementById('iv-id').value='';
+  document.getElementById('iv-garment').value='';
+  document.getElementById('iv-remarks').value='';
+  document.getElementById('iv-disc').value='';
+  document.getElementById('iv-advance').value='';
+  ['iv-subtotal','iv-discamt','iv-total','iv-due'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('iv-date').value = new Date().toISOString().split('T')[0];
+  ivRows = [{desc:'Stitching Charges',qty:1,rate:0},{desc:'Fabric',qty:1,rate:0},{desc:'',qty:1,rate:0}];
+  buildIvRows();
+  try {
+    const custs = await api('GET','/api/customers');
+    document.getElementById('iv-cust').innerHTML = custs.length ? custs.map(c=>`<option value="${c.id}">${c.name}</option>`).join('') : `<option value="">No customers</option>`;
+    await loadCustOrders();
+  } catch {}
+  openM('invoice');
+}
+
+async function loadCustOrders() {
+  const custId = Number(document.getElementById('iv-cust').value);
+  try {
+    const orders = await api('GET',`/api/orders`);
+    const co = orders.filter(o=>o.customer_id===custId);
+    document.getElementById('iv-order').innerHTML = `<option value="">-- Select order (optional) --</option>` + co.map(o=>`<option value="${o.id}">${o.garment} (#${o.id})</option>`).join('');
+  } catch {}
+}
+
+async function fillFromOrder() {
+  const ordId = Number(document.getElementById('iv-order').value);
+  if(!ordId) return;
+  try {
+    const o = await api('GET',`/api/orders/${ordId}`);
+    document.getElementById('iv-garment').value = o.garment||'';
+    if(o.amount>0) { ivRows[0]={desc:'Stitching Charges',qty:1,rate:Number(o.amount||0),amt:Number(o.amount||0)}; buildIvRows(); }
+    document.getElementById('iv-advance').value = o.advance||'';
+    calcIvTotal();
+  } catch {}
+}
+
+async function saveInvoice() {
+  const custId = Number(document.getElementById('iv-cust').value);
+  if(!custId) { toast('Select a customer','red'); return; }
+  const garment = document.getElementById('iv-garment').value.trim();
+  if(!garment) { toast('Enter garment / particulars','red'); return; }
+  try {
+    const custs = await api('GET','/api/customers');
+    const cust = custs.find(c=>c.id===custId);
+    const sub = ivRows.reduce((s,r)=>s+(r.qty||1)*(r.rate||0),0);
+    const disc = parseFloat(document.getElementById('iv-disc').value)||0;
+    const discAmt = sub*disc/100;
+    const total = sub-discAmt;
+    const adv = parseFloat(document.getElementById('iv-advance').value)||0;
+    const due = Math.max(0,total-adv);
+    loading(true);
+    const editId = document.getElementById('iv-id').value;
+    const body = {
+      customer_id:custId, customer_name:cust?.name||'', customer_phone:cust?.phone||'',
+      garment, bill_date:document.getElementById('iv-date').value,
+      items:ivRows.filter(r=>r.desc||r.rate>0).map(r=>({desc:r.desc,qty:r.qty||1,rate:r.rate||0,amt:(r.qty||1)*(r.rate||0)})),
+      subtotal:sub, discount_pct:disc, discount_amt:discAmt, total_amount:total, advance:adv, due_amount:due,
+      remarks:document.getElementById('iv-remarks').value,
+    };
+    const inv = editId ? await api('PUT',`/api/invoices/${editId}`,body) : await api('POST','/api/invoices',body);
+    closeM('invoice');
+    toast('✓ Invoice generated for '+cust?.name,'green');
+    renderInvoices();
+    setTimeout(()=>openBillPreview(editId?Number(editId):inv.id), 500);
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+async function renderInvoices(filter) {
+  ivF=filter||ivF;
+  try {
+    loading(true);
+    const all = await api('GET','/api/invoices');
+    const invs = ivF==='all' ? all : all.filter(i=>i.status===ivF);
+    const pendAmt = all.filter(i=>i.status==='pending').reduce((s,i)=>s+Number(i.due_amount||0),0);
+    const paidAmt = all.filter(i=>i.status==='paid').reduce((s,i)=>s+Number(i.total_amount||0),0);
+    document.getElementById('inv-stats').innerHTML = `
+      <div class="stat-card gold"><div class="sl">Total Invoices</div><div class="sv">${all.length}</div><div class="sd">All time</div></div>
+      <div class="stat-card red"><div class="sl">Pending Payment</div><div class="sv sm">${fmtA(pendAmt)}</div><div class="sd">${all.filter(i=>i.status==='pending').length} invoices</div></div>
+      <div class="stat-card green"><div class="sl">Total Collected</div><div class="sv sm">${fmtA(paidAmt)}</div><div class="sd">${all.filter(i=>i.status==='paid').length} paid</div></div>`;
+    const tb = document.getElementById('inv-tbody');
+    if(!invs.length) { tb.innerHTML=`<tr class="empty-row"><td colspan="10">No invoices found</td></tr>`; return; }
+    tb.innerHTML = invs.map(inv=>{
+      const paid = inv.status==='paid';
+      return `<tr class="clickable">
+        <td style="font-family:var(--font-d);font-size:14px;">${billNo(inv.id)}</td>
+        <td><div style="font-weight:500;">${inv.customer_name}</div><div style="font-size:11px;color:var(--mid);">${inv.customer_phone||''}</div></td>
+        <td style="font-size:12px;color:var(--mid);">${inv.garment}</td>
+        <td style="font-size:12px;color:var(--mid);">${fmtD(inv.bill_date)}</td>
+        <td style="font-family:var(--font-d);font-size:15px;">${fmtA(inv.total_amount)}</td>
+        <td style="font-size:12px;color:var(--mid);">${inv.discount_pct>0?inv.discount_pct+'%':'—'}</td>
+        <td style="font-family:var(--font-d);font-size:14px;color:var(--green);">${inv.advance>0?fmtA(inv.advance):'—'}</td>
+        <td style="font-family:var(--font-d);font-size:15px;color:${paid?'var(--mid)':'var(--red)'};">${paid?'Paid ✓':fmtA(inv.due_amount)}</td>
+        <td>${paid?`<span class="tag tag-green"><span class="tag-dot"></span>Paid</span>`:`<span class="tag tag-gold"><span class="tag-dot"></span>Pending</span>`}</td>
+        <td><div style="display:flex;gap:5px;">
+          <button class="btn btn-sm btn-primary" onclick="openBillPreview(${inv.id})">View Bill</button>
+          ${!paid?`<button class="btn btn-sm btn-outline" onclick="markPaid(${inv.id})">Mark Paid</button>`:''}
+        </div></td>
+      </tr>`;
+    }).join('');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+function filterInv(f,el) { document.querySelectorAll('#page-invoices .ftab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderInvoices(f); }
+function srchInv(q) { ivS=q; renderInvoices(); }
+
+async function openBillPreview(invId) {
+  try {
+    loading(true);
+    const inv = await api('GET',`/api/invoices/${invId}`);
+    if(!inv) { toast('Invoice not found','red'); return; }
+    let boutique = {};
+    try { boutique = await api('GET','/api/auth/me'); } catch {}
+
+    const items = (inv.items||[]).filter(i=>i.desc||i.amt>0);
+    const itemRows = items.map(i=>`
+      <tr>
+        <td style="text-align:left;">${i.desc||'—'}</td>
+        <td>${i.qty||1}</td>
+        <td>${fmtA(i.rate||0)}</td>
+        <td>${fmtA(i.amt||(i.qty||1)*(i.rate||0))}</td>
+      </tr>`).join('');
+
+    document.getElementById('bill-inner').innerHTML = `
+      <div style="background:var(--white);border:1px solid var(--border);padding:32px 36px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:20px;border-bottom:2px solid var(--charcoal);margin-bottom:20px;">
+          <div>
+            <div style="font-family:var(--font-d);font-size:28px;font-weight:300;letter-spacing:0.12em;text-transform:uppercase;">${boutique.name||'Riya Boutique'}</div>
+            <div style="font-size:9px;letter-spacing:0.25em;text-transform:uppercase;color:var(--gold);margin-top:2px;">Bespoke Tailoring · ${boutique.city||'Surat'}</div>
+            <div style="font-size:11px;color:var(--mid);margin-top:6px;line-height:1.7;">📍 ${boutique.address||'Surat, Gujarat'}<br>📞 ${boutique.phone||''}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--mid);margin-bottom:4px;">Tax Invoice</div>
+            <div style="font-family:var(--font-d);font-size:22px;font-weight:400;">${billNo(inv.id)}</div>
+            <div style="font-size:11px;color:var(--mid);margin-top:4px;">Date: ${fmtD(inv.bill_date)}</div>
+            <div style="margin-top:8px;display:inline-block;padding:3px 10px;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;border:1px solid ${inv.status==='paid'?'var(--green)':'var(--charcoal)'};color:${inv.status==='paid'?'var(--green)':'var(--charcoal)'};">${inv.status==='paid'?'PAID ✓':'DUE ON DELIVERY'}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;margin-bottom:20px;">
+          <div style="padding:12px 0;padding-right:20px;border-right:1px solid var(--border);">
+            <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--light);margin-bottom:6px;">Bill To</div>
+            <div style="font-size:14px;font-weight:500;">${inv.customer_name}</div>
+            <div style="font-size:12px;color:var(--mid);margin-top:2px;">${inv.customer_phone||''}</div>
+          </div>
+          <div style="padding:12px 0;padding-left:20px;">
+            <div style="font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--light);margin-bottom:6px;">Particulars</div>
+            <div style="font-size:14px;font-weight:500;">${inv.garment}</div>
+            ${inv.remarks?`<div style="font-size:11px;color:var(--mid);margin-top:2px;font-style:italic;">${inv.remarks}</div>`:''}
+          </div>
+        </div>
+        <table class="inv-tbl">
+          <thead><tr><th style="text-align:left;width:45%;">Particulars</th><th style="width:12%;">Qty</th><th style="width:18%;">Rate (₹)</th><th style="width:18%;">Amount (₹)</th></tr></thead>
+          <tbody>${itemRows||`<tr><td style="text-align:left;">${inv.garment}</td><td>1</td><td>${fmtA(inv.total_amount)}</td><td>${fmtA(inv.total_amount)}</td></tr>`}</tbody>
+          <tfoot>
+            <tr><td colspan="3" style="text-align:right;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;">Subtotal</td><td style="font-family:var(--font-d);font-size:15px;">${fmtA(inv.subtotal||inv.total_amount)}</td></tr>
+            ${inv.discount_pct>0?`<tr><td colspan="3" style="text-align:right;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--red);">Discount (${inv.discount_pct}%)</td><td style="font-family:var(--font-d);font-size:15px;color:var(--red);">− ${fmtA(inv.discount_amt)}</td></tr>`:''}
+            ${inv.advance>0?`<tr><td colspan="3" style="text-align:right;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);">Advance Received</td><td style="font-family:var(--font-d);font-size:15px;color:var(--green);">− ${fmtA(inv.advance)}</td></tr>`:''}
+            <tr class="grand"><td colspan="3" style="text-align:right;font-size:12px;letter-spacing:0.15em;text-transform:uppercase;">Balance Due</td><td>${fmtA(inv.due_amount)}</td></tr>
+          </tfoot>
+        </table>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-end;">
+          <div style="font-size:11px;color:var(--mid);font-style:italic;font-family:var(--font-d);">"Thank you for choosing ${boutique.name||'Riya Boutique'}.<br>Please carry this receipt at time of pickup."</div>
+          <div style="font-family:var(--font-d);font-size:13px;font-weight:300;color:var(--light);letter-spacing:0.12em;">TailorX</div>
+        </div>
+      </div>`;
+
+    document.getElementById('bill-send').innerHTML = `
+      <div class="send-opt" onclick="sendBill(this,'WhatsApp','${inv.customer_name}',${inv.id})"><div class="so-icon">💬</div><div class="so-info"><div class="so-title">Send via WhatsApp</div><div class="so-sub">Bill message to ${inv.customer_name}</div></div><div class="so-arrow">→</div></div>
+      <div class="send-opt" onclick="sendBill(this,'SMS','${inv.customer_name}',${inv.id})"><div class="so-icon">📩</div><div class="so-info"><div class="so-title">Send via Text (SMS)</div><div class="so-sub">Bill summary via SMS</div></div><div class="so-arrow">→</div></div>
+      <div class="send-opt" onclick="sendBill(this,'Email','${inv.customer_name}',${inv.id})"><div class="so-icon">✉️</div><div class="so-info"><div class="so-title">Send via Email</div><div class="so-sub">Full invoice to email</div></div><div class="so-arrow">→</div></div>`;
+
+    document.getElementById('bill-paid-wrap').innerHTML = inv.status==='pending' ?
+      `<button class="btn btn-outline" style="width:100%;" onclick="markPaid(${inv.id}).then(()=>P('invoices'))">Mark as Paid ✓</button>` : '';
+
+    P('bill');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+async function sendBill(el, channel, custName, invId) {
+  document.querySelectorAll('.send-opt').forEach(o=>{o.classList.remove('sent');o.querySelector('.so-arrow').textContent='→'});
+  el.classList.add('sent'); el.querySelector('.so-arrow').textContent='✓';
+  try {
+    await api('POST','/api/notifications',{type:channel.toLowerCase()==='whatsapp'?'whatsapp':channel.toLowerCase()==='sms'?'sms':'email',title:`Invoice Sent via ${channel} — ${custName}`,msg:`Bill ${billNo(invId)} sent to ${custName} via ${channel}.`});
+    toast(`✓ Bill sent to ${custName} via ${channel}`,'green');
+    badges();
+  } catch {}
+}
+
+async function markPaid(id) {
+  try { loading(true); await api('PATCH',`/api/invoices/${id}/pay`); toast('✓ Invoice marked as Paid','green'); renderInvoices(); return true; }
+  catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+// ══════════════════════════════════════════
+//  NOTIFICATIONS
+// ══════════════════════════════════════════
+let nF='all';
+async function renderNotifs(f) {
+  nF=f||nF;
+  try {
+    const notifs = await api('GET',`/api/notifications?type=${nF==='all'?'':nF}`);
+    const el = document.getElementById('notif-log');
+    if(!notifs.length) { el.innerHTML=`<div style="padding:24px;text-align:center;font-family:var(--font-d);font-size:16px;color:var(--light);font-style:italic;">No notifications yet</div>`; return; }
+    el.innerHTML = notifs.map(n=>`
+      <div class="ni ${n.is_read?'':'unread'}" onclick="markNR(${n.id})">
+        <div class="ni-dot" style="background:${CH_COLOR[n.type]||'var(--mid)'};${n.is_read?'opacity:0.35':''}"></div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:${n.is_read?400:500};">${n.title}</div>
+          <div style="font-size:12px;color:var(--mid);line-height:1.5;">${n.msg}</div>
+          <div style="font-size:10px;color:var(--light);margin-top:3px;">${fmtD(n.created_at)}</div>
+        </div>
+        <div class="ni-ch">${CH_ICON[n.type]||'📣'} ${n.type}</div>
+      </div>`).join('');
+    badges();
+  } catch(e) { toast(e.message,'red'); }
+}
+function filterNotifs(f,el) { document.querySelectorAll('#page-notifications .ftab').forEach(t=>t.classList.remove('active')); el.classList.add('active'); renderNotifs(f); }
+async function markNR(id) { try { await api('PATCH',`/api/notifications/${id}/read`); renderNotifs(); } catch {} }
+async function markAllRead() { try { await api('PATCH','/api/notifications/read-all'); renderNotifs(); toast('All marked as read',''); } catch(e) { toast(e.message,'red'); } }
+async function popNotifRecip() {
+  try {
+    const custs = await api('GET','/api/customers');
+    document.getElementById('notif-recipient').innerHTML = `<option value="all">All Customers (${custs.length})</option>` + custs.map(c=>`<option value="${c.id}">${c.name} — ${c.phone||''}</option>`).join('');
+  } catch {}
+}
+async function sendNotif() {
+  const msg = document.getElementById('notif-msg').value.trim();
+  if(!msg) { toast('Type a message first','red'); return; }
+  const rec = document.getElementById('notif-recipient');
+  const custName = rec.options[rec.selectedIndex]?.text || 'Customer';
+  const ch = document.querySelector('#page-notifications .ssb.sel')?.textContent?.trim() || '💬 WA';
+  const type = ch.includes('WA')?'whatsapp':ch.includes('SMS')?'sms':'email';
+  try {
+    await api('POST','/api/notifications',{type,title:`Message to ${custName}`,msg});
+    document.getElementById('notif-msg').value='';
+    toast(`✓ ${type==='whatsapp'?'WhatsApp':type==='sms'?'SMS':'Email'} sent`,'green');
+    renderNotifs();
+  } catch(e) { toast(e.message,'red'); }
+}
+function selCh(el) { document.querySelectorAll('#page-notifications .ssb').forEach(b=>b.classList.remove('sel')); el.classList.add('sel'); }
+const TPLS = {ready:'Your order is ready for pickup at Riya Boutique. Please collect at your convenience. Thank you! 🙏',delay:'We wanted to inform you of a slight delay in your order. We will update you as soon as it is ready.',payment:'Friendly reminder: a balance payment is pending for your order. Please settle at pickup. Thank you.',pickup:'Reminder: Your order has been ready for a few days. Please collect at the earliest. — Riya Boutique'};
+function useTpl(t) { document.getElementById('notif-msg').value=TPLS[t]; }
+
+// ══════════════════════════════════════════
+//  SETTINGS
+// ══════════════════════════════════════════
+async function renderSets(sec) {
+  if(sec==='boutique') {
+    let b = {};
+    try { b = await api('GET','/api/auth/me'); } catch {}
+    document.getElementById('settings-panel').innerHTML = `
+      <div class="panel"><div class="panel-head"><div class="panel-title">Boutique Profile</div></div><div style="padding:16px 20px;">
+        <div class="fr"><div class="field"><label>Boutique Name</label><input id="s-bn" value="${b.name||''}"></div><div class="field"><label>Owner Name</label><input id="s-on" value="${b.owner_name||''}"></div></div>
+        <div class="fr"><div class="field"><label>Phone</label><input id="s-ph" value="${b.phone||''}"></div><div class="field"><label>Email</label><input id="s-em" value="${b.email||''}" readonly style="color:var(--mid);"></div></div>
+        <div class="field" style="margin-bottom:12px;"><label>Address</label><input id="s-ad" value="${b.address||''}"></div>
+        <div class="fr"><div class="field"><label>City</label><input id="s-ci" value="${b.city||'Surat'}"></div><div class="field"><label>GSTIN</label><input id="s-gs" value="${b.gstin||''}" placeholder="Optional"></div></div>
+      </div></div>`;
+  } else if(sec==='account') {
+    document.getElementById('settings-panel').innerHTML = `<div class="panel"><div class="panel-head"><div class="panel-title">Account</div></div><div style="padding:16px 20px;">
+      <div class="srow"><div><div class="sr-lbl">Logout from this device</div></div><button class="btn btn-sm" onclick="doLogout()">Logout</button></div>
+      <div class="srow" style="border-bottom:none;"><div><div class="sr-lbl">Session</div><div class="sr-sub">Token saved in browser localStorage</div></div><span style="font-size:11px;color:var(--green);">Active ✓</span></div>
+    </div></div>`;
+  } else if(sec==='notif_s') {
+    document.getElementById('settings-panel').innerHTML = `<div class="panel"><div class="panel-head"><div class="panel-title">Notification Settings</div></div><div style="padding:16px 20px;">
+      <div class="srow"><div><div class="sr-lbl">Order Ready Alert</div><div class="sr-sub">Auto-notify when stage = Ready</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+      <div class="srow" style="border-bottom:none;"><div><div class="sr-lbl">Due Date Reminder</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+    </div></div>`;
+  } else if(sec==='billing') {
+    document.getElementById('settings-panel').innerHTML = `<div class="panel"><div class="panel-head"><div class="panel-title">Billing & Plan</div></div><div style="padding:16px 20px;">
+      <div class="srow"><div><div class="sr-lbl">Current Plan <span style="background:rgba(184,151,90,0.1);border:1px solid var(--gold);color:var(--gold);padding:2px 8px;font-size:10px;letter-spacing:0.08em;margin-left:8px;">PRO</span></div></div><button class="btn btn-outline btn-sm">Manage</button></div>
+      <div class="srow" style="border-bottom:none;"><div><div class="sr-lbl">UPI AutoPay via Razorpay</div></div><span style="font-size:11px;color:var(--green);">Connected ✓</span></div>
+    </div></div>`;
+  } else if(sec==='appear') {
+    document.getElementById('settings-panel').innerHTML = `<div class="panel"><div class="panel-head"><div class="panel-title">Appearance</div></div><div style="padding:16px 20px;">
+      <div class="srow"><div><div class="sr-lbl">Language</div></div><select style="background:var(--off-white);border:1px solid var(--border);padding:7px 11px;font-family:var(--font-b);font-size:12px;outline:none;appearance:none;"><option>English</option><option>ગુજરાતી (Gujarati)</option><option>हिन्दी (Hindi)</option><option>اردو (Urdu)</option></select></div>
+      <div class="srow" style="border-bottom:none;"><div><div class="sr-lbl">Measurement Unit</div></div><select style="background:var(--off-white);border:1px solid var(--border);padding:7px 11px;font-family:var(--font-b);font-size:12px;outline:none;appearance:none;"><option>Inches (in)</option><option>Centimetres (cm)</option></select></div>
+    </div></div>`;
+  } else if(sec==='integrations') {
+    document.getElementById('settings-panel').innerHTML = `<div class="panel"><div class="panel-head"><div class="panel-title">Integrations</div></div><div style="padding:16px 20px;">
+      <div class="srow"><div><div class="sr-lbl">WhatsApp Business API</div><div class="sr-sub">via Gupshup</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+      <div class="srow"><div><div class="sr-lbl">MSG91 SMS Gateway</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+      <div class="srow" style="border-bottom:none;"><div><div class="sr-lbl">Razorpay UPI Billing</div></div><div class="tog-wrap on" onclick="togSet(this)"><div class="tog-track on"><div class="tog-knob"></div></div><span class="tog-lbl">On</span></div></div>
+    </div></div>`;
+  }
+}
+
+function swSet(el, sec) { document.querySelectorAll('.sn-item').forEach(i=>i.classList.remove('active')); el.classList.add('active'); renderSets(sec); }
+async function saveSettings() {
+  const bn = document.getElementById('s-bn')?.value;
+  if(!bn) return;
+  try {
+    loading(true);
+    const updated = await api('PUT','/api/auth/me',{name:bn,ownerName:document.getElementById('s-on')?.value||'',phone:document.getElementById('s-ph')?.value||'',city:document.getElementById('s-ci')?.value||'Surat',address:document.getElementById('s-ad')?.value||'',gstin:document.getElementById('s-gs')?.value||''});
+    document.getElementById('s-name').textContent = updated.name;
+    document.getElementById('s-av').textContent = updated.name[0].toUpperCase();
+    localStorage.setItem('tx_boutique', JSON.stringify(updated));
+    toast('✓ Settings saved','green');
+  } catch(e) { toast(e.message,'red'); }
+  finally { loading(false); }
+}
+
+function togSet(w) { const t=w.querySelector('.tog-track'); const l=w.querySelector('.tog-lbl'); const on=t.classList.toggle('on'); w.classList.toggle('on',on); if(l) l.textContent=on?'On':'Off'; }
+
+// ══════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════
+function openM(name) { document.getElementById('modal-'+name).classList.add('open'); }
+function closeM(name) { document.getElementById('modal-'+name).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+function togBlk(h) { h.classList.toggle('col'); h.nextElementSibling.classList.toggle('hid'); }
+
+// ══════════════════════════════════════════
+//  INIT — check if already logged in
+// ══════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  const savedToken = localStorage.getItem('tx_token');
+  const savedBoutique = localStorage.getItem('tx_boutique');
+  if(savedToken && savedBoutique) {
+    try {
+      const b = JSON.parse(savedBoutique);
+      TOKEN = savedToken;
+      initApp(b);
+    } catch {
+      doLogout();
+    }
+  }
+});
+</script>
+</body>
+</html>

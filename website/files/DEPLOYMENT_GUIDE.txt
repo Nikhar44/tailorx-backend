@@ -1,0 +1,143 @@
+# TailorX — Deployment Guide
+# How to go live with PostgreSQL backend
+
+## WHAT YOU HAVE (3 files to deploy)
+1. server.js          — Node.js backend (your API)
+2. schema.sql         — PostgreSQL database tables
+3. tailorx-frontend-v3.html — Frontend (works on any web host)
+
+═══════════════════════════════════════════════════
+STEP 1 — GET A FREE POSTGRESQL DATABASE
+═══════════════════════════════════════════════════
+
+Option A: Supabase (Recommended — Free forever)
+  1. Go to https://supabase.com → Sign Up (free)
+  2. New Project → Name it "tailorx" → Set a database password
+  3. Wait ~2 minutes for it to spin up
+  4. Go to Settings → Database
+  5. Copy the "Connection string" (URI format) — looks like:
+     postgresql://postgres:[YOUR-PASSWORD]@db.xxxxx.supabase.co:5432/postgres
+  6. Go to SQL Editor → paste the entire schema.sql → Run
+
+Option B: Railway (Also free)
+  1. Go to https://railway.app → Sign Up
+  2. New Project → Add PostgreSQL
+  3. Click on the Postgres service → Connect tab
+  4. Copy the DATABASE_URL
+  5. Open Query tab → paste schema.sql → Run
+
+═══════════════════════════════════════════════════
+STEP 2 — DEPLOY THE BACKEND (server.js)
+═══════════════════════════════════════════════════
+
+Option A: Railway (Easiest)
+  1. On Railway, New Project → Deploy from GitHub repo
+     OR: New Project → Empty → Upload files
+  2. Upload: server.js, package.json
+  3. Add environment variables (Settings → Variables):
+     DATABASE_URL = (paste your PostgreSQL URL from Step 1)
+     JWT_SECRET   = (any long random string, e.g. 64+ characters)
+     NODE_ENV     = production
+     PORT         = 3000
+  4. Deploy → Railway gives you a URL like:
+     https://tailorx-backend-production.up.railway.app
+  5. Test it: visit https://your-url.railway.app/health
+     Should show: {"status":"ok","time":"..."}
+
+Option B: Render (Free tier)
+  1. Go to https://render.com → New Web Service
+  2. Connect GitHub repo or upload files
+  3. Build Command: npm install
+     Start Command: node server.js
+  4. Add environment variables (same as above)
+  5. Deploy → Get URL like: https://tailorx.onrender.com
+
+Option C: Run locally (for testing)
+  1. Copy .env.example to .env
+  2. Fill in your DATABASE_URL and JWT_SECRET
+  3. Run: npm install
+  4. Run: node server.js
+  5. Server runs at http://localhost:3000
+
+═══════════════════════════════════════════════════
+STEP 3 — CONNECT FRONTEND TO YOUR BACKEND
+═══════════════════════════════════════════════════
+
+Open tailorx-frontend-v3.html in a text editor.
+Find this line near the top of the <script>:
+
+  const API_URL = 'https://your-tailorx-backend.railway.app';
+
+Replace it with your actual backend URL from Step 2, e.g.:
+
+  const API_URL = 'https://tailorx-backend-production.up.railway.app';
+
+Save the file.
+
+═══════════════════════════════════════════════════
+STEP 4 — HOST THE FRONTEND
+═══════════════════════════════════════════════════
+
+Option A: Netlify (Free, Drag & Drop)
+  1. Go to https://netlify.com → Sign Up
+  2. Drag the tailorx-frontend-v3.html file onto the Netlify dashboard
+  3. Netlify gives you a URL like: https://tailorx.netlify.app
+  4. That's it! Your app is live.
+
+Option B: GitHub Pages (Free)
+  1. Create a GitHub repo
+  2. Upload tailorx-frontend-v3.html as index.html
+  3. Settings → Pages → Enable
+  4. Get URL: https://yourusername.github.io/tailorx
+
+Option C: Just open locally
+  Simply open the HTML file in Chrome/Edge — it will connect to
+  your deployed backend from your local machine.
+
+═══════════════════════════════════════════════════
+STEP 5 — UPDATE CORS IN BACKEND
+═══════════════════════════════════════════════════
+
+Once you have your frontend URL, add it to Railway/Render env vars:
+  FRONTEND_URL = https://your-frontend.netlify.app
+
+This allows your frontend to talk to the backend securely.
+
+═══════════════════════════════════════════════════
+HOW LOGIN WORKS ACROSS DEVICES
+═══════════════════════════════════════════════════
+
+1. Register once with your boutique email + password
+2. Login from any device (phone, tablet, laptop, PC)
+3. Your JWT token is saved in localStorage for 30 days
+4. All data (customers, orders, invoices) is in PostgreSQL
+5. Every device sees the same live data
+
+═══════════════════════════════════════════════════
+DATABASE SUMMARY (what gets stored where)
+═══════════════════════════════════════════════════
+
+Table: boutiques     → Your login, boutique name, settings
+Table: customers     → All customer profiles + measurements (JSONB)
+Table: orders        → All orders with stage history
+Table: invoices      → All bills — never deleted, full history
+Table: notifications → All sent notifications log
+
+Each boutique's data is completely isolated from others
+(multi-tenant — safe for selling to multiple boutiques later).
+
+═══════════════════════════════════════════════════
+QUICK TEST CHECKLIST
+═══════════════════════════════════════════════════
+
+After deployment, test these flows:
+[ ] Register a new boutique account
+[ ] Login → see dashboard
+[ ] Add a customer with measurements
+[ ] Create an order for that customer
+[ ] Update stage → Ready → check notification was created
+[ ] Generate an invoice → View Bill → send via WhatsApp/SMS/Email
+[ ] Logout → Login from another browser → all data still there ✓
+
+That last check confirms your data is truly in PostgreSQL
+and not just in the browser.
