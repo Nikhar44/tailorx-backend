@@ -1185,12 +1185,12 @@ async function doDeleteBoutique() {
   const b = boutiques.find(x => x.id === selectedId);
   if (!b) return;
   const confirmed = confirm(
-    '⚠️ DELETE CLIENT — This cannot be undone!\n\n' +
-    'Boutique: ' + b.name + '\n' +
-    'Owner: ' + (b.owner_name || '—') + '\n' +
-    'Email: ' + b.email + '\n\n' +
-    'This will permanently delete the boutique and ALL its data\n' +
-    '(customers, orders, invoices, measurements).\n\n' +
+    'WARNING: DELETE CLIENT — This cannot be undone!\\n\\n' +
+    'Boutique: ' + b.name + '\\n' +
+    'Owner: ' + (b.owner_name || '-') + '\\n' +
+    'Email: ' + b.email + '\\n\\n' +
+    'This will permanently delete the boutique and ALL its data\\n' +
+    '(customers, orders, invoices, measurements).\\n\\n' +
     'Type OK to confirm.'
   );
   if (!confirmed) return;
