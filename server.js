@@ -1199,12 +1199,12 @@ async function doDeleteBoutique() {
       method: 'DELETE',
       headers: { 'x-admin-secret': secret }
     });
-    if (!res.ok) { alert('Delete failed. Try again.'); return; }
+    if (!res.ok) { alert('Delete failed: ' + (await res.json().catch(()=>({error:'Server error'}))).error); return; }
     boutiques = boutiques.filter(x => x.id !== selectedId);
-    closeModal();
+    closeModalNow();
     updateStats();
     renderList();
-    alert('✅ ' + b.name + ' has been permanently deleted.');
+    alert(b.name + ' has been permanently deleted.');
   } catch(e) { alert('Connection error.'); }
 }
 
@@ -1409,11 +1409,10 @@ app.patch('/api/admin/boutiques/:id/hold', adminAuth, async (req, res) => {
 app.delete('/api/admin/boutiques/:id', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    // Delete all related data first (cascade)
-    await db.query('DELETE FROM invoices WHERE boutique_id=$1', [id]);
-    await db.query('DELETE FROM orders WHERE boutique_id=$1', [id]);
-    await db.query('DELETE FROM customers WHERE boutique_id=$1', [id]);
-    await db.query('DELETE FROM subscription_payments WHERE boutique_id=$1', [id]);
+    // subscription_payments may not exist on all installs — ignore if missing
+    try { await db.query('DELETE FROM subscription_payments WHERE boutique_id=$1', [id]); } catch(e) {}
+    // All other tables (customers, orders, invoices, notifications) have ON DELETE CASCADE
+    // so deleting the boutique cascades everything automatically
     const result = await db.query('DELETE FROM boutiques WHERE id=$1 RETURNING id, name', [id]);
     if (!result.rows.length)
       return res.status(404).json({ error: 'Boutique not found' });
