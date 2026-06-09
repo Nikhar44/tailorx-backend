@@ -503,6 +503,7 @@ const adminAuth = (req, res, next) => {
 
 // ── Admin Web Dashboard (browser UI) ─────────────────────────────
 app.get('/admin', (req, res) => {
+  res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self';");
   res.send(`<!DOCTYPE html>
 <html lang="en">
 <head>
