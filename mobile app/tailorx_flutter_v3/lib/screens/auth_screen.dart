@@ -136,7 +136,7 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
               onTap: () {
                 Navigator.pop(ctx);
                 launchUrl(
-                  Uri.parse('https://wa.me/14373664452?text=Hi, I need help with my TailorX account.'),
+                  Uri.parse('https://wa.me/918469696966?text=Hi, I need help with my TailorX account.'),
                   mode: LaunchMode.externalApplication,
                 );
               },
@@ -148,11 +148,11 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
               icon: Icons.email_rounded,
               color: T.info,
               label: 'Email Support',
-              sub: 'support@tailorx.in',
+              sub: 'support@tailor-x.in',
               onTap: () {
                 Navigator.pop(ctx);
                 launchUrl(Uri.parse(
-                  'mailto:support@tailorx.in?subject=TailorX Account Help&body=Hi, I need help with my account.'));
+                  'mailto:support@tailor-x.in?subject=TailorX Account Help&body=Hi, I need help with my account.'));
               },
             ),
             const SizedBox(height: 20),

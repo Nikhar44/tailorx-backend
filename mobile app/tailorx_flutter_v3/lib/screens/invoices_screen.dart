@@ -181,7 +181,7 @@ class InvoicesScreenState extends State<InvoicesScreen>{
           decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
           child:Column(children:[
             const SizedBox(height:12),Container(width:36,height:4,decoration:BoxDecoration(color:T.border,borderRadius:BorderRadius.circular(2))),
-            Expanded(child:Form(key:fk,child:ListView(padding:const EdgeInsets.fromLTRB(20,20,20,30),children:[
+            Expanded(child:Form(key:fk,child:ListView(padding:EdgeInsets.fromLTRB(20,20,20,30+MediaQuery.of(ctx).viewInsets.bottom),children:[
               Text('Create Invoice',style:T.displayMd),const SizedBox(height:6),
               Text('Select an order to generate a bill',style:T.bodySm),const SizedBox(height:20),
               Text('SELECT ORDER',style:T.label),const SizedBox(height:6),

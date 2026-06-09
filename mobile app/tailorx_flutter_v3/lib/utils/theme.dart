@@ -83,6 +83,35 @@ class T {
   static TextStyle get stat => GoogleFonts.prata(fontSize: 32, fontWeight: FontWeight.w400, color: text);
   static TextStyle get statLabel => GoogleFonts.montserrat(fontSize: 12, fontWeight: FontWeight.w700, color: text3, letterSpacing: 1.8);
 
+  // ─── Responsive Helpers ───────────────────────────────────────
+  static bool isTablet(BuildContext ctx) =>
+      MediaQuery.of(ctx).size.width >= 600;
+  static bool isLargeTablet(BuildContext ctx) =>
+      MediaQuery.of(ctx).size.width >= 900;
+
+  /// Horizontal page padding — larger on tablets
+  static double hPad(BuildContext ctx) =>
+      isLargeTablet(ctx) ? 40.0 : isTablet(ctx) ? 28.0 : 18.0;
+
+  /// Max content width — centres content on large tablets
+  static double maxW(BuildContext ctx) =>
+      isLargeTablet(ctx) ? 900.0 : double.infinity;
+
+  /// Bottom sheet max width — looks good on iPad
+  static double sheetMaxW(BuildContext ctx) =>
+      isTablet(ctx) ? 600.0 : double.infinity;
+
+  /// Wraps a bottom sheet body so it is centred + max-width on tablets
+  static Widget sheetWrap(BuildContext ctx, Widget child) {
+    if (!isTablet(ctx)) return child;
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: sheetMaxW(ctx)),
+        child: child,
+      ),
+    );
+  }
+
   // ─── ThemeData ────────────────────────────────────────────────
   static ThemeData get theme => ThemeData(
     brightness: Brightness.light, scaffoldBackgroundColor: bg, primaryColor: headerDark,

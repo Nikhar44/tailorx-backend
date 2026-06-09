@@ -150,7 +150,7 @@ class CustomersScreenState extends State<CustomersScreen> {
               ]),
             ]),
           ),
-          Expanded(child: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 80), children: [
+          Expanded(child: ListView(padding: EdgeInsets.fromLTRB(16, 14, 16, 80 + MediaQuery.of(ctx).viewInsets.bottom), children: [
             if (c.measurementsTop?.isNotEmpty == true) ...[
               const SecTitle(title: 'Top Measurements'),
               if (isMale)
@@ -785,7 +785,7 @@ class CustomersScreenState extends State<CustomersScreen> {
         child: Column(children: [
           const SizedBox(height: 12),
           Container(width: 36, height: 4, decoration: BoxDecoration(color: T.border, borderRadius: BorderRadius.circular(2))),
-          Expanded(child: Form(key: fk, child: ListView(padding: const EdgeInsets.fromLTRB(20, 20, 20, 30), children: [
+          Expanded(child: Form(key: fk, child: ListView(padding: EdgeInsets.fromLTRB(20, 20, 20, 30 + MediaQuery.of(ctx).viewInsets.bottom), children: [
             Text(c == null ? _lang.t('add_customer') : _lang.t('edit_customer'), style: T.displayMd),
             const SizedBox(height: 20),
             TxField(label: _lang.t('name'), hint: 'Full name', controller: nm, validator: (v) => v == null || v.trim().isEmpty ? _lang.t('required') : null),

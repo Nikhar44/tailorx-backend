@@ -285,13 +285,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ]),
         ],
       ),
-      body: Column(
-        children: [
-          _buildTrialBanner(),
-          Expanded(child: _buildBody()),
-        ],
-      ),
-      bottomNavigationBar: Container(
+      body: Builder(builder: (ctx) {
+        final isTablet = T.isTablet(ctx);
+        return Column(
+          children: [
+            _buildTrialBanner(),
+            Expanded(
+              child: isTablet
+                  ? Row(children: [
+                      _buildNavRail(),
+                      VerticalDivider(width: 1, thickness: 1, color: T.border),
+                      Expanded(child: _buildBody()),
+                    ])
+                  : _buildBody(),
+            ),
+          ],
+        );
+      }),
+      bottomNavigationBar: T.isTablet(context) ? null : Container(
         decoration: BoxDecoration(color: T.card,
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, -4))]),
         child: SafeArea(child: Padding(padding: const EdgeInsets.symmetric(vertical: 6),
@@ -303,6 +314,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             _nav(4, Icons.settings_outlined, Icons.settings_rounded, _lang.t('settings')),
           ]))),
       ),
+    );
+  }
+
+  Widget _buildNavRail() {
+    return NavigationRail(
+      selectedIndex: _idx,
+      onDestinationSelected: (i) {
+        setState(() => _idx = i);
+        _refreshTab(i);
+      },
+      labelType: NavigationRailLabelType.all,
+      backgroundColor: T.card,
+      minWidth: 80,
+      selectedIconTheme: const IconThemeData(color: T.headerDark, size: 26),
+      unselectedIconTheme: const IconThemeData(color: T.text3, size: 24),
+      selectedLabelTextStyle: const TextStyle(
+          color: T.headerDark, fontWeight: FontWeight.w700, fontSize: 11),
+      unselectedLabelTextStyle: const TextStyle(color: T.text3, fontSize: 11),
+      leading: Padding(
+        padding: const EdgeInsets.only(top: 8, bottom: 16),
+        child: Container(
+          width: 40, height: 40,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), gradient: T.accentGrad),
+          child: const Center(child: Text('TX', style: TextStyle(
+              fontSize: 13, fontWeight: FontWeight.w800, color: T.headerDark, letterSpacing: 1))),
+        ),
+      ),
+      destinations: [
+        NavigationRailDestination(
+            icon: const Icon(Icons.dashboard_outlined),
+            selectedIcon: const Icon(Icons.dashboard_rounded),
+            label: Text(_lang.t('dashboard'))),
+        NavigationRailDestination(
+            icon: const Icon(Icons.people_outline),
+            selectedIcon: const Icon(Icons.people_rounded),
+            label: Text(_lang.t('customers'))),
+        NavigationRailDestination(
+            icon: const Icon(Icons.receipt_long_outlined),
+            selectedIcon: const Icon(Icons.receipt_long_rounded),
+            label: Text(_lang.t('orders'))),
+        NavigationRailDestination(
+            icon: const Icon(Icons.payments_outlined),
+            selectedIcon: const Icon(Icons.payments_rounded),
+            label: Text(_lang.t('invoices'))),
+        NavigationRailDestination(
+            icon: const Icon(Icons.settings_outlined),
+            selectedIcon: const Icon(Icons.settings_rounded),
+            label: Text(_lang.t('settings'))),
+      ],
     );
   }
 
@@ -409,7 +469,7 @@ class _PlanExpiredScreen extends StatelessWidget {
   void _contactUs() {
     launchUrl(
       Uri.parse(
-        'https://wa.me/14373664452?text=${Uri.encodeComponent('Hi, my TailorX 15-day free trial has ended. I would like to renew my plan. Please help me.')}'),
+        'https://wa.me/918469696966?text=${Uri.encodeComponent('Hi, my TailorX 15-day free trial has ended. I would like to renew my plan. Please help me.')}'),
       mode: LaunchMode.externalApplication,
     );
   }

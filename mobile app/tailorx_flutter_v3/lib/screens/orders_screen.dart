@@ -103,7 +103,7 @@ class OrdersScreenState extends State<OrdersScreen> {
           child:Column(children:[
             const SizedBox(height:12),
             Container(width:36,height:4,decoration:BoxDecoration(color:T.border,borderRadius:BorderRadius.circular(2))),
-            Expanded(child:Form(key:fk,child:ListView(padding:const EdgeInsets.fromLTRB(20,20,20,30),children:[
+            Expanded(child:Form(key:fk,child:ListView(padding:EdgeInsets.fromLTRB(20,20,20,30+MediaQuery.of(ctx).viewInsets.bottom),children:[
               Text(_lang.t('create_order'),style:T.displayMd),
               const SizedBox(height:20),
               Text(_lang.t('customer').toUpperCase(),style:T.label),
@@ -451,7 +451,7 @@ class OrdersScreenState extends State<OrdersScreen> {
           child: Column(children: [
             const SizedBox(height: 12),
             Container(width: 36, height: 4, decoration: BoxDecoration(color: T.border, borderRadius: BorderRadius.circular(2))),
-            Expanded(child: Form(key: fk, child: ListView(padding: const EdgeInsets.fromLTRB(20, 20, 20, 30), children: [
+            Expanded(child: Form(key: fk, child: ListView(padding: EdgeInsets.fromLTRB(20, 20, 20, 30 + MediaQuery.of(ctx).viewInsets.bottom), children: [
               Text('Edit Order', style: T.displayMd),
               const SizedBox(height: 4),
               Text('${o.customerName ?? ''} · Order #${o.id ?? ''}',
