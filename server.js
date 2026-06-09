@@ -788,6 +788,10 @@ app.get('/admin', (req, res) => {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="free-icon"></svg>
         <div class="ab-text"><span id="free-label"></span><span id="free-sub"></span></div>
       </button>
+      <button class="action-btn" style="background:#fff0f0;border-color:#f8d0d0;" onclick="doDeleteBoutique()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#cf4747" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+        <div class="ab-text" style="color:#cf4747;">Delete Client<span style="color:#e08080;">Permanently remove this boutique and all data</span></div>
+      </button>
       <div id="reset-row" style="display:none;margin-top:12px;background:#f9f7f4;border-radius:10px;padding:14px;border:1px solid #e0d9d0;">
         <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#888;margin-bottom:8px;">NEW PASSWORD</div>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -1176,6 +1180,33 @@ async function doResetPassword() {
   } catch(e) { alert('Connection error.'); }
 }
 
+async function doDeleteBoutique() {
+  const b = boutiques.find(x => x.id === selectedId);
+  if (!b) return;
+  const confirmed = confirm(
+    '⚠️ DELETE CLIENT — This cannot be undone!\n\n' +
+    'Boutique: ' + b.name + '\n' +
+    'Owner: ' + (b.owner_name || '—') + '\n' +
+    'Email: ' + b.email + '\n\n' +
+    'This will permanently delete the boutique and ALL its data\n' +
+    '(customers, orders, invoices, measurements).\n\n' +
+    'Type OK to confirm.'
+  );
+  if (!confirmed) return;
+  try {
+    const res = await fetch('/api/admin/boutiques/' + selectedId, {
+      method: 'DELETE',
+      headers: { 'x-admin-secret': secret }
+    });
+    if (!res.ok) { alert('Delete failed. Try again.'); return; }
+    boutiques = boutiques.filter(x => x.id !== selectedId);
+    closeModal();
+    updateStats();
+    renderList();
+    alert('✅ ' + b.name + ' has been permanently deleted.');
+  } catch(e) { alert('Connection error.'); }
+}
+
 function copyText(text, btn) {
   navigator.clipboard.writeText(text).then(() => {
     const orig = btn.textContent;
@@ -1367,6 +1398,25 @@ app.patch('/api/admin/boutiques/:id/hold', adminAuth, async (req, res) => {
       message: is_active ? 'Account reactivated' : 'Account put on hold',
       boutique: result.rows[0],
     });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete boutique + all data (admin)
+app.delete('/api/admin/boutiques/:id', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Delete all related data first (cascade)
+    await db.query('DELETE FROM invoices WHERE boutique_id=$1', [id]);
+    await db.query('DELETE FROM orders WHERE boutique_id=$1', [id]);
+    await db.query('DELETE FROM customers WHERE boutique_id=$1', [id]);
+    await db.query('DELETE FROM subscription_payments WHERE boutique_id=$1', [id]);
+    const result = await db.query('DELETE FROM boutiques WHERE id=$1 RETURNING id, name', [id]);
+    if (!result.rows.length)
+      return res.status(404).json({ error: 'Boutique not found' });
+    res.json({ message: 'Boutique deleted', boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });

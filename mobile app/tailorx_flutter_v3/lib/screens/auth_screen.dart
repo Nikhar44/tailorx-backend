@@ -166,7 +166,9 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
-      final googleUser = await GoogleSignIn().signIn();
+      final googleUser = await GoogleSignIn(
+        serverClientId: '151261155773-bqgbsrdeqentgaqcvdq5fot9b8comvn9.apps.googleusercontent.com',
+      ).signIn();
       if (googleUser == null) { setState(() => _loading = false); return; }
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
