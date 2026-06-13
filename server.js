@@ -8,6 +8,7 @@ const bcrypt   = require('bcryptjs');
 const jwt      = require('jsonwebtoken');
 const cors     = require('cors');
 const crypto   = require('crypto');
+const path     = require('path');
 
 // Resend email client (only if API key is set)
 let resendClient = null;
@@ -56,10 +57,88 @@ const pool = new Pool(
 );
 
 pool.connect()
-  .then(() => console.log('✅ PostgreSQL connected'))
+  .then(async () => {
+    console.log('✅ PostgreSQL connected');
+    // Auto-create admin_actions table if it doesn't exist
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS admin_actions (
+        id          BIGSERIAL PRIMARY KEY,
+        boutique_id INT NOT NULL REFERENCES boutiques(id) ON DELETE CASCADE,
+        action      TEXT NOT NULL,
+        detail      TEXT,
+        done_at     TIMESTAMPTZ DEFAULT NOW()
+      )
+    `).catch(() => {}); // ignore if boutiques table not ready yet
+    await pool.query(
+      `CREATE INDEX IF NOT EXISTS idx_admin_actions_boutique ON admin_actions(boutique_id, done_at DESC)`
+    ).catch(() => {});
+
+    // Auto-add GST columns to invoices table if missing
+    await pool.query(`
+      ALTER TABLE invoices
+        ADD COLUMN IF NOT EXISTS gst_enabled BOOLEAN DEFAULT false,
+        ADD COLUMN IF NOT EXISTS gst_pct     NUMERIC(5,2) DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS gst_amt     NUMERIC(10,2) DEFAULT 0
+    `).catch(() => {});
+
+    // Auto-add trial/delivery date columns to invoices table if missing
+    await pool.query(`
+      ALTER TABLE invoices
+        ADD COLUMN IF NOT EXISTS trial_date    DATE,
+        ADD COLUMN IF NOT EXISTS delivery_date DATE
+    `).catch(() => {});
+
+    // Auto-add trial_date column to orders table if missing
+    await pool.query(`
+      ALTER TABLE orders
+        ADD COLUMN IF NOT EXISTS trial_date DATE
+    `).catch(() => {});
+
+    // Auto-add cloth/design photo URL columns to orders table if missing
+    await pool.query(`
+      ALTER TABLE orders
+        ADD COLUMN IF NOT EXISTS cloth_photo_url  TEXT,
+        ADD COLUMN IF NOT EXISTS design_photo_url TEXT
+    `).catch(() => {});
+  })
   .catch(e => console.error('❌ DB error:', e.message));
 
 const db = { query: (text, params) => pool.query(text, params) };
+
+// Helper to log admin actions to the admin_actions table
+async function logAction(boutiqueId, action, detail) {
+  try {
+    await db.query(
+      'INSERT INTO admin_actions (boutique_id, action, detail) VALUES ($1,$2,$3)',
+      [boutiqueId, action, detail || null]
+    );
+  } catch(e) {
+    console.error('logAction error:', e.message);
+  }
+}
+
+// ─── Auto-hold expired trial accounts ────────────────────────────────────────
+// Runs on startup and every hour — marks any trial accounts past their 15-day
+// expiry as is_active=false so they show "On Hold" in the admin panel.
+async function autoHoldExpiredTrials() {
+  try {
+    const result = await db.query(
+      `UPDATE boutiques
+       SET is_active = false, updated_at = NOW()
+       WHERE plan = 'trial' AND expires_at < NOW() AND is_active = true
+       RETURNING id, name`
+    );
+    for (const b of result.rows) {
+      await logAction(b.id, 'Auto Hold', 'Trial expired after 15 days');
+      console.log(`Auto-held trial account: ${b.name} (id=${b.id})`);
+    }
+  } catch(e) {
+    console.error('Auto-hold sweep error:', e.message);
+  }
+}
+// Run once at startup (after a short delay to ensure DB is ready), then every hour
+setTimeout(autoHoldExpiredTrials, 5000);
+setInterval(autoHoldExpiredTrials, 60 * 60 * 1000);
 
 // ─────────────────────────────────────────────
 //  MIDDLEWARE
@@ -264,12 +343,13 @@ app.post('/api/auth/social', async (req, res) => {
     let verifiedName  = name || '';
 
     if (provider === 'google') {
-      // Verify Google ID token via Google's tokeninfo endpoint
-      const gRes  = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
-      const gData = await gRes.json();
-      if (!gData.email || gData.error) return res.status(401).json({ error: 'Invalid Google token' });
-      verifiedEmail = gData.email;
-      verifiedName  = gData.name || verifiedName;
+      const { googleId } = req.body;
+      // googleId + email come directly from the Google Sign-In SDK (user already authenticated)
+      if (!googleId || !clientEmail) return res.status(400).json({ error: 'googleId and email required for Google sign-in' });
+      // Basic format validation — Google IDs are numeric strings
+      if (!/^\d+$/.test(googleId)) return res.status(401).json({ error: 'Invalid Google ID format' });
+      verifiedEmail = clientEmail;
+      verifiedName  = name || verifiedName;
     } else if (provider === 'facebook') {
       // Verify Facebook access token via Graph API
       const fbRes  = await fetch(`https://graph.facebook.com/me?fields=id,name,email&access_token=${idToken}`);
@@ -277,6 +357,39 @@ app.post('/api/auth/social', async (req, res) => {
       if (!fbData.email || fbData.error) return res.status(401).json({ error: 'Invalid Facebook token' });
       verifiedEmail = fbData.email;
       verifiedName  = fbData.name || verifiedName;
+
+    } else if (provider === 'apple') {
+      // Verify Apple identity token (RS256 JWT signed by Apple)
+      // Fetch Apple's current public keys and verify locally — no extra packages needed
+      const { createPublicKey } = require('crypto');
+      const appleKeysRes = await fetch('https://appleid.apple.com/auth/keys');
+      const { keys }     = await appleKeysRes.json();
+
+      // Decode header to find which key Apple used
+      const decoded = jwt.decode(idToken, { complete: true });
+      if (!decoded) return res.status(401).json({ error: 'Invalid Apple identity token' });
+
+      const appleKey = keys.find(k => k.kid === decoded.header.kid);
+      if (!appleKey) return res.status(401).json({ error: 'Apple signing key not found' });
+
+      // Convert JWK → KeyObject (Node 18+ built-in), then verify JWT
+      const publicKey = createPublicKey({ key: appleKey, format: 'jwk' });
+      const claims    = jwt.verify(idToken, publicKey, {
+        algorithms: ['RS256'],
+        issuer:     'https://appleid.apple.com',
+        // audience = app bundle ID — accept both placeholder and production bundle
+        audience:   ['com.example.tailorx', 'in.tailorx.app'],
+      });
+
+      // Apple only includes email on first sign-in; fall back to client-provided email
+      verifiedEmail = claims.email || clientEmail;
+      if (!verifiedEmail) {
+        return res.status(400).json({
+          error: 'Email not available from Apple. Please sign in again to grant email access.',
+        });
+      }
+      verifiedName = name || verifiedName;
+
     } else {
       return res.status(400).json({ error: 'Unknown provider' });
     }
@@ -355,9 +468,14 @@ app.post('/api/auth/login', async (req, res) => {
     // Subscription / trial expiry check
     if (boutique.expires_at && new Date(boutique.expires_at) < new Date()) {
       const isTrial = boutique.plan === 'trial';
+      // Auto-hold expired trial accounts on login attempt
+      if (isTrial && boutique.is_active !== false) {
+        await db.query('UPDATE boutiques SET is_active=false, updated_at=NOW() WHERE id=$1', [boutique.id]);
+        await logAction(boutique.id, 'Auto Hold', 'Trial expired after 15 days');
+      }
       return res.status(403).json({
         error: isTrial
-          ? 'Your 15-day free trial has ended. Please subscribe to continue using TailorX.'
+          ? 'Your 15-day free trial has ended. Please contact us to subscribe and continue using TailorX.'
           : 'Your subscription has expired. Please renew to continue using TailorX.',
         expired: true,
         plan: boutique.plan,
@@ -584,6 +702,17 @@ app.get('/admin', (req, res) => {
   .info .name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .info .meta { font-size: 12px; color: var(--text2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .info .tags { display: flex; gap: 5px; margin-top: 6px; flex-wrap: wrap; }
+  .info .last-act { font-size: 11px; color: var(--accent); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+  .info .last-act .la-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: inline-block; flex-shrink: 0; }
+  .info .last-act .la-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .info .expiry-row { font-size: 11.5px; font-weight: 600; margin-top: 5px; display: flex; align-items: center; gap: 5px; }
+  .info .expiry-row .er-icon { font-size: 12px; flex-shrink: 0; }
+  .info .expiry-row.ei-ok      { color: #64748b; }
+  .info .expiry-row.ei-warn    { color: #d97706; }
+  .info .expiry-row.ei-danger  { color: #cf4747; }
+  .info .expiry-row.ei-expired { color: #cf4747; font-weight: 700; }
+  .info .expiry-row.ei-free    { color: #2d8f6f; }
+  .info .login-row { font-size: 11px; color: #94a3b8; margin-top: 3px; display: flex; align-items: center; gap: 4px; }
   .tag { padding: 2px 7px; border-radius: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.4px; }
   .tag.t-active    { background: rgba(45,143,111,0.1);  color: var(--success); border: 1px solid rgba(45,143,111,0.25); }
   .tag.t-hold      { background: rgba(207,71,71,0.1);   color: var(--danger);  border: 1px solid rgba(207,71,71,0.25); }
@@ -667,6 +796,14 @@ app.get('/admin', (req, res) => {
   .pay-item .pi-amt { font-weight: 700; color: var(--success); }
   .pay-item .pi-meta { font-size: 11px; color: var(--text3); }
   .no-payments { text-align: center; color: var(--text3); font-size: 13px; padding: 16px; }
+  .log-list { display: flex; flex-direction: column; gap: 0; max-height: 220px; overflow-y: auto; }
+  .log-item { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .log-item:last-child { border-bottom: none; }
+  .log-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 4px; flex-shrink: 0; }
+  .log-body { flex: 1; min-width: 0; }
+  .log-action { font-size: 13px; font-weight: 700; color: var(--text); }
+  .log-detail { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  .log-time { font-size: 11px; color: var(--text3); white-space: nowrap; flex-shrink: 0; }
 
   .empty { text-align: center; padding: 48px; color: var(--text3); font-size: 15px; }
   .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent);
@@ -741,6 +878,11 @@ app.get('/admin', (req, res) => {
       </div>
       <div class="last-login" id="m-last-login">Last login: loading...</div>
     </div>
+    <!-- Admin Log Section -->
+    <div class="modal-section">
+      <h3>ADMIN ACTIVITY LOG</h3>
+      <div class="log-list" id="m-log-list"><div class="no-payments">Loading...</div></div>
+    </div>
     <!-- Revenue Section -->
     <div class="modal-section">
       <h3>SUBSCRIPTION REVENUE</h3>
@@ -752,10 +894,17 @@ app.get('/admin', (req, res) => {
     </div>
     <div class="modal-actions">
       <h3>ACTIONS</h3>
-      <button class="action-btn" id="btn-hold" onclick="doHold()">
+      <button class="action-btn" id="btn-hold" onclick="toggleHoldRow()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="hold-icon"></svg>
         <div class="ab-text"><span id="hold-label"></span><span id="hold-sub"></span></div>
       </button>
+      <div id="hold-row" style="display:none;margin-top:-4px;background:#fff5f5;border-radius:10px;padding:14px;border:1px solid #f8d0d0;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#cf4747;margin-bottom:8px;">REASON (optional)</div>
+        <div style="display:flex;gap:8px;">
+          <input id="hold-reason" type="text" placeholder="e.g. Non-payment, account issue…" style="flex:1;padding:8px 10px;border-radius:7px;border:1.5px solid #f8d0d0;font-size:13px;outline:none;" />
+          <button onclick="doHold()" style="padding:8px 16px;border-radius:7px;border:none;background:#cf4747;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">CONFIRM</button>
+        </div>
+      </div>
       <button class="action-btn ab-renew" onclick="toggleRenewInput()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
         <div class="ab-text">Renew Subscription<span>Extend access by months</span></div>
@@ -777,9 +926,12 @@ app.get('/admin', (req, res) => {
           <button onclick="doChangePlan('free')"    style="padding:8px 14px;border-radius:7px;border:1.5px solid #94a3b8;background:#fff;color:#64748b;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">FREE</button>
           <button onclick="doChangePlan('monthly')" style="padding:8px 14px;border-radius:7px;border:1.5px solid #3b82f6;background:#fff;color:#3b82f6;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">MONTHLY</button>
           <button onclick="doChangePlan('yearly')"  style="padding:8px 14px;border-radius:7px;border:1.5px solid #7c3aed;background:#fff;color:#7c3aed;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">YEARLY</button>
-          <button onclick="doChangePlan('pro')"     style="padding:8px 14px;border-radius:7px;border:1.5px solid #d4a574;background:#1a1a2e;color:#d4a574;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">PRO</button>
+          <button onclick="doChangePlan('pro')"     style="padding:8px 14px;border-radius:7px;border:1.5px solid #d4a574;background:#1a1a2e;color:#d4a574;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:0.5px;">PRO <span style="font-size:10px;opacity:0.7">(Yearly only)</span></button>
         </div>
-        <div style="font-size:11px;color:#64748b;">Current plan shown in details above. Takes effect immediately.</div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+          <input id="plan-reason" type="text" placeholder="Reason (optional, e.g. Upgraded, Discount)" style="flex:1;padding:7px 10px;border-radius:7px;border:1.5px solid #bfdbfe;font-size:12px;outline:none;" />
+        </div>
+        <div style="font-size:11px;color:#64748b;margin-top:6px;">Current plan shown in details above. Takes effect immediately.</div>
       </div>
       <button class="action-btn ab-pw" onclick="toggleResetRow()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
@@ -883,6 +1035,39 @@ function expiryLabel(b) {
   return { text: (isTrial ? 'Trial until ' : 'Expires ') + dateStr, cls: 't-expiry-ok' };
 }
 
+// Rich expiry info for the card expiry row
+function expiryInfo(b) {
+  const planLabel = (b.plan || 'free').charAt(0).toUpperCase() + (b.plan || 'free').slice(1) + ' Plan';
+  if (!b.expires_at) {
+    return b.is_free
+      ? { icon: '✓', text: planLabel + ' · No expiry date', cls: 'ei-free' }
+      : null;
+  }
+  const d    = new Date(b.expires_at);
+  const now  = new Date();
+  const diff = Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+  const dateStr = d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  if (diff < 0) {
+    const over = Math.abs(diff);
+    return { icon: '✗', text: planLabel + ' · Expired ' + over + (over === 1 ? ' day' : ' days') + ' ago (' + dateStr + ') — Contact now!', cls: 'ei-expired' };
+  }
+  if (diff === 0) return { icon: '⚠', text: planLabel + ' · Expires TODAY (' + dateStr + ') — Contact now!', cls: 'ei-danger' };
+  if (diff <= 7)  return { icon: '⚠', text: planLabel + ' · Expires in ' + diff + ' day' + (diff === 1 ? '' : 's') + ' (' + dateStr + ') — Renew soon', cls: 'ei-danger' };
+  if (diff <= 30) return { icon: '⏰', text: planLabel + ' · Expires in ' + diff + ' days (' + dateStr + ')', cls: 'ei-warn' };
+  return { icon: '📅', text: planLabel + ' · Expires ' + dateStr + ' (in ' + diff + ' days)', cls: 'ei-ok' };
+}
+
+// Time-ago helper for last login
+function loginAgo(b) {
+  if (!b.last_login_at) return 'Never logged in';
+  const diff = Math.floor((Date.now() - new Date(b.last_login_at)) / 1000);
+  if (diff < 60)          return 'Last login: just now';
+  if (diff < 3600)        return 'Last login: ' + Math.floor(diff / 60) + 'm ago';
+  if (diff < 86400)       return 'Last login: ' + Math.floor(diff / 3600) + 'h ago';
+  if (diff < 86400 * 30)  return 'Last login: ' + Math.floor(diff / 86400) + ' days ago';
+  return 'Last login: ' + new Date(b.last_login_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 function updateStats() {
   const active  = boutiques.filter(b => b.is_active !== false && !isExpired(b) && b.plan !== 'trial').length;
   const trial   = boutiques.filter(b => b.is_active !== false && !isExpired(b) && b.plan === 'trial').length;
@@ -909,7 +1094,6 @@ function renderList() {
   list.innerHTML = filtered.map(b => {
     const isActive = b.is_active !== false;
     const expired  = isExpired(b);
-    const expLbl   = expiryLabel(b);
     const initials = (b.name || '?').trim().split(' ').filter(Boolean).slice(0,2).map(w => w[0].toUpperCase()).join('');
     const cardCls  = (!isActive || expired) ? 'on-hold' : '';
     const avatarCls= (!isActive || expired) ? 'av-hold' : 'av-active';
@@ -921,14 +1105,40 @@ function renderList() {
         : isTrial
           ? '<span class="tag t-trial">FREE TRIAL</span>'
           : '<span class="tag t-active">ACTIVE</span>';
-    const expiryTag = expLbl ? ('<span class="tag ' + expLbl.cls + '">' + expLbl.text + '</span>') : '';
+
+    // Expiry row — prominent, colour-coded
+    const ei = expiryInfo(b);
+    const expiryRowHtml = ei
+      ? '<div class="expiry-row ' + ei.cls + '"><span class="er-icon">' + ei.icon + '</span>' + ei.text + '</div>'
+      : '';
+
+    // Last login row
+    const loginHtml = '<div class="login-row">👤 ' + loginAgo(b) + '</div>';
+
+    // Last admin action line
+    var lastActHtml = '';
+    if (b.last_action) {
+      var ago = '';
+      if (b.last_action_at) {
+        var diff = Math.floor((Date.now() - new Date(b.last_action_at)) / 1000);
+        if (diff < 60)         ago = 'just now';
+        else if (diff < 3600)  ago = Math.floor(diff/60) + 'm ago';
+        else if (diff < 86400) ago = Math.floor(diff/3600) + 'h ago';
+        else                   ago = Math.floor(diff/86400) + 'd ago';
+      }
+      var actLabel = b.last_action + (b.last_action_detail ? ' ' + b.last_action_detail : '') + (ago ? ' · ' + ago : '');
+      lastActHtml = '<div class="last-act"><span class="la-dot"></span><span class="la-text">Admin: ' + actLabel + '</span></div>';
+    }
     return (
       '<div class="boutique-card ' + cardCls + '" onclick="openModal(' + b.id + ')">' +
         '<div class="avatar ' + avatarCls + '">' + initials + '</div>' +
         '<div class="info">' +
           '<div class="name">' + (b.name || 'Unknown') + '</div>' +
           '<div class="meta">' + (b.email || '') + (b.phone ? ' - ' + b.phone : '') + '</div>' +
-          '<div class="tags">' + statusTag + '<span class="tag t-plan">' + (b.plan || 'free').toUpperCase() + '</span>' + (b.city ? '<span class="tag t-city">' + b.city + '</span>' : '') + expiryTag + '</div>' +
+          '<div class="tags">' + statusTag + '<span class="tag t-plan">' + (b.plan || 'free').toUpperCase() + '</span>' + (b.city ? '<span class="tag t-city">' + b.city + '</span>' : '') + '</div>' +
+          expiryRowHtml +
+          loginHtml +
+          lastActHtml +
         '</div>' +
         '<div class="chevron">&#8250;</div>' +
       '</div>'
@@ -999,17 +1209,22 @@ function openModal(id) {
     document.getElementById('hold-sub').textContent = 'Boutique will be able to login again';
   }
 
-  // Reset renew input
+  // Reset action input rows
   document.getElementById('renew-row').style.display = 'none';
   document.getElementById('renew-months').value = '';
   document.getElementById('renew-amount').value = '';
+  document.getElementById('hold-row').style.display = 'none';
+  document.getElementById('hold-reason').value = '';
+  document.getElementById('plan-row').style.display = 'none';
+  document.getElementById('plan-reason').value = '';
 
   document.getElementById('modal-backdrop').classList.add('open');
   document.body.style.overflow = 'hidden';
 
-  // Load activity + payments async
+  // Load activity, payments and admin log async
   loadActivity(id);
   loadPayments(id);
+  loadAdminLog(id);
 }
 
 async function loadActivity(id) {
@@ -1055,6 +1270,32 @@ async function loadPayments(id) {
   }
 }
 
+async function loadAdminLog(id) {
+  try {
+    const res = await fetch('/api/admin/boutiques/' + id + '/actions', { headers: { 'x-admin-secret': secret } });
+    const logs = await res.json();
+    if (!logs.length) {
+      document.getElementById('m-log-list').innerHTML = '<div class="no-payments">No admin actions recorded yet</div>';
+      return;
+    }
+    document.getElementById('m-log-list').innerHTML = logs.map(function(l) {
+      const dt = new Date(l.done_at);
+      const date = dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const time = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      return '<div class="log-item">' +
+        '<div class="log-dot"></div>' +
+        '<div class="log-body">' +
+          '<div class="log-action">' + l.action + '</div>' +
+          (l.detail ? '<div class="log-detail">' + l.detail + '</div>' : '') +
+        '</div>' +
+        '<div class="log-time">' + date + '<br>' + time + '</div>' +
+      '</div>';
+    }).join('');
+  } catch(e) {
+    document.getElementById('m-log-list').innerHTML = '<div class="no-payments">Could not load log.</div>';
+  }
+}
+
 function closeModal(e) {
   if (e.target === document.getElementById('modal-backdrop')) closeModalNow();
 }
@@ -1091,23 +1332,32 @@ async function doToggleFree() {
   } catch (e) { alert('Error: ' + e.message); }
 }
 
+function toggleHoldRow() {
+  const row = document.getElementById('hold-row');
+  row.style.display = row.style.display === 'none' ? 'block' : 'none';
+  if (row.style.display === 'block') document.getElementById('hold-reason').focus();
+}
+
 async function doHold() {
   const b = boutiques.find(x => x.id === selectedId);
   if (!b) return;
   const isActive = b.is_active !== false;
   const expired  = isExpired(b);
   const newState = !(isActive && !expired);
+  const reason   = (document.getElementById('hold-reason').value || '').trim();
   const msg = newState ? 'Reactivate ' + b.name + '?' : 'Put ' + b.name + ' on hold?';
   if (!confirm(msg)) return;
   try {
     const res = await fetch('/api/admin/boutiques/' + selectedId + '/hold', {
       method: 'PATCH',
       headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: newState })
+      body: JSON.stringify({ is_active: newState, reason: reason || null })
     });
     if (!res.ok) { alert('Failed. Try again.'); return; }
     const idx = boutiques.findIndex(x => x.id === selectedId);
-    if (idx !== -1) boutiques[idx].is_active = newState;
+    if (idx !== -1) { boutiques[idx].is_active = newState; boutiques[idx].last_action = newState ? 'Account Reactivated' : 'Account Put on Hold'; boutiques[idx].last_action_detail = reason || null; boutiques[idx].last_action_at = new Date().toISOString(); }
+    document.getElementById('hold-row').style.display = 'none';
+    document.getElementById('hold-reason').value = '';
     updateStats(); renderList(); closeModalNow();
     alert(newState ? b.name + ' has been reactivated!' : b.name + ' has been put on hold.');
   } catch(e) { alert('Connection error.'); }
@@ -1118,13 +1368,18 @@ async function doRenew() {
   const amount = parseFloat(document.getElementById('renew-amount').value) || 0;
   if (!m || m < 1) { alert('Enter a valid number of months.'); return; }
   const b = boutiques.find(x => x.id === selectedId);
+  // PRO plan is yearly only — block renewal < 12 months
+  if (b && b.plan === 'pro' && m < 12) {
+    alert('PRO plan is yearly only.\nPlease enter 12 months or more to renew a PRO account.');
+    return;
+  }
   try {
     const res = await fetch('/api/admin/boutiques/' + selectedId + '/renew', {
       method: 'PATCH',
       headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
       body: JSON.stringify({ months: m, amount: amount })
     });
-    if (!res.ok) { alert('Failed. Try again.'); return; }
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Failed. Try again.'); return; }
     const data = await res.json();
     const idx = boutiques.findIndex(x => x.id === selectedId);
     if (idx !== -1) { boutiques[idx].expires_at = data.boutique.expires_at; boutiques[idx].is_active = true; }
@@ -1141,19 +1396,33 @@ function togglePlanRow() {
 async function doChangePlan(newPlan) {
   var b = boutiques.find(function(x){ return x.id === selectedId; });
   var name = b ? b.name : 'this boutique';
-  if (!confirm('Change plan for ' + name + ' to ' + newPlan.toUpperCase() + '?')) return;
+  var reason = (document.getElementById('plan-reason').value || '').trim();
+  var confirmMsg = newPlan === 'pro'
+    ? 'Switch ' + name + ' to PRO plan?\n\nPRO is yearly only — expiry will be set to 1 year from today.'
+    : 'Change plan for ' + name + ' to ' + newPlan.toUpperCase() + '?';
+  if (!confirm(confirmMsg)) return;
   try {
     var res = await fetch('/api/admin/boutiques/' + selectedId + '/plan', {
       method: 'PATCH',
       headers: { 'x-admin-secret': secret, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan: newPlan })
+      body: JSON.stringify({ plan: newPlan, reason: reason || null })
     });
     if (!res.ok) { alert('Failed. Try again.'); return; }
+    var data = await res.json(); // consume response and read server-confirmed plan
+    var confirmedPlan = (data.boutique && data.boutique.plan) ? data.boutique.plan : newPlan;
     var idx = boutiques.findIndex(function(x){ return x.id === selectedId; });
-    if (idx !== -1) boutiques[idx].plan = newPlan;
+    if (idx !== -1) {
+      boutiques[idx].plan = confirmedPlan;
+      // PRO sets a new expiry — sync it from the server response
+      if (data.boutique && data.boutique.expires_at) boutiques[idx].expires_at = data.boutique.expires_at;
+      boutiques[idx].last_action = 'Plan Changed';
+      boutiques[idx].last_action_detail = '→ ' + confirmedPlan.toUpperCase() + (confirmedPlan === 'pro' ? ' (Yearly)' : '') + (reason ? ' · ' + reason : '');
+      boutiques[idx].last_action_at = new Date().toISOString();
+    }
     document.getElementById('plan-row').style.display = 'none';
+    document.getElementById('plan-reason').value = '';
     updateStats(); renderList(); openModal(selectedId);
-    alert(name + ' plan changed to ' + newPlan.toUpperCase() + '!');
+    alert(name + ' plan changed to ' + confirmedPlan.toUpperCase() + '!');
   } catch(e) { alert('Connection error.'); }
 }
 
@@ -1227,8 +1496,15 @@ function copyText(text, btn) {
 app.get('/api/admin/boutiques', adminAuth, async (req, res) => {
   try {
     const result = await db.query(
-      `SELECT id, name, owner_name, email, phone, city, plan, is_active, is_free, expires_at, created_at
-       FROM boutiques ORDER BY id ASC`
+      `SELECT b.id, b.name, b.owner_name, b.email, b.phone, b.city, b.plan,
+              b.is_active, b.is_free, b.expires_at, b.created_at, b.last_login_at,
+              a.action AS last_action, a.detail AS last_action_detail, a.done_at AS last_action_at
+       FROM boutiques b
+       LEFT JOIN LATERAL (
+         SELECT action, detail, done_at FROM admin_actions
+         WHERE boutique_id = b.id ORDER BY done_at DESC LIMIT 1
+       ) a ON true
+       ORDER BY b.id ASC`
     );
     res.json(result.rows);
   } catch (e) {
@@ -1244,7 +1520,13 @@ app.patch('/api/admin/boutiques/:id/renew', adminAuth, async (req, res) => {
     const { months, amount, notes } = req.body;
     if (!months || months < 1) return res.status(400).json({ error: 'months required' });
 
-    const plan = months >= 12 ? 'yearly' : 'monthly';
+    // Check current plan — PRO must renew for at least 12 months
+    const cur = await db.query('SELECT plan FROM boutiques WHERE id=$1', [id]);
+    if (cur.rows.length && cur.rows[0].plan === 'pro' && months < 12) {
+      return res.status(400).json({ error: 'PRO plan requires a minimum of 12 months (yearly billing only).' });
+    }
+
+    const plan = months >= 12 ? (cur.rows[0]?.plan === 'pro' ? 'pro' : 'yearly') : 'monthly';
 
     const result = await db.query(
       `UPDATE boutiques
@@ -1266,6 +1548,7 @@ app.patch('/api/admin/boutiques/:id/renew', adminAuth, async (req, res) => {
       );
     }
 
+    await logAction(id, 'Renew', `${months} month(s) → ${plan.toUpperCase()}${amount > 0 ? ` · ₹${amount}` : ''}${notes ? ` · ${notes}` : ''}`);
     res.json({ message: `Renewed for ${months} month(s) (${plan})`, boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
@@ -1287,6 +1570,7 @@ app.patch('/api/admin/boutiques/:id/reset-password', adminAuth, async (req, res)
       [hash, id]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
+    await logAction(id, 'Password Reset', null);
     res.json({ message: 'Password reset successfully', boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
@@ -1298,14 +1582,30 @@ app.patch('/api/admin/boutiques/:id/reset-password', adminAuth, async (req, res)
 app.patch('/api/admin/boutiques/:id/plan', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { plan } = req.body;
+    const { plan, reason } = req.body;
     const allowed = ['free', 'monthly', 'yearly', 'pro'];
     if (!allowed.includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
-    const result = await db.query(
-      'UPDATE boutiques SET plan=$1, updated_at=NOW() WHERE id=$2 RETURNING id, name, plan',
-      [plan, id]
-    );
+
+    let result;
+    if (plan === 'pro') {
+      // PRO is always yearly — auto-extend expiry to 1 year from today (or from existing expiry if later)
+      result = await db.query(
+        `UPDATE boutiques
+         SET plan=$1, is_active=true,
+             expires_at = GREATEST(NOW(), COALESCE(expires_at, NOW())) + INTERVAL '12 months',
+             updated_at = NOW()
+         WHERE id=$2
+         RETURNING id, name, plan, expires_at`,
+        [plan, id]
+      );
+    } else {
+      result = await db.query(
+        'UPDATE boutiques SET plan=$1, updated_at=NOW() WHERE id=$2 RETURNING id, name, plan, expires_at',
+        [plan, id]
+      );
+    }
     if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
+    await logAction(id, 'Plan Changed', `→ ${plan.toUpperCase()}` + (plan === 'pro' ? ' (Yearly)' : '') + (reason ? ` · ${reason}` : ''));
     res.json({ message: 'Plan updated to ' + plan, boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
@@ -1323,6 +1623,7 @@ app.patch('/api/admin/boutiques/:id/free', adminAuth, async (req, res) => {
       [is_free, id]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Boutique not found' });
+    await logAction(id, is_free ? 'Free Access Granted' : 'Free Access Removed', null);
     res.json({ message: is_free ? 'Free access granted' : 'Free access removed', boutique: result.rows[0] });
   } catch (e) {
     console.error(e);
@@ -1384,7 +1685,7 @@ app.post('/api/admin/boutiques/:id/payments', adminAuth, async (req, res) => {
 app.patch('/api/admin/boutiques/:id/hold', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { is_active } = req.body; // true = active, false = on hold
+    const { is_active, reason } = req.body; // true = active, false = on hold
     if (typeof is_active !== 'boolean')
       return res.status(400).json({ error: 'is_active (boolean) required' });
 
@@ -1395,10 +1696,25 @@ app.patch('/api/admin/boutiques/:id/hold', adminAuth, async (req, res) => {
     if (!result.rows.length)
       return res.status(404).json({ error: 'Boutique not found' });
 
+    await logAction(id, is_active ? 'Account Reactivated' : 'Account Put on Hold', reason || null);
     res.json({
       message: is_active ? 'Account reactivated' : 'Account put on hold',
       boutique: result.rows[0],
     });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Admin actions log (GET)
+app.get('/api/admin/boutiques/:id/actions', adminAuth, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT id, action, detail, done_at FROM admin_actions WHERE boutique_id=$1 ORDER BY done_at DESC LIMIT 50',
+      [req.params.id]
+    );
+    res.json(result.rows);
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Server error' });
@@ -1430,7 +1746,7 @@ app.delete('/api/admin/boutiques/:id', adminAuth, async (req, res) => {
 app.get('/api/dashboard', auth, async (req, res) => {
   try {
     const bid = req.boutiqueId;
-    const [ordersRes, invoicesRes, customersRes, notifRes, recentRes] = await Promise.all([
+    const [ordersRes, invoicesRes, customersRes, notifRes, recentRes, trialTodayRes, deliveryTodayRes, paymentDueRes] = await Promise.all([
       db.query(
         `SELECT COUNT(*)::int as total,
                 COUNT(*) FILTER (WHERE stage NOT IN ('delivered','dispensed'))::int as active
@@ -1444,8 +1760,48 @@ app.get('/api/dashboard', auth, async (req, res) => {
       ),
       db.query('SELECT COUNT(*)::int as count FROM customers     WHERE boutique_id=$1', [bid]),
       db.query('SELECT COUNT(*)::int as count FROM notifications WHERE boutique_id=$1 AND is_read=FALSE', [bid]),
-      db.query('SELECT * FROM orders WHERE boutique_id=$1 ORDER BY created_at DESC LIMIT 5', [bid]),
+      db.query('SELECT * FROM orders WHERE boutique_id=$1 ORDER BY updated_at DESC NULLS LAST, created_at DESC LIMIT 5', [bid]),
+      // Trials scheduled for today (not yet delivered)
+      db.query(
+        `SELECT * FROM orders
+         WHERE boutique_id=$1 AND trial_date = CURRENT_DATE
+           AND stage NOT IN ('delivered','dispensed')`, [bid]
+      ),
+      // Deliveries due today (not yet delivered)
+      db.query(
+        `SELECT * FROM orders
+         WHERE boutique_id=$1 AND due_date = CURRENT_DATE
+           AND stage NOT IN ('delivered','dispensed')`, [bid]
+      ),
+      // Invoices with pending balance due
+      db.query(
+        `SELECT * FROM invoices
+         WHERE boutique_id=$1 AND due_amount > 0 AND status != 'paid'
+         ORDER BY updated_at DESC NULLS LAST, created_at DESC LIMIT 5`, [bid]
+      ),
     ]);
+
+    const todayTasks = [
+      ...trialTodayRes.rows.map(o => ({
+        id: o.id, type: 'Trial', stage: o.stage,
+        title: `Trial today — ${o.customer_name}`,
+        sub: `Fitting for ${o.garment || ''}`,
+        customer_name: o.customer_name, garment: o.garment,
+      })),
+      ...deliveryTodayRes.rows.map(o => ({
+        id: o.id, type: 'Delivery', stage: o.stage,
+        title: `Delivery today — ${o.customer_name}`,
+        sub: `${o.garment || ''} is due for delivery`,
+        customer_name: o.customer_name, garment: o.garment,
+      })),
+      ...paymentDueRes.rows.map(inv => ({
+        id: inv.order_id || inv.id, type: 'Payment', stage: inv.status,
+        title: `Payment due — ${inv.customer_name}`,
+        sub: `Balance pending`,
+        customer_name: inv.customer_name, garment: inv.garment,
+        balance: parseFloat(inv.due_amount) || 0,
+      })),
+    ];
 
     res.json({
       stats: {
@@ -1456,6 +1812,7 @@ app.get('/api/dashboard', auth, async (req, res) => {
         pendingPayments:  invoicesRes.rows[0].pending_payments,
       },
       recentOrders:        recentRes.rows,
+      todayTasks:          todayTasks,
       unreadNotifications: notifRes.rows[0].count,
     });
   } catch (e) {
@@ -1611,18 +1968,20 @@ app.post('/api/orders', auth, async (req, res) => {
   try {
     const { customer_id, customer_name, customer_phone,
             garment, fabric, due_date, amount, advance,
-            stage, notify, notes } = req.body;
+            stage, notify, notes, cloth_photo_url, design_photo_url } = req.body;
     if (!garment) return res.status(400).json({ error: 'Garment required' });
     const bal = Math.max(0, (amount||0) - (advance||0));
     const result = await db.query(
       `INSERT INTO orders
          (boutique_id, customer_id, customer_name, customer_phone,
-          garment, fabric, due_date, amount, advance, balance, stage, notify, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`,
+          garment, fabric, due_date, amount, advance, balance, stage, notify, notes,
+          cloth_photo_url, design_photo_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
       [req.boutiqueId, customer_id||null, customer_name||'', customer_phone||'',
        garment, fabric||'', due_date||null,
        amount||0, advance||0, bal,
-       stage||'received', notify !== false, notes||'']
+       stage||'received', notify !== false, notes||'',
+       cloth_photo_url||null, design_photo_url||null]
     );
     const order = result.rows[0];
     if ((stage||'').toLowerCase() === 'ready' && notify !== false) {
@@ -1657,6 +2016,8 @@ app.put('/api/orders/:id', auth, async (req, res) => {
     const stage         = b.stage         ?? b.status  ?? prev.stage;
     const notify        = b.notify        !== undefined ? b.notify !== false : prev.notify;
     const notes         = b.notes         ?? prev.notes;
+    const cloth_photo_url  = 'cloth_photo_url'  in b ? b.cloth_photo_url  : prev.cloth_photo_url;
+    const design_photo_url = 'design_photo_url' in b ? b.design_photo_url : prev.design_photo_url;
     const bal           = Math.max(0, amount - advance);
 
     const result = await db.query(
@@ -1664,12 +2025,14 @@ app.put('/api/orders/:id', auth, async (req, res) => {
          customer_id=$1, customer_name=$2, customer_phone=$3,
          garment=$4, fabric=$5, due_date=$6,
          amount=$7, advance=$8, balance=$9,
-         stage=$10, notify=$11, notes=$12, updated_at=NOW()
-       WHERE id=$13 AND boutique_id=$14 RETURNING *`,
+         stage=$10, notify=$11, notes=$12,
+         cloth_photo_url=$13, design_photo_url=$14, updated_at=NOW()
+       WHERE id=$15 AND boutique_id=$16 RETURNING *`,
       [customer_id, customer_name, customer_phone,
        garment, fabric, due_date,
        amount, advance, bal,
        stage, notify, notes,
+       cloth_photo_url, design_photo_url,
        req.params.id, req.boutiqueId]
     );
 
@@ -1762,7 +2125,9 @@ app.post('/api/invoices', auth, async (req, res) => {
   try {
     const { customer_id, customer_name, customer_phone, order_id, garment,
             bill_date, items, subtotal, discount_pct, discount_amt,
-            total_amount, advance, due_amount, remarks } = req.body;
+            total_amount, advance, due_amount, remarks,
+            gst_enabled, gst_pct, gst_amt,
+            trial_date, delivery_date } = req.body;
     if (!customer_name || !garment)
       return res.status(400).json({ error: 'Customer name and garment required' });
     const status = (due_amount <= 0) ? 'paid' : 'pending';
@@ -1770,14 +2135,29 @@ app.post('/api/invoices', auth, async (req, res) => {
       `INSERT INTO invoices
          (boutique_id, customer_id, customer_name, customer_phone, order_id, garment,
           bill_date, items, subtotal, discount_pct, discount_amt,
-          total_amount, advance, due_amount, remarks, status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
+          total_amount, advance, due_amount, remarks, status,
+          gst_enabled, gst_pct, gst_amt, trial_date, delivery_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21) RETURNING *`,
       [req.boutiqueId, customer_id||null, customer_name, customer_phone||'',
        order_id||null, garment, bill_date||new Date(),
        JSON.stringify(items||[]),
        subtotal||0, discount_pct||0, discount_amt||0,
-       total_amount||0, advance||0, due_amount||0, remarks||'', status]
+       total_amount||0, advance||0, due_amount||0, remarks||'', status,
+       gst_enabled||false, gst_pct||0, gst_amt||0,
+       trial_date||null, delivery_date||null]
     );
+
+    // If a trial/delivery date was set, also reflect it on the linked order
+    if (order_id && (trial_date || delivery_date)) {
+      await db.query(
+        `UPDATE orders SET
+           trial_date = COALESCE($1, trial_date),
+           due_date   = COALESCE($2, due_date),
+           updated_at = NOW()
+         WHERE id=$3 AND boutique_id=$4`,
+        [trial_date||null, delivery_date||null, order_id, req.boutiqueId]
+      ).catch(() => {});
+    }
     res.status(201).json(result.rows[0]);
   } catch (e) {
     console.error(e);
@@ -1789,21 +2169,30 @@ app.post('/api/invoices', auth, async (req, res) => {
 app.put('/api/invoices/:id', auth, async (req, res) => {
   try {
     const { status, advance, due_amount, subtotal, discount_pct,
-            discount_amt, total_amount, remarks } = req.body;
+            discount_amt, total_amount, remarks,
+            gst_enabled, gst_pct, gst_amt,
+            trial_date, delivery_date } = req.body;
     const result = await db.query(
       `UPDATE invoices SET
-         status       = COALESCE($1, status),
-         advance      = COALESCE($2, advance),
-         due_amount   = COALESCE($3, due_amount),
-         subtotal     = COALESCE($4, subtotal),
-         discount_pct = COALESCE($5, discount_pct),
-         discount_amt = COALESCE($6, discount_amt),
-         total_amount = COALESCE($7, total_amount),
-         remarks      = COALESCE($8, remarks),
-         updated_at   = NOW()
-       WHERE id=$9 AND boutique_id=$10 RETURNING *`,
+         status        = COALESCE($1, status),
+         advance       = COALESCE($2, advance),
+         due_amount    = COALESCE($3, due_amount),
+         subtotal      = COALESCE($4, subtotal),
+         discount_pct  = COALESCE($5, discount_pct),
+         discount_amt  = COALESCE($6, discount_amt),
+         total_amount  = COALESCE($7, total_amount),
+         remarks       = COALESCE($8, remarks),
+         gst_enabled   = COALESCE($9, gst_enabled),
+         gst_pct       = COALESCE($10, gst_pct),
+         gst_amt       = COALESCE($11, gst_amt),
+         trial_date    = COALESCE($12, trial_date),
+         delivery_date = COALESCE($13, delivery_date),
+         updated_at    = NOW()
+       WHERE id=$14 AND boutique_id=$15 RETURNING *`,
       [status, advance, due_amount, subtotal, discount_pct,
        discount_amt, total_amount, remarks,
+       gst_enabled, gst_pct, gst_amt,
+       trial_date, delivery_date,
        req.params.id, req.boutiqueId]
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Not found' });
@@ -1948,8 +2337,18 @@ async function autoNotify(boutiqueId, customerId, customerName, garment) {
 }
 
 // ─────────────────────────────────────────────
+//  Serve Flutter web app (built with: flutter build web --release)
+// ─────────────────────────────────────────────
+const webBuildPath = path.join(__dirname, 'mobile app', 'tailorx_flutter_v3', 'build', 'web');
+app.use(express.static(webBuildPath));
+// For Flutter web — send index.html for any unknown route so Flutter router handles it
+app.get('*', (req, res) => {
+  res.sendFile(path.join(webBuildPath, 'index.html'));
+});
+
+// ─────────────────────────────────────────────
 //  CRASH PROTECTION — Layer 3
-//  404 handler for unknown routes
+//  404 handler for unknown routes (API only — unreachable for web routes above)
 // ─────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
