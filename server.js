@@ -2342,7 +2342,7 @@ async function autoNotify(boutiqueId, customerId, customerName, garment) {
 const webBuildPath = path.join(__dirname, 'mobile app', 'tailorx_flutter_v3', 'build', 'web');
 app.use(express.static(webBuildPath));
 // For Flutter web — send index.html for any unknown route so Flutter router handles it
-app.get('*', (req, res) => {
+app.get('/{*splat}', (req, res) => {
   res.sendFile(path.join(webBuildPath, 'index.html'));
 });
 
