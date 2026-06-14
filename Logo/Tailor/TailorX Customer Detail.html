@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TailorX — Customer Detail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --header-dark:#1A1A2E; --accent:#D4A574; --accent-soft:#E8C49A; --accent-dark:#B8895A;
+  --bg:#F8F7F4; --card:#FFFFFF; --surface:#F1F0ED; --border:#E8E5DF;
+  --text:#1A1A2E; --text2:#6B6B7B; --text3:#9E9EA8;
+  --success:#2D8F6F; --warning:#E09F3E; --danger:#CF4747; --info:#4A7FC1;
+  --purple:#7C5CBF; --teal:#2BA5A5; --pink:#D67BA0;
+  --shadow:0 4px 12px rgba(0,0,0,.04),0 1px 4px rgba(0,0,0,.02);
+  --display:'Playfair Display',Georgia,serif;
+  --body:'Plus Jakarta Sans',-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0e14;min-height:100vh;font-family:var(--body);color:#fff;padding:36px 24px 80px}
+
+.hero{text-align:center;margin-bottom:32px}
+.hero .top{font-family:var(--display);font-size:24px;color:var(--accent);letter-spacing:5px}
+.hero .sub{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1.4px;margin-top:6px}
+
+.row{display:flex;gap:30px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:12px}
+.col-label{font-family:var(--display);font-size:18px;color:#fff;letter-spacing:.5px}
+.col-tag{font-size:9px;color:rgba(255,255,255,.45);letter-spacing:1.4px;text-transform:uppercase;margin-top:-8px;text-align:center;max-width:380px}
+
+.phone{width:380px;background:var(--bg);border-radius:42px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.55);border:6px solid #1e1e2a;position:relative}
+.notch{width:120px;height:24px;background:#1e1e2a;border-radius:0 0 14px 14px;margin:0 auto;position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:10}
+
+/* Hero */
+.cust-hero{background:linear-gradient(135deg,#1A1A2E 0%,#16213E 50%,#0F3460 100%);padding:46px 18px 18px;color:#E8E8E8;position:relative;overflow:hidden}
+.cust-hero::after{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(212,165,116,.18),transparent 70%);pointer-events:none}
+.cust-hero-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.cust-hero-nav .back{font-size:18px;color:#E8E8E8;opacity:.85}
+.cust-hero-nav .actions{display:flex;gap:14px;font-size:14px;opacity:.85}
+.cust-hero-row{display:flex;align-items:center;gap:14px;position:relative;z-index:1}
+.cust-hero-av{width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,var(--accent),var(--accent-soft));display:flex;align-items:center;justify-content:center;font-family:var(--display);color:var(--header-dark);font-weight:700;font-size:26px;box-shadow:0 8px 24px rgba(212,165,116,.45);flex-shrink:0;position:relative}
+.cust-hero-av .vip{position:absolute;right:-3px;top:-3px;width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,#F0B85A,#D4A574);color:#1A1A2E;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid #1A1A2E;font-weight:700}
+.cust-hero-info{flex:1;min-width:0}
+.cust-hero-info h1{font-family:var(--display);font-size:22px;font-weight:600;color:#fff;line-height:1.1}
+.cust-hero-tier{display:inline-block;font-size:7px;font-weight:700;letter-spacing:1.2px;padding:3px 8px;border-radius:4px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#1A1A2E;margin-top:5px;text-transform:uppercase}
+.cust-hero-tier.male{background:linear-gradient(135deg,#4A7FC1,#2D5A94);color:#fff}
+.cust-hero-tier.female{background:linear-gradient(135deg,#D67BA0,#A85A82);color:#fff}
+.cust-hero-meta{font-size:9px;color:rgba(255,255,255,.55);margin-top:5px}
+
+/* Body */
+.body{padding:14px 16px 80px;color:var(--text)}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;margin-bottom:10px;background:var(--surface);padding:3px;border-radius:10px}
+.tab{flex:1;padding:7px 0;font-size:9px;font-weight:600;letter-spacing:.6px;color:var(--text3);text-align:center;border-radius:8px;text-transform:uppercase}
+.tab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+
+/* Gender chip */
+.gender-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:8px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.gender-chip.male{background:rgba(74,127,193,.1);color:var(--info)}
+.gender-chip.female{background:rgba(214,123,160,.12);color:var(--pink)}
+
+/* Measurements card */
+.meas-card{background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow);margin-bottom:10px}
+.meas-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.meas-head h4{font-family:var(--display);font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+.meas-head h4 .gen-dot{width:6px;height:6px;border-radius:50%}
+.meas-head h4 .gen-dot.male{background:var(--info)}
+.meas-head h4 .gen-dot.female{background:var(--pink)}
+.meas-head .updated{font-size:8px;color:var(--text3);letter-spacing:.4px}
+
+.meas-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+.meas-it{padding:10px 6px;border-radius:8px;background:var(--surface);text-align:center;position:relative}
+.meas-it.custom{background:rgba(212,165,116,.1);border:1px dashed rgba(212,165,116,.4)}
+.meas-it.custom::after{content:"★";position:absolute;top:3px;right:5px;font-size:8px;color:var(--accent-dark)}
+.meas-it.add{background:transparent;border:1px dashed var(--text3);color:var(--text3);display:flex;align-items:center;justify-content:center;flex-direction:column;cursor:pointer}
+.meas-it.add .plus{font-size:14px;font-weight:300}
+.meas-it.add .lb{font-size:7px;font-weight:600;letter-spacing:.7px;margin-top:1px;text-transform:uppercase}
+.meas-l{font-size:7px;font-weight:600;letter-spacing:.7px;color:var(--text3);text-transform:uppercase}
+.meas-v{font-family:var(--display);font-size:15px;font-weight:600;color:var(--text);line-height:1;margin-top:3px}
+.meas-v small{font-size:8px;color:var(--text3);margin-left:1px;font-weight:500;font-family:var(--body)}
+.meas-v.empty{color:var(--text3);opacity:.5}
+
+.meas-foot{display:flex;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid #F0EFEC;align-items:center}
+.meas-foot .who{font-size:8px;color:var(--text3)}
+.meas-foot .edit{font-size:9px;color:var(--accent-dark);font-weight:600;letter-spacing:.4px}
+
+/* Note card */
+.note-card{background:linear-gradient(135deg,rgba(212,165,116,.06),rgba(212,165,116,.02));border:1px solid rgba(212,165,116,.18);border-radius:12px;padding:12px;margin-bottom:10px}
+.note-head{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.note-head .ic{color:var(--accent-dark);font-size:12px}
+.note-head .lbl{font-size:9px;font-weight:600;letter-spacing:1px;color:var(--accent-dark);text-transform:uppercase}
+.note-text{font-size:11px;color:var(--text);line-height:1.5}
+.note-text em{color:var(--text2);font-style:italic}
+
+/* Sticky bottom action bar */
+.sticky{position:sticky;bottom:0;display:flex;gap:8px;padding:10px 16px;background:linear-gradient(180deg,rgba(248,247,244,0),var(--bg) 30%);backdrop-filter:blur(6px)}
+.sb{flex:1;padding:13px 0;border-radius:12px;text-align:center;font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase}
+.sb.primary{background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;box-shadow:0 6px 18px rgba(212,165,116,.4)}
+.sb.secondary{background:#fff;color:var(--text);box-shadow:var(--shadow)}
+
+/* New customer mini-screen */
+.tiny-phone{width:300px;background:var(--bg);border-radius:36px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.55);border:5px solid #1e1e2a;position:relative}
+.tiny-phone .notch{width:96px;height:20px;border-radius:0 0 11px 11px}
+.tiny-hdr{background:linear-gradient(135deg,#1A1A2E,#0F3460);padding:38px 14px 12px;color:#E8E8E8;display:flex;align-items:center;gap:8px}
+.tiny-hdr .back{font-size:15px}
+.tiny-hdr .ttl{font-family:var(--display);font-size:14px;font-weight:600;flex:1}
+.tiny-body{padding:14px;color:var(--text)}
+.field-label{font-size:8px;font-weight:600;letter-spacing:1.2px;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
+.field{padding:10px 12px;border-radius:10px;background:var(--card);box-shadow:var(--shadow);font-size:11px;color:var(--text);margin-bottom:10px}
+.field.placeholder{color:var(--text3)}
+.gender-row{display:flex;gap:8px;margin-bottom:10px}
+.gender-card{flex:1;padding:14px 8px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);text-align:center;border:2px solid transparent}
+.gender-card.on{border-color:var(--accent);background:rgba(212,165,116,.05)}
+.gender-card .ic{font-size:24px;line-height:1}
+.gender-card.male .ic{color:var(--info)}
+.gender-card.female .ic{color:var(--pink)}
+.gender-card .lb{font-size:10px;font-weight:600;letter-spacing:.6px;color:var(--text);margin-top:5px;text-transform:uppercase}
+.gender-card .sub{font-size:7px;color:var(--text3);margin-top:2px;letter-spacing:.5px}
+.gender-card.on .sub{color:var(--accent-dark);font-weight:600}
+
+.hint-arrow{text-align:center;font-size:9px;color:var(--accent);letter-spacing:1.4px;margin:14px 0 8px;font-weight:600}
+
+/* Inline preview of next step (measurements) */
+.preview-pane{padding:12px;background:rgba(214,123,160,.08);border:1px dashed rgba(214,123,160,.4);border-radius:12px}
+.preview-head{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+.preview-head .dot{width:6px;height:6px;border-radius:50%;background:var(--pink)}
+.preview-head .lb{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--pink);text-transform:uppercase}
+.preview-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.preview-grid div{background:#fff;border-radius:6px;padding:6px 4px;text-align:center;font-size:8px;color:var(--text2);font-weight:600;letter-spacing:.3px}
+
+.note-block{margin-top:32px;font-size:12px;line-height:1.65;color:rgba(255,255,255,.55);text-align:center;max-width:680px;margin-left:auto;margin-right:auto}
+.note-block b{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="top">TAILORX</div>
+  <div class="sub">MEASUREMENTS · GENDER-AWARE · CUSTOM FIELDS</div>
+</div>
+
+<div class="row">
+
+  <!-- ============================================================ -->
+  <!-- VIEW 1: New Customer — gender selector                        -->
+  <!-- ============================================================ -->
+  <div class="col">
+    <div class="tiny-phone">
+      <div class="notch"></div>
+      <div class="tiny-hdr">
+        <span class="back">‹</span>
+        <div class="ttl">New Customer</div>
+      </div>
+      <div class="tiny-body" style="padding-bottom:18px">
+        <div class="field-label">Full Name</div>
+        <div class="field">Kavita Joshi</div>
+
+        <div class="field-label">Phone</div>
+        <div class="field">+91 98765 43210</div>
+
+        <div class="field-label">Email <span style="color:var(--text3);font-weight:500;letter-spacing:0;text-transform:none;font-size:8px">· optional</span></div>
+        <div class="field">kavita.joshi@gmail.com</div>
+
+        <div class="field-label">Address</div>
+        <div class="field" style="line-height:1.4">12 Citylight Rd · Surat<br/><span style="color:var(--text3);font-size:9px">Gujarat 395007</span></div>
+
+        <div class="field-label">Gender</div>
+        <div class="gender-row">
+          <div class="gender-card male">
+            <div class="ic">♂</div>
+            <div class="lb">Male</div>
+            <div class="sub">6 top + 8 btm</div>
+          </div>
+          <div class="gender-card female on">
+            <div class="ic">♀</div>
+            <div class="lb">Female</div>
+            <div class="sub">11 top + 6 btm</div>
+          </div>
+        </div>
+
+        <div class="field-label">Notification Preference</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          <div style="flex:1;padding:9px 4px;border-radius:9px;background:rgba(45,143,111,.1);border:1.5px solid var(--success);text-align:center">
+            <div style="font-size:14px;color:var(--success);line-height:1">✉</div>
+            <div style="font-size:7.5px;font-weight:700;color:var(--success);margin-top:3px;letter-spacing:.5px">WHATSAPP</div>
+            <div style="font-size:6.5px;color:var(--success);margin-top:1px;letter-spacing:.4px">✓ ON</div>
+          </div>
+          <div style="flex:1;padding:9px 4px;border-radius:9px;background:var(--card);border:1.5px solid transparent;text-align:center;box-shadow:var(--shadow)">
+            <div style="font-size:14px;color:var(--text3);line-height:1">@</div>
+            <div style="font-size:7.5px;font-weight:700;color:var(--text2);margin-top:3px;letter-spacing:.5px">EMAIL</div>
+            <div style="font-size:6.5px;color:var(--text3);margin-top:1px;letter-spacing:.4px">OFF</div>
+          </div>
+          <div style="flex:1;padding:9px 4px;border-radius:9px;background:rgba(74,127,193,.08);border:1.5px solid var(--info);text-align:center">
+            <div style="font-size:14px;color:var(--info);line-height:1">✆</div>
+            <div style="font-size:7.5px;font-weight:700;color:var(--info);margin-top:3px;letter-spacing:.5px">SMS</div>
+            <div style="font-size:6.5px;color:var(--info);margin-top:1px;letter-spacing:.4px">✓ ON</div>
+          </div>
+        </div>
+        <div style="font-size:8px;color:var(--text3);margin-bottom:10px;line-height:1.4;letter-spacing:.2px">Bills, order updates &amp; reminders sent via selected channels.</div>
+
+        <div class="hint-arrow">↓ MEASUREMENT TEMPLATE LOADS ↓</div>
+
+        <div class="preview-pane">
+          <div class="preview-head">
+            <div class="dot"></div>
+            <div class="lb">Female · Top</div>
+          </div>
+          <div class="preview-grid">
+            <div>Length</div>
+            <div>Front</div>
+            <div>Chest 1</div>
+            <div>Chest 2</div>
+            <div>Shoulder</div>
+            <div>Sleeve</div>
+          </div>
+          <div style="font-size:8px;color:var(--text3);text-align:center;margin-top:6px;letter-spacing:.5px">+ 5 more fields</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-label">New Customer</div>
+    <div class="col-tag">Pick gender → matching template loads</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- VIEW 2: Female measurements (Kavita)                          -->
+  <!-- ============================================================ -->
+  <div class="col">
+    <div class="phone">
+      <div class="notch"></div>
+
+      <div class="cust-hero">
+        <div class="cust-hero-nav">
+          <span class="back">‹</span>
+          <div class="actions"><span>✎</span><span>⋯</span></div>
+        </div>
+        <div class="cust-hero-row">
+          <div class="cust-hero-av">KJ<div class="vip">★</div></div>
+          <div class="cust-hero-info">
+            <h1>Kavita Joshi</h1>
+            <div class="cust-hero-tier female">♀ Female · VIP</div>
+            <div class="cust-hero-meta">12 orders · ₹1,84,000 · Last update 22 Apr</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="tabs">
+          <div class="tab">Orders</div>
+          <div class="tab active">Measurements</div>
+          <div class="tab">Notes</div>
+        </div>
+
+        <!-- TOP -->
+        <div class="meas-card">
+          <div class="meas-head">
+            <h4><span class="gen-dot female"></span>Top</h4>
+            <span class="updated">11 fields · all in inches</span>
+          </div>
+          <div class="meas-grid">
+            <div class="meas-it"><div class="meas-l">Length</div><div class="meas-v">42<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Front</div><div class="meas-v">14<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Chest 1</div><div class="meas-v">38<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Chest 2</div><div class="meas-v">36<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Shoulder</div><div class="meas-v">14.5<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Sleeve</div><div class="meas-v">22<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Sleeve Btm</div><div class="meas-v">10<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Blouse Len</div><div class="meas-v">15<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Back/Front</div><div class="meas-v">15<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Neck Depth</div><div class="meas-v">7<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Armhole</div><div class="meas-v">17<small>in</small></div></div>
+            <!-- Custom field -->
+            <div class="meas-it custom"><div class="meas-l">Cuff Width</div><div class="meas-v">3<small>in</small></div></div>
+          </div>
+          <div class="meas-foot">
+            <span class="who">★ 1 custom field</span>
+            <span class="edit">+ Add field</span>
+          </div>
+        </div>
+
+        <!-- BOTTOM -->
+        <div class="meas-card">
+          <div class="meas-head">
+            <h4><span class="gen-dot female"></span>Bottom</h4>
+            <span class="updated">6 fields</span>
+          </div>
+          <div class="meas-grid">
+            <div class="meas-it"><div class="meas-l">Salwar Len</div><div class="meas-v">38<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Waist</div><div class="meas-v">32<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Hip</div><div class="meas-v">40<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Skirt</div><div class="meas-v">36<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Lehenga</div><div class="meas-v">42<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Thigh</div><div class="meas-v">24<small>in</small></div></div>
+            <div class="meas-it add"><div class="plus">+</div><div class="lb">Custom</div></div>
+          </div>
+          <div class="meas-foot">
+            <span class="who">Updated 22 Apr 2026</span>
+            <span class="edit">✎ Edit all</span>
+          </div>
+        </div>
+
+        <div class="note-card">
+          <div class="note-head">
+            <span class="ic">⚠</span>
+            <span class="lbl">Fitting Note</span>
+          </div>
+          <div class="note-text">Right shoulder slightly higher — add <em>0.25"</em> on right during cutting.</div>
+        </div>
+      </div>
+
+      <div class="sticky">
+        <div class="sb secondary">Update</div>
+        <div class="sb primary">+ New Order</div>
+      </div>
+    </div>
+    <div class="col-label">Female · Kavita Joshi</div>
+    <div class="col-tag">11 top + 6 bottom + 1 custom · ★ marks custom field</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- VIEW 3: Male measurements                                     -->
+  <!-- ============================================================ -->
+  <div class="col">
+    <div class="phone">
+      <div class="notch"></div>
+
+      <div class="cust-hero">
+        <div class="cust-hero-nav">
+          <span class="back">‹</span>
+          <div class="actions"><span>✎</span><span>⋯</span></div>
+        </div>
+        <div class="cust-hero-row">
+          <div class="cust-hero-av" style="background:linear-gradient(135deg,#4A7FC1,#2D5A94);color:#fff">RD</div>
+          <div class="cust-hero-info">
+            <h1>Raju Desai</h1>
+            <div class="cust-hero-tier male">♂ Male</div>
+            <div class="cust-hero-meta">4 orders · ₹32,000 · Last update 18 Apr</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="tabs">
+          <div class="tab">Orders</div>
+          <div class="tab active">Measurements</div>
+          <div class="tab">Notes</div>
+        </div>
+
+        <!-- TOP -->
+        <div class="meas-card">
+          <div class="meas-head">
+            <h4><span class="gen-dot male"></span>Top</h4>
+            <span class="updated">6 fields · all in inches</span>
+          </div>
+          <div class="meas-grid">
+            <div class="meas-it"><div class="meas-l">Chest</div><div class="meas-v">42<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Shoulder</div><div class="meas-v">17<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Neck</div><div class="meas-v">15.5<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Sleeve</div><div class="meas-v">24<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Shirt Len</div><div class="meas-v">30<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Back Width</div><div class="meas-v">18<small>in</small></div></div>
+            <!-- Empty custom slot -->
+            <div class="meas-it add"><div class="plus">+</div><div class="lb">Custom</div></div>
+          </div>
+        </div>
+
+        <!-- BOTTOM -->
+        <div class="meas-card">
+          <div class="meas-head">
+            <h4><span class="gen-dot male"></span>Bottom</h4>
+            <span class="updated">8 fields · 1 custom ★</span>
+          </div>
+          <div class="meas-grid">
+            <div class="meas-it"><div class="meas-l">Waist</div><div class="meas-v">34<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Hip</div><div class="meas-v">40<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Inseam</div><div class="meas-v">31<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Trouser W</div><div class="meas-v">34<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Thigh</div><div class="meas-v">23<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Knee</div><div class="meas-v">17<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Ankle</div><div class="meas-v">14<small>in</small></div></div>
+            <div class="meas-it"><div class="meas-l">Pant Len</div><div class="meas-v">42<small>in</small></div></div>
+            <!-- Custom -->
+            <div class="meas-it custom"><div class="meas-l">Cuff Fold</div><div class="meas-v">1.5<small>in</small></div></div>
+          </div>
+          <div class="meas-foot">
+            <span class="who">Updated 18 Apr 2026</span>
+            <span class="edit">✎ Edit all</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sticky">
+        <div class="sb secondary">Update</div>
+        <div class="sb primary">+ New Order</div>
+      </div>
+    </div>
+    <div class="col-label">Male · Raju Desai</div>
+    <div class="col-tag">6 top + 8 bottom + 1 custom field</div>
+  </div>
+</div>
+
+<div class="note-block">
+  Gender chosen at customer creation drives the measurement template. <b>Male</b> shows your 6 top + 8 bottom fields. <b>Female</b> shows 11 top + 6 bottom. The dashed <b>+ Custom</b> tile sits at the end of every group — tap to add any extra field this customer needs (Cuff Width, Pant Cuff Fold, etc.). Custom fields stay marked with a gold <b>★</b> so you always know what's standard vs. boutique-added.
+</div>
+
+</body>
+</html>

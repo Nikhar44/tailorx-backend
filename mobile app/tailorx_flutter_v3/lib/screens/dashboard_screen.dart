@@ -130,15 +130,19 @@ class DashboardScreenState extends State<DashboardScreen> with SingleTickerProvi
       if (pipeline.containsKey(s)) pipeline[s] = pipeline[s]! + 1;
     }
 
-    // Dynamic Tasks
+    // Dynamic Tasks — driven by today's trial date / delivery date / pending payments
     final tasks = <_Task>[];
-    for (final o in d.recentOrders) {
-      if (o.stage == 'Trial') {
-        tasks.add(_Task(id: o.id.toString(), title: 'Trial — ${o.customerName}', sub: 'Fitting for ${o.description}', badge: 'Trial', color: T.teal, type: 'Trial'));
-      } else if (o.stage == 'Ready') {
-        tasks.add(_Task(id: o.id.toString(), title: 'Deliver — ${o.customerName}', sub: '${o.description} is ready', badge: 'Ready', color: T.success, type: 'Ready'));
-      } else if (o.balanceAmount > 0 && o.stage == 'Delivered') {
-        tasks.add(_Task(id: o.id.toString(), title: 'Payment — ${o.customerName}', sub: '•••• pending', badge: 'Due', color: T.danger, type: 'Payment', balanceAmt: _fmt.format(o.balanceAmount)));
+    for (final t in d.todayTasks) {
+      switch (t.type) {
+        case 'Trial':
+          tasks.add(_Task(id: t.id, title: t.title, sub: t.sub, badge: 'Trial', color: T.teal, type: 'Trial'));
+          break;
+        case 'Delivery':
+          tasks.add(_Task(id: t.id, title: t.title, sub: t.sub, badge: 'Ready', color: T.success, type: 'Ready'));
+          break;
+        case 'Payment':
+          tasks.add(_Task(id: t.id, title: t.title, sub: t.sub, badge: 'Due', color: T.danger, type: 'Payment', balanceAmt: _fmt.format(t.balance)));
+          break;
       }
     }
 
@@ -354,9 +358,21 @@ class _ActivityFeed extends StatelessWidget {
   final List<Order> orders; final NumberFormat fmt;
   final VoidCallback? onOrderTap; final bool isTablet;
   const _ActivityFeed({required this.orders, required this.fmt, this.onOrderTap, this.isTablet = false});
+  String _timeAgo(String? iso) {
+    if (iso == null) return '';
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return '';
+    final diff = DateTime.now().toUtc().difference(dt.toUtc());
+    if (diff.inSeconds < 60) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min${diff.inMinutes == 1 ? '' : 's'} ago';
+    if (diff.inHours < 24) return '${diff.inHours} hour${diff.inHours == 1 ? '' : 's'} ago';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays} days ago';
+    return DateFormat('dd MMM yyyy').format(dt.toLocal());
+  }
+
   Widget _feedItem(Order o, int i) {
     final c = T.stageColor(o.stage);
-    final times = ['10 min ago', '1 hour ago', '3 hours ago', 'Yesterday', '2 days ago', '3 days ago', 'Last week', 'Earlier'];
     return Padding(padding: const EdgeInsets.only(bottom: 14),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Transform.translate(offset: const Offset(-25, 4),
@@ -364,7 +380,7 @@ class _ActivityFeed extends StatelessWidget {
             decoration: BoxDecoration(color: c, shape: BoxShape.circle,
               border: Border.all(color: T.card, width: 2)))),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(i < times.length ? times[i] : '',
+          Text(_timeAgo(o.updatedAt ?? o.createdAt),
             style: T.bodySm.copyWith(fontSize: 12, color: T.text3, fontWeight: FontWeight.w600)),
           const SizedBox(height: 4),
           InkWell(onTap: onOrderTap, borderRadius: BorderRadius.circular(10),

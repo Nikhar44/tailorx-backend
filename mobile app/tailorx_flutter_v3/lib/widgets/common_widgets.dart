@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/theme.dart';
 import '../utils/lang.dart';
 import '../utils/privacy_helper.dart';
+import '../utils/constants.dart';
 
 // ─── Status Badge ───────────────────────────────────────────────────
 class StatusBadge extends StatelessWidget {
@@ -97,13 +98,26 @@ class TxField extends StatelessWidget {
   final String label; final String? hint; final TextEditingController? controller;
   final TextInputType? keyboardType; final int maxLines; final bool obscureText, readOnly;
   final String? Function(String?)? validator; final Widget? suffix; final void Function(String)? onChanged;
-  const TxField({super.key, required this.label, this.hint, this.controller, this.keyboardType, this.maxLines=1, this.obscureText=false, this.readOnly=false, this.validator, this.suffix, this.onChanged});
+  /// External error shown below the field (e.g. "Incorrect email or password"),
+  /// separate from the form `validator`. Highlights the field border in red too.
+  final String? errorText;
+  const TxField({super.key, required this.label, this.hint, this.controller, this.keyboardType, this.maxLines=1, this.obscureText=false, this.readOnly=false, this.validator, this.suffix, this.onChanged, this.errorText});
   @override Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text(label.toUpperCase(), style: T.label),
     const SizedBox(height: 6),
     TextFormField(controller: controller, keyboardType: keyboardType, maxLines: maxLines, obscureText: obscureText, readOnly: readOnly,
       validator: validator, onChanged: onChanged, style: T.body,
-      decoration: InputDecoration(hintText: hint, suffixIcon: suffix)),
+      decoration: InputDecoration(hintText: hint, suffixIcon: suffix,
+        enabledBorder: errorText != null ? OutlineInputBorder(borderRadius: BorderRadius.circular(T.rSm), borderSide: const BorderSide(color: T.danger)) : null,
+        errorBorder: errorText != null ? OutlineInputBorder(borderRadius: BorderRadius.circular(T.rSm), borderSide: const BorderSide(color: T.danger)) : null,
+        focusedBorder: errorText != null ? OutlineInputBorder(borderRadius: BorderRadius.circular(T.rSm), borderSide: const BorderSide(color: T.danger, width: 1.5)) : null,
+      )),
+    if (errorText != null) Padding(padding: const EdgeInsets.only(top: 5, left: 2),
+      child: Row(children: [
+        const Icon(Icons.error_outline_rounded, size: 13, color: T.danger),
+        const SizedBox(width: 5),
+        Expanded(child: Text(errorText!, style: const TextStyle(fontSize: 12, color: T.danger, fontWeight: FontWeight.w500))),
+      ])),
   ]);
 }
 
@@ -124,12 +138,40 @@ class MeasurementSection extends StatefulWidget {
   final void Function(String, String) onChanged;
   final void Function(String)? onAddCustom, onRemoveCustom;
   final List<String> customFields;
-  const MeasurementSection({super.key, required this.title, required this.fields, required this.values, required this.onChanged, this.onAddCustom, this.onRemoveCustom, this.customFields = const []});
+  /// Identifies which measurement guide map to use for the (i) info icon,
+  /// e.g. 'maleTop', 'maleBottom', 'femaleTopBlouse', 'femaleTopDress', 'femaleBottom'.
+  final String section;
+  const MeasurementSection({super.key, required this.title, required this.fields, required this.values, required this.onChanged, this.onAddCustom, this.onRemoveCustom, this.customFields = const [], this.section = ''});
   @override State<MeasurementSection> createState() => _MeasSecState();
 }
 
 class _MeasSecState extends State<MeasurementSection> {
   bool _open = true;
+
+  void _showMeasureGuide(BuildContext context, String field, String guideKey) {
+    showDialog(context: context, builder: (ctx) => Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+      child: Container(
+        decoration: BoxDecoration(color: T.card, borderRadius: BorderRadius.circular(T.rMd)),
+        padding: const EdgeInsets.all(12),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Expanded(child: Text('How to measure: $field', style: T.heading.copyWith(fontSize: 16))),
+            GestureDetector(onTap: () => Navigator.pop(ctx),
+              child: const Icon(Icons.close_rounded, size: 20, color: T.text3)),
+          ]),
+          const SizedBox(height: 10),
+          ClipRRect(borderRadius: BorderRadius.circular(8),
+            child: Image.asset('assets/measurement_guides/$guideKey.png',
+              fit: BoxFit.contain,
+              errorBuilder: (c, e, s) => Padding(padding: const EdgeInsets.all(24),
+                child: Text('Illustration not available', style: T.bodySm.copyWith(color: T.text3))))),
+        ]),
+      ),
+    ));
+  }
+
   @override Widget build(BuildContext context) {
     final lang = AppLang();
     final all = [...widget.fields, ...widget.customFields];
@@ -150,10 +192,14 @@ class _MeasSecState extends State<MeasurementSection> {
           child: Column(children: [
             Wrap(spacing: 8, runSpacing: 10, children: all.map((f) {
               final isCust = widget.customFields.contains(f);
+              final guideKey = isCust ? null : C.guideAsset(widget.section, f);
               return SizedBox(width: (MediaQuery.of(context).size.width - 64) / 2,
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Expanded(child: Text(f, style: T.bodySm.copyWith(fontSize: 14, fontWeight: FontWeight.w500))),
+                    if(guideKey != null) GestureDetector(onTap: () => _showMeasureGuide(context, f, guideKey),
+                      child: Padding(padding: const EdgeInsets.only(left: 4),
+                        child: Icon(Icons.info_outline_rounded, size: 16, color: T.accentDark.withOpacity(0.7)))),
                     if(isCust) GestureDetector(onTap: () => widget.onRemoveCustom?.call(f),
                       child: const Icon(Icons.close_rounded, size: 14, color: T.danger)),
                   ]),

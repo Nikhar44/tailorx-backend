@@ -30,4 +30,63 @@ class C {
   static const femaleTopDress  = ['Length','Chest 1','Chest 2','Waist','Shoulder','Sleeve',
     'Sleeve Bottom','Back Length','Neck Depth','Armhole'];
   static const femaleBottom = ['Salwar Length','Waist','Hip','Thigh','Knee'];
+
+  // Maps each measurement section + field display name to the illustration
+  // asset key in assets/measurement_guides/<key>.png
+  static const Map<String, Map<String, String>> measurementGuides = {
+    'maleTop': {
+      'Chest': 'm_chest',
+      'Shoulder': 'm_shoulder',
+      'Neck': 'm_neck',
+      'Sleeve': 'm_sleeve',
+      'Shirt Length': 'm_shirt_length',
+      'Back Width': 'm_back_width',
+    },
+    'maleBottom': {
+      'Waist': 'b_waist',
+      'Hip': 'b_hip',
+      'Inseam': 'b_inseam',
+      'Trouser Waist': 'b_trouser_waist',
+      'Thigh': 'b_thigh',
+      'Knee': 'b_knee',
+      'Ankle': 'b_ankle',
+      'Pant Length': 'b_pant_length',
+    },
+    'femaleTopBlouse': {
+      'Length': 'length',
+      'Front': 'front',
+      'Chest 1': 'chest_1',
+      'Chest 2': 'chest_2',
+      'Shoulder': 'shoulder',
+      'Sleeve': 'sleeve',
+      'Sleeve Bottom': 'sleeve_bottom',
+      'Back/Front Length': 'back_front_length',
+      'Neck Depth': 'neck_depth',
+      'Armhole': 'armhole',
+    },
+    'femaleTopDress': {
+      'Length': 'length',
+      'Chest 1': 'chest_1',
+      'Chest 2': 'chest_2',
+      'Waist': 'waist',
+      'Shoulder': 'shoulder',
+      'Sleeve': 'sleeve',
+      'Sleeve Bottom': 'sleeve_bottom',
+      'Back Length': 'back_length',
+      'Neck Depth': 'neck_depth',
+      'Armhole': 'armhole',
+    },
+    'femaleBottom': {
+      'Salwar Length': 'b_salwar_length',
+      'Waist': 'b_waist',
+      'Hip': 'b_hip',
+      'Thigh': 'b_thigh',
+      'Knee': 'b_knee',
+    },
+  };
+
+  /// Returns the measurement guide asset key for a given section + field
+  /// display name, or null if no illustration exists for it (e.g. custom fields).
+  static String? guideAsset(String section, String field) =>
+      measurementGuides[section]?[field];
 }

@@ -74,5 +74,37 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
+	<!-- ─── Facebook SDK ──────────────────────────────────────────────────
+	     Replace YOUR_FACEBOOK_APP_ID and YOUR_FACEBOOK_CLIENT_TOKEN below.
+	     Get them from: https://developers.facebook.com → Your App → Settings → Basic
+	-->
+	<key>FacebookAppID</key>
+	<string>YOUR_FACEBOOK_APP_ID</string>
+	<key>FacebookClientToken</key>
+	<string>YOUR_FACEBOOK_CLIENT_TOKEN</string>
+	<key>FacebookDisplayName</key>
+	<string>TailorX</string>
+
+	<!-- Allows the app to open facebook:// links (Facebook app) -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>fbapi</string>
+		<string>fb-messenger-share-api</string>
+		<string>fbauth2</string>
+		<string>fbshareextension</string>
+	</array>
+
+	<!-- URL scheme so Facebook can redirect back to TailorX after login -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fbYOUR_FACEBOOK_APP_ID</string>
+			</array>
+		</dict>
+	</array>
+	<!-- ──────────────────────────────────────────────────────────────── -->
 </dict>
 </plist>

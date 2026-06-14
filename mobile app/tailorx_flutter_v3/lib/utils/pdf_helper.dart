@@ -23,6 +23,382 @@ class PdfHelper {
     await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
   }
 
+  // ─── Order Receipt PDF ───────────────────────────────────────────────────────
+
+  static Future<void> generateAndShareOrder(Order o, {String? boutiqueName, String? boutiqueAddress, String? boutiquePhone}) async {
+    final pdf = await _buildOrderPdf(o, boutiqueName ?? 'TailorX Boutique', boutiqueAddress, boutiquePhone);
+    await Printing.sharePdf(bytes: await pdf.save(), filename: 'order_${o.id ?? "new"}.pdf');
+  }
+
+  static Future<void> generateAndPrintOrder(Order o, {String? boutiqueName, String? boutiqueAddress, String? boutiquePhone}) async {
+    final pdf = await _buildOrderPdf(o, boutiqueName ?? 'TailorX Boutique', boutiqueAddress, boutiquePhone);
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+  }
+
+  static Future<pw.Document> _buildOrderPdf(Order o, String boutiqueName, String? boutiqueAddress, String? boutiquePhone) async {
+    final pdf   = pw.Document();
+    final fmt   = NumberFormat.currency(locale: 'en_IN', symbol: 'Rs. ', decimalDigits: 2);
+    final orderNo    = o.id != null ? 'ORD-${o.id!.padLeft(4, "0")}' : 'ORDER';
+    final createdDate = _fmtDate(o.createdAt ?? DateTime.now().toIso8601String());
+    final dueDate    = o.dueDate?.isNotEmpty == true ? _fmtDate(o.dueDate) : null;
+
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(36),
+      build: (pw.Context context) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          // ── Header ──
+          pw.Container(
+            padding: const pw.EdgeInsets.all(20),
+            decoration: pw.BoxDecoration(
+              color: _headerDark,
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                  pw.Text(boutiqueName.toUpperCase(),
+                    style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: _accent, letterSpacing: 2)),
+                  if (boutiqueAddress != null && boutiqueAddress.isNotEmpty)
+                    pw.Padding(padding: const pw.EdgeInsets.only(top: 4),
+                      child: pw.Text(boutiqueAddress,
+                        style: pw.TextStyle(fontSize: 9, color: const PdfColor(1, 1, 1, 0.6), letterSpacing: 0.5))),
+                  if (boutiquePhone != null && boutiquePhone.isNotEmpty)
+                    pw.Text(boutiquePhone,
+                      style: pw.TextStyle(fontSize: 9, color: const PdfColor(1, 1, 1, 0.6))),
+                ]),
+                pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                  pw.Text('ORDER RECEIPT',
+                    style: pw.TextStyle(fontSize: 13, color: _accent, fontWeight: pw.FontWeight.bold, letterSpacing: 3)),
+                  pw.SizedBox(height: 4),
+                  pw.Text(orderNo,
+                    style: pw.TextStyle(fontSize: 11, color: const PdfColor(1, 1, 1, 0.6), letterSpacing: 1)),
+                  pw.Text(createdDate,
+                    style: pw.TextStyle(fontSize: 10, color: const PdfColor(1, 1, 1, 0.6))),
+                ]),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 20),
+          // ── Customer + Status row ──
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                pw.Text('CUSTOMER',
+                  style: pw.TextStyle(fontSize: 9, letterSpacing: 2, color: _text2, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 6),
+                pw.Text(o.customerName ?? '-',
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                if (o.customerPhone?.isNotEmpty == true)
+                  pw.Text(o.customerPhone!,
+                    style: pw.TextStyle(fontSize: 11, color: _text2)),
+                if (o.city?.isNotEmpty == true)
+                  pw.Text(o.city!,
+                    style: pw.TextStyle(fontSize: 11, color: _text2)),
+              ])),
+              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                pw.Text('STATUS',
+                  style: pw.TextStyle(fontSize: 9, letterSpacing: 2, color: _text2, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 6),
+                pw.Text(o.stage.toUpperCase(),
+                  style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                if (dueDate != null) ...[
+                  pw.SizedBox(height: 10),
+                  pw.Text('DELIVERY DATE',
+                    style: pw.TextStyle(fontSize: 9, letterSpacing: 2, color: _text2, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 4),
+                  pw.Text(dueDate,
+                    style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                ],
+              ]),
+            ],
+          ),
+          pw.SizedBox(height: 16),
+          pw.Divider(color: const PdfColor(0.91, 0.9, 0.87)),
+          pw.SizedBox(height: 16),
+          // ── Order details ──
+          pw.Container(
+            width: double.infinity,
+            decoration: pw.BoxDecoration(
+              color: _surface,
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+            ),
+            padding: const pw.EdgeInsets.all(16),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+              pw.Text('ORDER DETAILS',
+                style: pw.TextStyle(fontSize: 9, letterSpacing: 2, color: _text2, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 12),
+              if (o.garment?.isNotEmpty == true) _odRow('Garment', o.garment!),
+              if (o.fabric?.isNotEmpty  == true) _odRow('Fabric',  o.fabric!),
+              if (o.notes?.isNotEmpty   == true) _odRow('Notes',   o.notes!),
+            ]),
+          ),
+          pw.SizedBox(height: 16),
+          // ── Amounts ──
+          pw.Container(
+            width: double.infinity,
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: const PdfColor(0.91, 0.9, 0.87)),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+            ),
+            padding: const pw.EdgeInsets.all(16),
+            child: pw.Column(children: [
+              _odAmt('Total Amount', fmt.format(o.amount), bold: false),
+              pw.SizedBox(height: 8),
+              _odAmt('Advance Paid', fmt.format(o.advance), bold: false, color: const PdfColor(0.18, 0.56, 0.44)),
+              pw.SizedBox(height: 8),
+              pw.Divider(color: const PdfColor(0.91, 0.9, 0.87)),
+              pw.SizedBox(height: 8),
+              _odAmt('BALANCE DUE', fmt.format(o.balance), bold: true,
+                color: o.balance > 0
+                  ? const PdfColor(0.81, 0.28, 0.28)
+                  : const PdfColor(0.18, 0.56, 0.44)),
+            ]),
+          ),
+          pw.Spacer(),
+          // ── Footer ──
+          pw.Divider(color: const PdfColor(0.91, 0.9, 0.87)),
+          pw.SizedBox(height: 8),
+          pw.Center(
+            child: pw.Text('Thank you for your business! — $boutiqueName',
+              style: pw.TextStyle(fontSize: 10, color: _text2, fontStyle: pw.FontStyle.italic)),
+          ),
+        ],
+      ),
+    ));
+    return pdf;
+  }
+
+  // ─── Job Card / Work Order PDF (internal — for tailors/employees) ──────────
+
+  static Future<void> generateAndShareJobCard(Order o, Customer? customer, {String? boutiqueName, String? boutiqueAddress, String? boutiquePhone}) async {
+    final pdf = await _buildJobCardPdf(o, customer, boutiqueName ?? 'TailorX Boutique', boutiqueAddress, boutiquePhone);
+    await Printing.sharePdf(bytes: await pdf.save(), filename: 'job_card_${o.id ?? "new"}.pdf');
+  }
+
+  static Future<void> generateAndPrintJobCard(Order o, Customer? customer, {String? boutiqueName, String? boutiqueAddress, String? boutiquePhone}) async {
+    final pdf = await _buildJobCardPdf(o, customer, boutiqueName ?? 'TailorX Boutique', boutiqueAddress, boutiquePhone);
+    await Printing.layoutPdf(onLayout: (PdfPageFormat format) async => pdf.save());
+  }
+
+  static Future<pw.Document> _buildJobCardPdf(Order o, Customer? customer, String boutiqueName, String? boutiqueAddress, String? boutiquePhone) async {
+    final pdf = pw.Document();
+    final orderNo = o.id != null ? 'ORD-${o.id!.padLeft(4, "0")}' : 'ORDER';
+    final dueDate = o.dueDate?.isNotEmpty == true ? _fmtDate(o.dueDate) : null;
+    final createdDate = _fmtDate(o.createdAt ?? DateTime.now().toIso8601String());
+
+    pw.ImageProvider? clothImg;
+    pw.ImageProvider? designImg;
+    if (o.clothPhotoUrl?.isNotEmpty == true) {
+      try { clothImg = await networkImage(o.clothPhotoUrl!); } catch (_) {}
+    }
+    if (o.designPhotoUrl?.isNotEmpty == true) {
+      try { designImg = await networkImage(o.designPhotoUrl!); } catch (_) {}
+    }
+
+    final isMale = customer?.gender?.toLowerCase() == 'male';
+    final measurementSections = customer != null ? _buildMeasurementSections(customer, isMale) : <pw.Widget>[];
+
+    pdf.addPage(pw.MultiPage(
+      pageFormat: PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(36),
+      build: (context) => [
+        // ── Header ──
+        pw.Container(
+          padding: const pw.EdgeInsets.all(20),
+          decoration: pw.BoxDecoration(
+            color: _headerDark,
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+          ),
+          child: pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+                pw.Text(boutiqueName.toUpperCase(),
+                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: _accent, letterSpacing: 2)),
+                if (boutiqueAddress != null && boutiqueAddress.isNotEmpty)
+                  pw.Padding(padding: const pw.EdgeInsets.only(top: 4),
+                    child: pw.Text(boutiqueAddress,
+                      style: pw.TextStyle(fontSize: 9, color: const PdfColor(1, 1, 1, 0.6), letterSpacing: 0.5))),
+                if (boutiquePhone != null && boutiquePhone.isNotEmpty)
+                  pw.Text(boutiquePhone,
+                    style: pw.TextStyle(fontSize: 9, color: const PdfColor(1, 1, 1, 0.6))),
+              ]),
+              pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+                pw.Text('JOB CARD',
+                  style: pw.TextStyle(fontSize: 13, color: _accent, fontWeight: pw.FontWeight.bold, letterSpacing: 3)),
+                pw.SizedBox(height: 4),
+                pw.Text(orderNo,
+                  style: pw.TextStyle(fontSize: 11, color: const PdfColor(1, 1, 1, 0.6), letterSpacing: 1)),
+                pw.Text(createdDate,
+                  style: pw.TextStyle(fontSize: 10, color: const PdfColor(1, 1, 1, 0.6))),
+              ]),
+            ],
+          ),
+        ),
+        pw.SizedBox(height: 16),
+        // ── Customer + Delivery ──
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+              pw.Text('CUSTOMER',
+                style: pw.TextStyle(fontSize: 9, letterSpacing: 2, color: _text2, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 6),
+              pw.Text(o.customerName ?? '-',
+                style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              if (o.customerPhone?.isNotEmpty == true)
+                pw.Text(o.customerPhone!,
+                  style: pw.TextStyle(fontSize: 11, color: _text2)),
+            ])),
+            pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+              if (dueDate != null) ...[
+                pw.Text('DELIVERY DATE',
+                  style: pw.TextStyle(fontSize: 9, letterSpacing: 2, color: _text2, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 6),
+                pw.Text(dueDate,
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: const PdfColor(0.81, 0.28, 0.28))),
+              ],
+            ]),
+          ],
+        ),
+        pw.SizedBox(height: 16),
+        pw.Divider(color: const PdfColor(0.91, 0.9, 0.87)),
+        pw.SizedBox(height: 16),
+        // ── Garment / Fabric ──
+        pw.Container(
+          width: double.infinity,
+          decoration: pw.BoxDecoration(
+            color: _surface,
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+          ),
+          padding: const pw.EdgeInsets.all(16),
+          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            pw.Text('GARMENT DETAILS',
+              style: pw.TextStyle(fontSize: 9, letterSpacing: 2, color: _text2, fontWeight: pw.FontWeight.bold)),
+            pw.SizedBox(height: 12),
+            if (o.garment?.isNotEmpty == true) _odRow('Garment', o.garment!),
+            if (o.fabric?.isNotEmpty == true) _odRow('Fabric', o.fabric!),
+            if ((o.garment?.isEmpty ?? true) && (o.fabric?.isEmpty ?? true))
+              pw.Text('-', style: pw.TextStyle(fontSize: 11, color: _text2)),
+          ]),
+        ),
+        // ── Reference Photos ──
+        if (clothImg != null || designImg != null) ...[
+          pw.SizedBox(height: 16),
+          pw.Text('REFERENCE PHOTOS',
+            style: pw.TextStyle(fontSize: 9, letterSpacing: 2, color: _text2, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          pw.Row(children: [
+            if (clothImg != null)
+              pw.Expanded(child: pw.Column(children: [
+                pw.Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: const PdfColor(0.91, 0.9, 0.87)),
+                    borderRadius: pw.BorderRadius.circular(6),
+                  ),
+                  child: pw.ClipRRect(horizontalRadius: 6, verticalRadius: 6,
+                    child: pw.Image(clothImg, fit: pw.BoxFit.cover)),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text('Cloth / Material', style: pw.TextStyle(fontSize: 9, color: _text2)),
+              ])),
+            if (clothImg != null && designImg != null) pw.SizedBox(width: 12),
+            if (designImg != null)
+              pw.Expanded(child: pw.Column(children: [
+                pw.Container(
+                  height: 180,
+                  width: double.infinity,
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: const PdfColor(0.91, 0.9, 0.87)),
+                    borderRadius: pw.BorderRadius.circular(6),
+                  ),
+                  child: pw.ClipRRect(horizontalRadius: 6, verticalRadius: 6,
+                    child: pw.Image(designImg, fit: pw.BoxFit.cover)),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text('Design', style: pw.TextStyle(fontSize: 9, color: _text2)),
+              ])),
+          ]),
+        ],
+        // ── Measurements ──
+        if (measurementSections.isNotEmpty) ...[
+          pw.SizedBox(height: 16),
+          pw.Text('CUSTOMER MEASUREMENTS',
+            style: pw.TextStyle(fontSize: 9, letterSpacing: 2, color: _text2, fontWeight: pw.FontWeight.bold)),
+          pw.SizedBox(height: 8),
+          ...measurementSections,
+        ] else ...[
+          pw.SizedBox(height: 16),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(
+              color: _surface,
+              borderRadius: pw.BorderRadius.circular(6),
+            ),
+            child: pw.Text('No saved measurements for this customer.',
+              style: pw.TextStyle(fontSize: 10, color: _text2, fontStyle: pw.FontStyle.italic)),
+          ),
+        ],
+        // ── Notes / Special Instructions ──
+        if (o.notes?.isNotEmpty == true) ...[
+          pw.SizedBox(height: 16),
+          pw.Container(
+            width: double.infinity,
+            decoration: pw.BoxDecoration(
+              color: _surface,
+              borderRadius: pw.BorderRadius.circular(6),
+              border: pw.Border.all(color: _accent, width: 0.5),
+            ),
+            padding: const pw.EdgeInsets.all(12),
+            child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+              pw.Text('SPECIAL INSTRUCTIONS / NOTES',
+                style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: _text2)),
+              pw.SizedBox(height: 6),
+              pw.Text(o.notes!, style: pw.TextStyle(fontSize: 10)),
+            ]),
+          ),
+        ],
+        pw.SizedBox(height: 20),
+        pw.Divider(color: const PdfColor(0.91, 0.9, 0.87)),
+        pw.SizedBox(height: 8),
+        pw.Center(
+          child: pw.Text('Internal Use Only — Not a billing document',
+            style: pw.TextStyle(fontSize: 9, color: _text2, fontStyle: pw.FontStyle.italic)),
+        ),
+      ],
+    ));
+    return pdf;
+  }
+
+  static pw.Widget _odRow(String label, String value) => pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 8),
+    child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+      pw.SizedBox(width: 80,
+        child: pw.Text(label, style: pw.TextStyle(fontSize: 11, color: _text2))),
+      pw.Expanded(
+        child: pw.Text(value, style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
+    ]),
+  );
+
+  static pw.Widget _odAmt(String label, String value, {bool bold = false, PdfColor? color}) =>
+    pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+      pw.Text(label, style: pw.TextStyle(
+        fontSize: bold ? 14 : 12,
+        fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+        color: color ?? const PdfColor(0, 0, 0))),
+      pw.Text(value, style: pw.TextStyle(
+        fontSize: bold ? 14 : 12,
+        fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
+        color: color ?? const PdfColor(0, 0, 0))),
+    ]);
+
   /// Parses any date string (ISO timestamp or plain date) → "dd MMM yyyy"
   static String _fmtDate(String? raw) {
     if (raw == null || raw.isEmpty) return '-';
@@ -84,7 +460,7 @@ class PdfHelper {
                           pw.Text(boutiqueAddress!, style: const pw.TextStyle(fontSize: 8, color: PdfColors.white)),
                         if (boutiquePhone?.isNotEmpty == true)
                           pw.Text('Ph: $boutiquePhone', style: const pw.TextStyle(fontSize: 8, color: PdfColors.white)),
-                        if (boutiqueGST?.isNotEmpty == true)
+                        if (inv.gstEnabled && boutiqueGST?.isNotEmpty == true)
                           pw.Text('GSTIN: $boutiqueGST', style: pw.TextStyle(fontSize: 8, color: PdfColors.amber100)),
                       ],
                     ),
@@ -200,11 +576,13 @@ class PdfHelper {
                       _summaryRow('Subtotal:', _fmt.format(inv.subtotal)),
                       if (inv.discountAmt > 0)
                         _summaryRow('Discount (${inv.discountPct.toStringAsFixed(0)}%):', '- ${_fmt.format(inv.discountAmt)}'),
+                      if (inv.gstEnabled && inv.gstAmt > 0)
+                        _summaryRow('GST (${inv.gstPct.toStringAsFixed(inv.gstPct % 1 == 0 ? 0 : 1)}%):', _fmt.format(inv.gstAmt)),
                       pw.Divider(color: PdfColors.blueGrey300, thickness: 0.5),
-                      _summaryRow('Total Amount:', _fmt.format(inv.totalAmount), isBold: true),
                       _summaryRow('Advance Paid:', _fmt.format(inv.advance), color: PdfColors.green800),
+                      _summaryRow('Due Amount:', _fmt.format(inv.dueAmount), color: PdfColors.red800),
                       pw.Divider(color: PdfColors.blueGrey800, thickness: 1),
-                      _summaryRow('Due Amount:', _fmt.format(inv.dueAmount), isBold: true, color: PdfColors.red800),
+                      _summaryRow('Total Amount:', _fmt.format(inv.totalAmount), isBold: true),
                     ],
                   ),
                 ),

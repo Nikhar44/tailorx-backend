@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../utils/constants.dart';
+import '../utils/pdf_helper.dart';
 import '../utils/theme.dart';
 import '../utils/lang.dart';
 import '../widgets/common_widgets.dart';
@@ -82,6 +85,86 @@ class OrdersScreenState extends State<OrdersScreen> {
     return LinearGradient(begin:Alignment.topLeft,end:Alignment.bottomRight,colors:g[i%g.length]);
   }
 
+  // ─── ORDER PHOTOS (cloth/material + design reference) ───────────────────────
+  Future<String?> _uploadOrderPhoto(ImageSource source) async {
+    try {
+      final file = await ImagePicker().pickImage(source: source, imageQuality: 70, maxWidth: 1024);
+      if (file == null) return null;
+      final bytes = await file.readAsBytes();
+      final mime = (file.mimeType ?? 'image/jpeg').toLowerCase();
+      final ext = mime.contains('png') ? 'png' : (mime.contains('webp') ? 'webp' : 'jpg');
+      final fileName = 'order_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final storage = Supabase.instance.client.storage.from('order-photos');
+      await storage.uploadBinary(fileName, bytes, fileOptions: FileOptions(contentType: mime, upsert: true));
+      return storage.getPublicUrl(fileName);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed: $e')));
+      return null;
+    }
+  }
+
+  void _showPhotoSourceOptions(BuildContext ctx, String title, void Function(ImageSource) onPick) {
+    showModalBottomSheet(
+      context: ctx, backgroundColor: Colors.transparent, useSafeArea: true, isScrollControlled: true,
+      builder: (sheetCtx) {
+        final bottomPad = MediaQuery.of(sheetCtx).padding.bottom;
+        return Container(
+          decoration: BoxDecoration(color: T.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(T.rXl))),
+          padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomPad),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 36, height: 4, decoration: BoxDecoration(color: T.border, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            Text(title, style: T.displaySm),
+            const SizedBox(height: 16),
+            _PhotoOption(
+              icon: Icons.photo_library_rounded, color: T.info,
+              label: 'Choose from Gallery',
+              onTap: () { Navigator.pop(sheetCtx); onPick(ImageSource.gallery); }),
+            const SizedBox(height: 10),
+            _PhotoOption(
+              icon: Icons.camera_alt_rounded, color: T.success,
+              label: 'Take a Photo',
+              onTap: () { Navigator.pop(sheetCtx); onPick(ImageSource.camera); }),
+          ]),
+        );
+      },
+    );
+  }
+
+  // Full-screen photo viewer (used from the order detail view)
+  void _showFullPhoto(String url, String title) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.92),
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(T.rMd),
+            child: InteractiveViewer(
+              maxScale: 4,
+              child: Image.network(url, fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 200, color: T.surface,
+                  child: Icon(Icons.broken_image_rounded, color: T.text3, size: 40))))),
+          Positioned(top: 8, right: 8,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(ctx),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                child: const Icon(Icons.close_rounded, color: Colors.white, size: 20)))),
+          Positioned(bottom: 12, left: 0, right: 0,
+            child: Center(child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), borderRadius: BorderRadius.circular(8)),
+              child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600))))),
+        ]),
+      ),
+    );
+  }
+
   // ─── NEW ORDER ──────────────────────────────────────────────────────────────
   void _newOrder({Customer? customer}) async {
     try { _custs = await _api.getCustomers(); } catch (_) {}
@@ -93,6 +176,8 @@ class OrdersScreenState extends State<OrdersScreen> {
     final items = <Map<String,dynamic>>[{'garment':null,'fabric':'','qty':1,'price':0.0}];
     final advCtrl = TextEditingController(); final notesCtrl = TextEditingController();
     DateTime? dueDate; final fk = GlobalKey<FormState>();
+    String? clothPhotoUrl; String? designPhotoUrl;
+    bool uploadingCloth = false; bool uploadingDesign = false;
     double sub() { double t=0; for(final i in items) t+=(i['qty'] as int)*_n(i['price']); return t; }
 
     showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,
@@ -224,6 +309,30 @@ class OrdersScreenState extends State<OrdersScreen> {
                     Text(dueDate!=null?DateFormat('dd MMM yyyy').format(dueDate!):_lang.t('select_date'),
                       style:T.body.copyWith(fontSize:18,color:dueDate!=null?T.text:T.text3)),]))),
               const SizedBox(height:14),
+              Text('REFERENCE PHOTOS',style:T.label),
+              const SizedBox(height:6),
+              Row(children:[
+                Expanded(child:_OrderPhotoTile(
+                  label:'Material / Cloth Photo', icon:Icons.checkroom_rounded,
+                  url:clothPhotoUrl, uploading:uploadingCloth,
+                  onTap:()=>_showPhotoSourceOptions(ctx,'Cloth / Material Photo',(src)async{
+                    setSt(()=>uploadingCloth=true);
+                    final url=await _uploadOrderPhoto(src);
+                    setSt((){uploadingCloth=false; if(url!=null) clothPhotoUrl=url;});
+                  }),
+                  onRemove:()=>setSt(()=>clothPhotoUrl=null))),
+                const SizedBox(width:10),
+                Expanded(child:_OrderPhotoTile(
+                  label:'Design Photo', icon:Icons.brush_rounded,
+                  url:designPhotoUrl, uploading:uploadingDesign,
+                  onTap:()=>_showPhotoSourceOptions(ctx,'Design Photo',(src)async{
+                    setSt(()=>uploadingDesign=true);
+                    final url=await _uploadOrderPhoto(src);
+                    setSt((){uploadingDesign=false; if(url!=null) designPhotoUrl=url;});
+                  }),
+                  onRemove:()=>setSt(()=>designPhotoUrl=null))),
+              ]),
+              const SizedBox(height:14),
               TxField(label:_lang.t('notes'),hint:'Design notes...',controller:notesCtrl,maxLines:3),
               const SizedBox(height:24),
               Container(height:52,decoration:BoxDecoration(gradient:T.headerGrad,borderRadius:BorderRadius.circular(T.rMd),
@@ -236,7 +345,8 @@ class OrdersScreenState extends State<OrdersScreen> {
                       if(g==null||g.isEmpty)continue; String p=g; if(f!=null&&f.isNotEmpty)p+=' ($f)'; if(q>1)p+=' x$q'; parts.add(p);}
                     final order=Order(customerId:sel!.id,customerName:sel!.name,
                       garment:parts.join(', '),fabric:items.map((i)=>i['fabric']as String).where((f)=>f.isNotEmpty).join(', '),
-                      amount:total,advance:adv,dueDate:dueDate?.toIso8601String().split('T').first,notes:notesCtrl.text.trim());
+                      amount:total,advance:adv,dueDate:dueDate?.toIso8601String().split('T').first,notes:notesCtrl.text.trim(),
+                      clothPhotoUrl:clothPhotoUrl,designPhotoUrl:designPhotoUrl);
                     try{await _api.createOrder(order);if(ctx.mounted)Navigator.pop(ctx);
                       if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(_lang.t('order_created'))));
                     }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));
@@ -247,6 +357,118 @@ class OrdersScreenState extends State<OrdersScreen> {
             ])))
           ]));
       }));
+  }
+
+  // ─── JOB CARD (internal work order — given to employees/tailors) ───────────
+  String _measLabel(String key) {
+    var k = key;
+    if (k.startsWith('blouse_')) k = 'Blouse ${k.substring(7)}';
+    else if (k.startsWith('dress_')) k = 'Dress ${k.substring(6)}';
+    return k.split('_').map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join(' ');
+  }
+
+  void _showJobCard(Order o) {
+    Customer? cust;
+    try { cust = _custs.firstWhere((c) => c.id == o.customerId); } catch (_) {}
+    final meas = cust?.allMeasurements ?? <String, dynamic>{};
+    final dueDate = o.dueDate?.isNotEmpty == true ? o.dueDate : null;
+
+    showModalBottomSheet(
+      context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(ctx).size.height * 0.92,
+        decoration: BoxDecoration(color: T.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(T.rXl))),
+        child: Column(children: [
+          // ── Header ──
+          Container(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+            decoration: const BoxDecoration(gradient: T.headerGrad, borderRadius: BorderRadius.vertical(top: Radius.circular(T.rXl))),
+            child: Column(children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                GestureDetector(onTap: () => Navigator.pop(ctx),
+                  child: const Icon(Icons.arrow_back_ios_rounded, size: 18, color: T.headerText)),
+                Row(children: [
+                  GestureDetector(
+                    onTap: () => PdfHelper.generateAndShareJobCard(o, cust,
+                      boutiqueName: _api.boutiqueName, boutiqueAddress: _api.boutiqueAddress, boutiquePhone: _api.boutiquePhone),
+                    child: const Icon(Icons.share_rounded, size: 16, color: T.headerText)),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () => PdfHelper.generateAndPrintJobCard(o, cust,
+                      boutiqueName: _api.boutiqueName, boutiqueAddress: _api.boutiqueAddress, boutiquePhone: _api.boutiquePhone),
+                    child: const Icon(Icons.print_rounded, size: 16, color: T.headerText)),
+                ]),
+              ]),
+              const SizedBox(height: 14),
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.12), borderRadius: BorderRadius.circular(T.rSm)),
+                  child: const Icon(Icons.content_cut_rounded, color: T.headerText, size: 22)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Job Card', style: GoogleFonts.prata(fontSize: 22, fontWeight: FontWeight.w400, color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Text('Order #${o.id ?? 0} · ${o.customerName ?? "Unknown"}',
+                    style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6), fontWeight: FontWeight.w500)),
+                ])),
+              ]),
+            ]),
+          ),
+          // ── Body ──
+          Expanded(child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 80), children: [
+            if (dueDate != null) ...[
+              _DetailSection(title: 'Delivery Date', child:
+                Text(dueDate, style: T.body.copyWith(fontSize: 17, fontWeight: FontWeight.w700, color: T.danger))),
+              const SizedBox(height: 10),
+            ],
+            _DetailSection(title: 'Garment', child:
+              Text(o.garment?.isNotEmpty == true ? o.garment! : '—',
+                style: T.body.copyWith(fontSize: 17, fontWeight: FontWeight.w500))),
+            if (o.fabric?.isNotEmpty == true) ...[
+              const SizedBox(height: 10),
+              _DetailSection(title: 'Fabric', child: Text(o.fabric!, style: T.body.copyWith(fontSize: 16))),
+            ],
+            if ((o.clothPhotoUrl?.isNotEmpty == true) || (o.designPhotoUrl?.isNotEmpty == true)) ...[
+              const SizedBox(height: 10),
+              _DetailSection(title: 'Reference Photos', child:
+                Row(children: [
+                  if (o.clothPhotoUrl?.isNotEmpty == true)
+                    Expanded(child: _DetailPhotoThumb(
+                      label: 'Cloth / Material', url: o.clothPhotoUrl!,
+                      onTap: () => _showFullPhoto(o.clothPhotoUrl!, 'Cloth / Material Photo'))),
+                  if (o.clothPhotoUrl?.isNotEmpty == true && o.designPhotoUrl?.isNotEmpty == true)
+                    const SizedBox(width: 12),
+                  if (o.designPhotoUrl?.isNotEmpty == true)
+                    Expanded(child: _DetailPhotoThumb(
+                      label: 'Design', url: o.designPhotoUrl!,
+                      onTap: () => _showFullPhoto(o.designPhotoUrl!, 'Design Photo'))),
+                ])),
+            ],
+            const SizedBox(height: 10),
+            _DetailSection(title: 'Customer Measurements', child:
+              meas.isEmpty
+                ? Text('No saved measurements for this customer.',
+                    style: T.bodySm.copyWith(color: T.text3, fontStyle: FontStyle.italic))
+                : Wrap(spacing: 8, runSpacing: 8, children: meas.entries.map((e) =>
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(color: T.surface, borderRadius: BorderRadius.circular(T.rSm), border: Border.all(color: T.border)),
+                      child: Text('${_measLabel(e.key)}: ${e.value}"',
+                        style: T.bodySm.copyWith(fontWeight: FontWeight.w600)))
+                  ).toList())),
+            if (o.notes?.isNotEmpty == true) ...[
+              const SizedBox(height: 10),
+              _DetailSection(title: 'Special Instructions / Notes', child:
+                Text(o.notes!, style: T.body.copyWith(fontSize: 15))),
+            ],
+            const SizedBox(height: 16),
+            Center(child: Text('Internal use only — not a billing document',
+              style: T.bodySm.copyWith(color: T.text3, fontStyle: FontStyle.italic))),
+          ])),
+        ]),
+      ),
+    );
   }
 
   // ─── ORDER DETAIL VIEW ──────────────────────────────────────────────────────
@@ -266,6 +488,18 @@ class OrdersScreenState extends State<OrdersScreen> {
                 GestureDetector(onTap: () => Navigator.pop(ctx),
                   child: const Icon(Icons.arrow_back_ios_rounded, size: 18, color: T.headerText)),
                 Row(children: [
+                  GestureDetector(
+                    onTap: () => _showJobCard(o),
+                    child: const Icon(Icons.content_cut_rounded, size: 17, color: T.headerText)),
+                  const SizedBox(width: 16),
+                  GestureDetector(
+                    onTap: () { Navigator.pop(ctx);
+                      PdfHelper.generateAndPrintOrder(o,
+                        boutiqueName: _api.boutiqueName,
+                        boutiqueAddress: _api.boutiqueAddress,
+                        boutiquePhone: _api.boutiquePhone); },
+                    child: const Icon(Icons.print_rounded, size: 16, color: T.headerText)),
+                  const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () { Navigator.pop(ctx); _editOrder(o); },
                     child: const Icon(Icons.edit_rounded, size: 16, color: T.headerText)),
@@ -332,6 +566,24 @@ class OrdersScreenState extends State<OrdersScreen> {
               const SizedBox(height: 10),
               _DetailSection(title: 'Fabric', child:
                 Text(o.fabric!, style: T.body.copyWith(fontSize: 16))),
+            ],
+
+            // Reference photos
+            if ((o.clothPhotoUrl?.isNotEmpty == true) || (o.designPhotoUrl?.isNotEmpty == true)) ...[
+              const SizedBox(height: 10),
+              _DetailSection(title: 'Reference Photos', child:
+                Row(children: [
+                  if (o.clothPhotoUrl?.isNotEmpty == true)
+                    Expanded(child: _DetailPhotoThumb(
+                      label: 'Cloth / Material', url: o.clothPhotoUrl!,
+                      onTap: () => _showFullPhoto(o.clothPhotoUrl!, 'Cloth / Material Photo'))),
+                  if (o.clothPhotoUrl?.isNotEmpty == true && o.designPhotoUrl?.isNotEmpty == true)
+                    const SizedBox(width: 12),
+                  if (o.designPhotoUrl?.isNotEmpty == true)
+                    Expanded(child: _DetailPhotoThumb(
+                      label: 'Design', url: o.designPhotoUrl!,
+                      onTap: () => _showFullPhoto(o.designPhotoUrl!, 'Design Photo'))),
+                ])),
             ],
             const SizedBox(height: 10),
 
@@ -438,6 +690,8 @@ class OrdersScreenState extends State<OrdersScreen> {
     final notesCtrl   = TextEditingController(text: o.notes ?? '');
     DateTime? dueDate = o.dueDate != null ? DateTime.tryParse(o.dueDate!) : null;
     final fk = GlobalKey<FormState>();
+    String? clothPhotoUrl = o.clothPhotoUrl; String? designPhotoUrl = o.designPhotoUrl;
+    bool uploadingCloth = false; bool uploadingDesign = false;
 
     showModalBottomSheet(
       context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
@@ -521,6 +775,31 @@ class OrdersScreenState extends State<OrdersScreen> {
                   ]))),
               const SizedBox(height: 14),
 
+              Text('REFERENCE PHOTOS', style: T.label),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(child: _OrderPhotoTile(
+                  label: 'Material / Cloth Photo', icon: Icons.checkroom_rounded,
+                  url: clothPhotoUrl, uploading: uploadingCloth,
+                  onTap: () => _showPhotoSourceOptions(ctx, 'Cloth / Material Photo', (src) async {
+                    setSt(() => uploadingCloth = true);
+                    final url = await _uploadOrderPhoto(src);
+                    setSt(() { uploadingCloth = false; if (url != null) clothPhotoUrl = url; });
+                  }),
+                  onRemove: () => setSt(() => clothPhotoUrl = null))),
+                const SizedBox(width: 10),
+                Expanded(child: _OrderPhotoTile(
+                  label: 'Design Photo', icon: Icons.brush_rounded,
+                  url: designPhotoUrl, uploading: uploadingDesign,
+                  onTap: () => _showPhotoSourceOptions(ctx, 'Design Photo', (src) async {
+                    setSt(() => uploadingDesign = true);
+                    final url = await _uploadOrderPhoto(src);
+                    setSt(() { uploadingDesign = false; if (url != null) designPhotoUrl = url; });
+                  }),
+                  onRemove: () => setSt(() => designPhotoUrl = null))),
+              ]),
+              const SizedBox(height: 14),
+
               TxField(label: 'Notes', hint: 'Design notes, special instructions...', controller: notesCtrl, maxLines: 3),
               const SizedBox(height: 24),
 
@@ -539,7 +818,9 @@ class OrdersScreenState extends State<OrdersScreen> {
                         amount: double.tryParse(amtCtrl.text) ?? o.amount,
                         advance: double.tryParse(advCtrl.text) ?? o.advance,
                         dueDate: dueDate?.toIso8601String().split('T').first,
-                        notes: notesCtrl.text.trim());
+                        notes: notesCtrl.text.trim(),
+                        clothPhotoUrl: clothPhotoUrl ?? '',
+                        designPhotoUrl: designPhotoUrl ?? '');
                       if (ctx.mounted) Navigator.pop(ctx);
                       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Order updated successfully')));
@@ -861,4 +1142,125 @@ class _PayRow extends StatelessWidget {
         fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
         fontSize: bold ? 19 : 16)),
     ]);
+}
+
+class _DetailPhotoThumb extends StatelessWidget {
+  final String label;
+  final String url;
+  final VoidCallback onTap;
+  const _DetailPhotoThumb({required this.label, required this.url, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(T.rSm),
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: Image.network(url, fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: T.surface,
+              child: Icon(Icons.broken_image_rounded, color: T.text3)),
+            loadingBuilder: (_, child, progress) => progress == null ? child : Container(
+              color: T.surface,
+              child: const Center(child: SizedBox(width: 18, height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2)))),
+          ))),
+      const SizedBox(height: 6),
+      Text(label, style: T.bodySm.copyWith(fontSize: 12)),
+    ]));
+}
+
+// ─── ORDER PHOTO PICKER WIDGETS ─────────────────────────────────────────────
+
+class _OrderPhotoTile extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final String? url;
+  final bool uploading;
+  final VoidCallback onTap;
+  final VoidCallback onRemove;
+  const _OrderPhotoTile({
+    required this.label, required this.icon, required this.url,
+    required this.uploading, required this.onTap, required this.onRemove,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhoto = url != null && url!.isNotEmpty;
+    return GestureDetector(
+      onTap: uploading ? null : onTap,
+      child: Container(
+        height: 120,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: T.card,
+          borderRadius: BorderRadius.circular(T.rMd),
+          border: Border.all(color: T.border),
+          image: hasPhoto ? DecorationImage(image: NetworkImage(url!), fit: BoxFit.cover) : null,
+        ),
+        child: Stack(children: [
+          if (!hasPhoto)
+            Center(
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 26, color: T.text3),
+                const SizedBox(height: 6),
+                Text(label, textAlign: TextAlign.center, style: T.bodySm.copyWith(fontSize: 12, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text('Tap to add', style: T.bodySm.copyWith(fontSize: 11, color: T.text3)),
+              ]),
+            ),
+          if (hasPhoto) ...[
+            Positioned(left: 0, right: 0, bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                color: Colors.black.withOpacity(0.45),
+                child: Text(label, textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)))),
+            Positioned(top: 6, right: 6,
+              child: GestureDetector(
+                onTap: onRemove,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(color: Colors.black.withOpacity(0.5), shape: BoxShape.circle),
+                  child: const Icon(Icons.close_rounded, size: 16, color: Colors.white)))),
+          ],
+          if (uploading)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.35),
+                child: const Center(
+                  child: SizedBox(width: 22, height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))))),
+        ]),
+      ),
+    );
+  }
+}
+
+class _PhotoOption extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final VoidCallback onTap;
+  const _PhotoOption({required this.icon, required this.color, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(T.rMd),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(color: T.card, borderRadius: BorderRadius.circular(T.rMd), boxShadow: T.shadowCard),
+      child: Row(children: [
+        Container(width: 44, height: 44,
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, size: 22, color: color)),
+        const SizedBox(width: 14),
+        Expanded(child: Text(label, style: T.body.copyWith(fontWeight: FontWeight.w600, fontSize: 16))),
+        Icon(Icons.chevron_right_rounded, size: 18, color: T.text3),
+      ]),
+    ),
+  );
 }

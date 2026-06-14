@@ -1,13 +1,17 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/lang.dart';
 import '../widgets/common_widgets.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -16,12 +20,23 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
+  // ─── Navigate to home, showing onboarding if first time ──────────────────
+  Future<void> _goHome() async {
+    final prefs = await SharedPreferences.getInstance();
+    final done = prefs.getBool('onboarding_done') ?? false;
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+      builder: (_) => done ? const HomeScreen() : const OnboardingScreen()));
+  }
+
   // Mode & step
   bool _login = true;
   int _step = 1; // 1 or 2 (only for register)
 
   // Shared state
   bool _loading = false, _obscure = true;
+  // Inline login error shown under the password field
+  String? _loginError;
 
   // Form keys — one per step
   final _fk1 = GlobalKey<FormState>();
@@ -166,27 +181,38 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
-      final googleUser = await GoogleSignIn(
-        serverClientId: '151261155773-bqgbsrdeqentgaqcvdq5fot9b8comvn9.apps.googleusercontent.com',
-      ).signIn();
+      // Step 1: show Google account picker
+      // clientId is needed for Flutter Web; ignored on Android/iOS
+      final gsi = GoogleSignIn(
+        clientId: '151261155773-bqgbsrdeqentgaqcvdq5fot9b8comvn9.apps.googleusercontent.com',
+        scopes: ['email', 'profile'],
+      );
+      try { await gsi.signOut(); } catch (_) {}
+      final googleUser = await gsi.signIn();
       if (googleUser == null) { setState(() => _loading = false); return; }
-      final googleAuth = await googleUser.authentication;
-      final idToken = googleAuth.idToken;
-      if (idToken == null) throw Exception('Google sign-in failed — no token');
 
+      // Step 2: email + googleId are always available — no authentication() call needed
+      final email    = googleUser.email;
+      final googleId = googleUser.id;
+      final name     = googleUser.displayName;
+
+      if (email.isEmpty || googleId.isEmpty) {
+        throw Exception('Could not retrieve Google account details. Please try again.');
+      }
+
+      // Step 3: verify with our server and log in
       final r = await _api.socialLogin(
         provider: 'google',
-        idToken:  idToken,
-        name:     googleUser.displayName,
-        email:    googleUser.email,
+        googleId: googleId,
+        name:     name,
+        email:    email,
       );
       if (!mounted) return;
       if (r['success'] == true) {
         if (r['isNewUser'] == true) {
           _showProfileCompletion();
         } else {
-          Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen()));
+          _goHome();
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -195,7 +221,7 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e'), backgroundColor: T.danger));
+          SnackBar(content: Text('Google sign-in error: $e'), backgroundColor: T.danger));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -216,19 +242,25 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
       if (accessToken == null) throw Exception('Facebook sign-in failed — no token');
       final userData = await FacebookAuth.instance.getUserData(fields: 'name,email');
 
+      final email = userData['email']?.toString();
+      if (email == null || email.isEmpty) {
+        throw Exception(
+            'Your Facebook account has no email address.\n'
+            'Please add an email to your Facebook account and try again.');
+      }
+
       final r = await _api.socialLogin(
         provider: 'facebook',
         idToken:  accessToken,
         name:     userData['name']?.toString(),
-        email:    userData['email']?.toString(),
+        email:    email,
       );
       if (!mounted) return;
       if (r['success'] == true) {
         if (r['isNewUser'] == true) {
           _showProfileCompletion();
         } else {
-          Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen()));
+          _goHome();
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -238,6 +270,61 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('$e'), backgroundColor: T.danger));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  // ─── Social sign-in: Apple ──────────────────────────────────────
+  Future<void> _signInWithApple() async {
+    setState(() => _loading = true);
+    try {
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+      );
+
+      final identityToken = credential.identityToken;
+      if (identityToken == null) throw Exception('Apple sign-in failed — no identity token');
+
+      // Apple only sends name & email on the VERY FIRST sign-in.
+      // Cache them locally so subsequent sign-ins still work.
+      final prefs = await SharedPreferences.getInstance();
+      final userId = credential.userIdentifier ?? '';
+      if (credential.email != null && credential.email!.isNotEmpty) {
+        await prefs.setString('apple_email_$userId', credential.email!);
+      }
+      final nameParts = [credential.givenName, credential.familyName]
+          .where((p) => p != null && p.isNotEmpty)
+          .join(' ');
+      if (nameParts.isNotEmpty) {
+        await prefs.setString('apple_name_$userId', nameParts);
+      }
+
+      final email     = credential.email ?? prefs.getString('apple_email_$userId');
+      final fullName  = nameParts.isNotEmpty
+          ? nameParts
+          : prefs.getString('apple_name_$userId');
+
+      final r = await _api.socialLogin(
+        provider: 'apple',
+        idToken:  identityToken,
+        name:     fullName,
+        email:    email,
+      );
+      if (!mounted) return;
+      if (r['success'] == true) {
+        if (r['isNewUser'] == true) { _showProfileCompletion(); } else { _goHome(); }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(r['message'] ?? 'Apple sign-in failed'),
+              backgroundColor: T.danger));
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Apple sign-in error: $e'), backgroundColor: T.danger));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -320,8 +407,7 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
                       city:  cityCtrl.text.trim(),
                     );
                     if (ctx.mounted) Navigator.pop(ctx);
-                    if (mounted) Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const HomeScreen()));
+                    if (mounted) _goHome();
                   },
                   child: Center(child: saving
                     ? const SizedBox(width: 20, height: 20,
@@ -351,7 +437,7 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
       if (!_fk2.currentState!.validate()) return;
     }
 
-    setState(() => _loading = true);
+    setState(() { _loading = true; _loginError = null; });
 
     // Warn if server is slow to wake
     Future.delayed(const Duration(seconds: 4), () {
@@ -371,15 +457,22 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
         final r = await _api.login(_email.text.trim(), _pass.text);
         if (!mounted) return;
         if (r['success'] == true) {
-          Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const HomeScreen()));
+          _goHome();
         } else {
           String msg = r['message'] ?? 'Authentication failed';
-          if (msg.contains('Invalid login credentials')) msg = 'Invalid email or password.';
-          if (msg.contains('Password should be')) msg = 'Password is too short (min 6 chars).';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(msg), backgroundColor: T.danger,
-                duration: const Duration(seconds: 4)));
+          if (msg.contains('Invalid login credentials') || msg.contains('Invalid email or password')) {
+            // Show inline under the password field instead of a snackbar
+            setState(() => _loginError = 'Your email or password is incorrect. Please try again.');
+          } else {
+            if (msg.contains('Password should be')) {
+              msg = 'Password is too short (min 6 chars).';
+            } else if (msg.contains('Connection error')) {
+              msg = 'Connection error. Please check your internet and try again.';
+            }
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(msg), backgroundColor: T.danger,
+                  duration: const Duration(seconds: 4)));
+          }
         }
       } else {
         // ── Register flow — send OTP first ──
@@ -403,8 +496,15 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
         }
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: T.danger));
+      String msg = e.toString();
+      if (msg.startsWith('Exception: ')) msg = msg.substring(11);
+      if (_login && (msg.contains('Invalid login credentials') || msg.contains('Invalid email or password'))) {
+        if (mounted) setState(() => _loginError = 'Your email or password is incorrect. Please try again.');
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(msg), backgroundColor: T.danger,
+                duration: const Duration(seconds: 4)));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -446,8 +546,7 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
             setSt(() => verifying = false);
             if (r['success'] == true) {
               Navigator.pop(ctx);
-              if (mounted) Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (_) => const HomeScreen()));
+              if (mounted) _goHome();
             } else {
               ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
                 content: Text(r['message'] ?? 'Invalid OTP'),
@@ -673,6 +772,7 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
                               if (!v.contains('@')) return _lang.t('invalid_email');
                               return null;
                             },
+                            onChanged: (_) { if (_loginError != null) setState(() => _loginError = null); },
                           ),
                           const SizedBox(height: 14),
                           TxField(
@@ -689,6 +789,8 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
                               if (v.length < 6) return _lang.t('min_chars');
                               return null;
                             },
+                            onChanged: (_) { if (_loginError != null) setState(() => _loginError = null); },
+                            errorText: _loginError,
                           ),
                           Align(
                             alignment: Alignment.centerRight,
@@ -858,16 +960,30 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
                       // Google button
                       _SocialButton(
                         label: 'Continue with Google',
-                        isGoogle: true,
+                        icon: _SocialIcon.google,
                         onTap: _loading ? null : _signInWithGoogle,
                       ),
                       const SizedBox(height: 10),
-                      // Facebook button
+                      // Facebook button — coming soon
                       _SocialButton(
                         label: 'Continue with Facebook',
-                        isGoogle: false,
-                        onTap: _loading ? null : _signInWithFacebook,
+                        icon: _SocialIcon.facebook,
+                        onTap: _loading ? null : () {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                            content: Text('Facebook Sign-In coming soon!'),
+                            duration: Duration(seconds: 2),
+                          ));
+                        },
                       ),
+                      // Apple Sign-In — iOS native only (required for App Store)
+                      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) ...[
+                        const SizedBox(height: 10),
+                        _SocialButton(
+                          label: 'Continue with Apple',
+                          icon: _SocialIcon.apple,
+                          onTap: _loading ? null : _signInWithApple,
+                        ),
+                      ],
                     ],
 
                     const SizedBox(height: 20),
@@ -926,39 +1042,50 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
   }
 }
 
+// ─── Social icon type ────────────────────────────────────────────────
+enum _SocialIcon { google, facebook, apple }
+
 // ─── Social sign-in button ──────────────────────────────────────────
 class _SocialButton extends StatelessWidget {
   final String label;
-  final bool isGoogle; // true = Google, false = Facebook
+  final _SocialIcon icon;
   final VoidCallback? onTap;
 
   const _SocialButton({
     required this.label,
-    required this.isGoogle,
+    required this.icon,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isGoogle   = icon == _SocialIcon.google;
+    final isFacebook = icon == _SocialIcon.facebook;
+    final bgColor = isGoogle
+        ? Colors.white
+        : isFacebook
+            ? const Color(0xFF1877F2)
+            : Colors.black; // Apple
+    final borderColor = isGoogle ? const Color(0xFFDDDDDD) : bgColor;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 52,
         decoration: BoxDecoration(
-          color: isGoogle ? Colors.white : const Color(0xFF1877F2),
+          color: bgColor,
           borderRadius: BorderRadius.circular(T.rMd),
-          border: Border.all(
-            color: isGoogle ? const Color(0xFFDDDDDD) : const Color(0xFF1877F2)),
+          border: Border.all(color: borderColor),
           boxShadow: [BoxShadow(
             color: Colors.black.withOpacity(0.08),
             blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           // Logo
-          if (isGoogle)
+          if (icon == _SocialIcon.google)
             const _GoogleGIcon()
-          else
-            // Facebook white f logo
+          else if (icon == _SocialIcon.facebook)
+            // Facebook white "f" logo
             Container(
               width: 24, height: 24,
               decoration: BoxDecoration(
@@ -967,11 +1094,16 @@ class _SocialButton extends StatelessWidget {
               child: const Center(
                 child: Text('f', style: TextStyle(
                   fontSize: 16, fontWeight: FontWeight.w900,
-                  color: Color(0xFF1877F2), height: 1.2)))),
+                  color: Color(0xFF1877F2), height: 1.2))))
+          else
+            // Apple  logo
+            const Icon(Icons.apple, color: Colors.white, size: 24),
           const SizedBox(width: 12),
           Text(label, style: TextStyle(
             fontSize: 15, fontWeight: FontWeight.w600,
-            color: isGoogle ? const Color(0xFF3C4043) : Colors.white,
+            color: icon == _SocialIcon.google
+                ? const Color(0xFF3C4043)
+                : Colors.white,
             letterSpacing: 0.2)),
         ]),
       ),

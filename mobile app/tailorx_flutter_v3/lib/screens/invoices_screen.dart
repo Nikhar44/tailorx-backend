@@ -171,12 +171,18 @@ class InvoicesScreenState extends State<InvoicesScreen>{
     final advCtrl=TextEditingController(text: preselected!=null&&preselected.advance>0 ? preselected.advance.toStringAsFixed(0) : '');
     final remCtrl=TextEditingController();
     final trialCtrl=TextEditingController();
+    String? trialDateIso;
+    final gstCustomCtrl=TextEditingController();
+    bool gstOn=false; String gstChoice='5'; // '5','12','18','custom'
     final fk=GlobalKey<FormState>();
 
     showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,
       builder:(ctx)=>StatefulBuilder(builder:(ctx,setSt){
         final sub=_n(sel?.amount);final dp=double.tryParse(dpCtrl.text)??0;final da=sub*dp/100;
-        final tot=sub-da;final adv=double.tryParse(advCtrl.text)??_n(sel?.advance);final due=tot-adv;
+        final taxable=sub-da;
+        final gstPctVal=gstChoice=='custom'?(double.tryParse(gstCustomCtrl.text)??0):(double.tryParse(gstChoice)??0);
+        final gstAmt=gstOn?taxable*gstPctVal/100:0.0;
+        final tot=taxable+gstAmt;final adv=double.tryParse(advCtrl.text)??_n(sel?.advance);final due=tot-adv;
         return Container(height:MediaQuery.of(ctx).size.height*0.88,
           decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
           child:Column(children:[
@@ -230,6 +236,28 @@ class InvoicesScreenState extends State<InvoicesScreen>{
                         Text('DISCOUNT',style:T.label),const SizedBox(height:6),
                         Text('- ${_fmt.format(da)}',style:T.body.copyWith(color:T.success)),]),]),
                     const SizedBox(height:12),Container(height:1,color:T.border),const SizedBox(height:12),
+                    Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
+                      Text('Add GST to this bill',style:T.body),
+                      Switch(value:gstOn,activeColor:T.accent,
+                        onChanged:(v)=>setSt(()=>gstOn=v)),]),
+                    if(gstOn)...[const SizedBox(height:8),
+                      Wrap(spacing:8,runSpacing:8,children:[
+                        for(final opt in ['5','12','18','custom'])
+                          ChoiceChip(
+                            label:Text(opt=='custom'?'Custom':'$opt%'),
+                            selected:gstChoice==opt,
+                            selectedColor:T.accent.withOpacity(0.18),
+                            onSelected:(_)=>setSt(()=>gstChoice=opt),
+                          ),
+                      ]),
+                      if(gstChoice=='custom')...[const SizedBox(height:10),
+                        TxField(label:'GST %',hint:'e.g. 18',controller:gstCustomCtrl,
+                          keyboardType:TextInputType.number,onChanged:(_)=>setSt((){})),
+                      ],
+                      const SizedBox(height:10),
+                      _BillRow('GST (${gstPctVal.toStringAsFixed(gstPctVal%1==0?0:1)}%)',_fmt.format(gstAmt)),
+                    ],
+                    const SizedBox(height:12),Container(height:1,color:T.border),const SizedBox(height:12),
                     _BillRow('Total',_fmt.format(tot),bold:true),const SizedBox(height:12),
                     TxField(label:'Advance Received',hint:'0',controller:advCtrl,
                       keyboardType:TextInputType.number,onChanged:(_)=>setSt((){})),
@@ -241,7 +269,19 @@ class InvoicesScreenState extends State<InvoicesScreen>{
                         Text('BALANCE DUE',style:T.label.copyWith(fontWeight:FontWeight.w700)),
                         Text(_fmt.format(due),style:T.heading.copyWith(color:due>0?T.danger:T.success)),])),])),
                 const SizedBox(height:14),
-                TxField(label:'Trial Date (optional)',hint:'dd/mm/yyyy',controller:trialCtrl),
+                GestureDetector(
+                  onTap:()async{
+                    final picked=await showDatePicker(context:ctx,
+                      initialDate:DateTime.now(),firstDate:DateTime.now().subtract(const Duration(days:1)),
+                      lastDate:DateTime.now().add(const Duration(days:365)));
+                    if(picked!=null){
+                      trialDateIso=DateFormat('yyyy-MM-dd').format(picked);
+                      trialCtrl.text=DateFormat('dd MMM yyyy').format(picked);
+                      setSt((){});
+                    }
+                  },
+                  child:AbsorbPointer(child:TxField(label:'Trial Date (optional)',hint:'Tap to pick a date',controller:trialCtrl)),
+                ),
                 const SizedBox(height:10),
                 TxField(label:'Remarks',hint:'Notes...',controller:remCtrl,maxLines:2),
                 const SizedBox(height:24),
@@ -253,7 +293,8 @@ class InvoicesScreenState extends State<InvoicesScreen>{
                         customerName:sel!.customerName,customerPhone:sel!.customerPhone,
                         customerCity:sel!.city,customerAddress:sel!.address,
                         garment:sel!.garment,subtotal:sub,discountPct:dp,discountAmt:da,
-                        trialDate:trialCtrl.text.trim().isEmpty?null:trialCtrl.text.trim(),
+                        gstEnabled:gstOn,gstPct:gstOn?gstPctVal:0,gstAmt:gstAmt,
+                        trialDate:trialDateIso,
                         deliveryDate:sel!.dueDate,
                         advance:adv,dueAmount:due>0?due:0,remarks:remCtrl.text.trim());
                       try{await _api.createInvoice(inv);if(ctx.mounted)Navigator.pop(ctx);
@@ -323,7 +364,7 @@ class InvoicesScreenState extends State<InvoicesScreen>{
       builder:(ctx)=>Container(decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
         child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[
           Text(_lang.t('share_bill'),style:T.displaySm),const SizedBox(height:24),
-          Row(mainAxisAlignment:MainAxisAlignment.spaceEvenly,children:[
+          Wrap(alignment:WrapAlignment.center,spacing:16,runSpacing:16,children:[
             _SBtn(Icons.chat_rounded,'WhatsApp',const Color(0xFF25D366),(){Navigator.pop(ctx);
               launchUrl(Uri.parse('https://wa.me/91${inv.customerPhone??""} ?text=${Uri.encodeComponent(msg)}'),mode:LaunchMode.externalApplication);}),
             _SBtn(Icons.sms_rounded,'SMS',T.info,(){Navigator.pop(ctx);
@@ -332,6 +373,15 @@ class InvoicesScreenState extends State<InvoicesScreen>{
               launchUrl(Uri.parse('mailto:?subject=Invoice&body=${Uri.encodeComponent(msg)}'));}),
             _SBtn(Icons.picture_as_pdf_rounded,'PDF',T.danger,(){Navigator.pop(ctx);
               PdfHelper.generateAndShareInvoice(inv,
+                boutiqueName: _api.boutiqueName,
+                boutiqueAddress: _api.boutiqueAddress,
+                boutiquePhone: _api.boutiquePhone,
+                boutiqueGST: _api.boutiqueGST,
+                boutiqueLogo: _api.boutiqueLogo,
+                termsAndConditions: _api.termsAndConditions);
+            }),
+            _SBtn(Icons.print_rounded,'Print',T.teal,(){Navigator.pop(ctx);
+              PdfHelper.generateAndPrintInvoice(inv,
                 boutiqueName: _api.boutiqueName,
                 boutiqueAddress: _api.boutiqueAddress,
                 boutiquePhone: _api.boutiquePhone,
@@ -360,7 +410,8 @@ class InvoicesScreenState extends State<InvoicesScreen>{
       '@media print{body{padding:0}.inv{border:none}button{display:none!important}}</style></head><body>'
       '<div class="inv"><div class="hdr"><div>'
       '${_api.boutiqueLogo!=null?"<img src=\""+_api.boutiqueLogo!+"\" style=\"height:50px;margin-bottom:8px\">":""}'
-      '<div class="logo">' + (bn.toUpperCase()) + '</div><div style="font-size:12px;font-weight:600;margin-top:4px">Premium Bespoke Tailoring</div></div>'
+      '<div class="logo">' + (bn.toUpperCase()) + '</div><div style="font-size:12px;font-weight:600;margin-top:4px">Premium Bespoke Tailoring</div>'
+      '${inv.gstEnabled && _api.boutiqueGST!=null?"<div style=\"font-size:11px;font-weight:600;margin-top:4px\">GSTIN: ${_api.boutiqueGST}</div>":""}</div>'
       '<div style="text-align:right"><div class="invt">INVOICE</div><div style="font-size:12px;color:#6b6b7b;margin-top:4px">$invNo</div></div></div>'
       '<div style="display:flex;justify-content:space-between;margin:20px 0"><div><div style="font-size:9px;letter-spacing:2px;color:#9e9ea8">BILL TO</div>'
       '<div style="font-size:13px;font-weight:500;margin-top:4px">${inv.customerName??""}</div>'
@@ -371,9 +422,10 @@ class InvoicesScreenState extends State<InvoicesScreen>{
       '<tr><td>${inv.garment??""}</td><td style="text-align:right">${_fmt.format(inv.subtotal)}</td></tr></table>'
       '<div class="totals"><div class="row"><span>Subtotal</span><span>${_fmt.format(inv.subtotal)}</span></div>'
       '${inv.discountAmt>0?"<div class=\"row\" style=\"color:#2d8f6f\"><span>Discount</span><span>- ${_fmt.format(inv.discountAmt)}</span></div>":""}'
-      '<div class="row bold"><span>Total</span><span>${_fmt.format(inv.totalAmount)}</span></div>'
+      '${inv.gstEnabled&&inv.gstAmt>0?"<div class=\"row\"><span>GST (${inv.gstPct.toStringAsFixed(inv.gstPct%1==0?0:1)}%)</span><span>${_fmt.format(inv.gstAmt)}</span></div>":""}'
       '<div class="row" style="color:#2d8f6f"><span>Paid</span><span>${_fmt.format(inv.advance)}</span></div>'
-      '<div class="row due"><span>Balance Due</span><span>${_fmt.format(inv.dueAmount)}</span></div></div>'
+      '<div class="row due"><span>Balance Due</span><span>${_fmt.format(inv.dueAmount)}</span></div>'
+      '<div class="row bold"><span>Total</span><span>${_fmt.format(inv.totalAmount)}</span></div></div>'
       '<div class="footer">Thank you for your business!<br>$bn \u2022 Surat, Gujarat</div></div>'
       '<div style="text-align:center;margin-top:20px"><button onclick="window.print()" '
       'style="padding:12px 32px;background:#1a1a2e;color:#d4a574;border:none;cursor:pointer;font-size:13px;letter-spacing:2px">PRINT / SAVE AS PDF</button></div></body></html>';

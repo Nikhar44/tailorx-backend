@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TailorX — Core Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --header-dark:#1A1A2E; --accent:#D4A574; --accent-soft:#E8C49A; --accent-dark:#B8895A;
+  --bg:#F8F7F4; --card:#FFFFFF; --surface:#F1F0ED; --border:#E8E5DF;
+  --text:#1A1A2E; --text2:#6B6B7B; --text3:#9E9EA8;
+  --success:#2D8F6F; --warning:#E09F3E; --danger:#CF4747; --info:#4A7FC1;
+  --purple:#7C5CBF; --teal:#2BA5A5;
+  --shadow:0 4px 12px rgba(0,0,0,.04),0 1px 4px rgba(0,0,0,.02);
+  --display:'Playfair Display',Georgia,serif;
+  --body:'Plus Jakarta Sans',-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0e14;min-height:100vh;font-family:var(--body);color:#fff;padding:36px 24px 80px}
+
+.hero{text-align:center;margin-bottom:36px}
+.hero .top{font-family:var(--display);font-size:24px;color:var(--accent);letter-spacing:5px}
+.hero .sub{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1.4px;margin-top:6px}
+
+.row{display:flex;gap:30px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:12px}
+.col-label{font-family:var(--display);font-size:18px;color:#fff;letter-spacing:.5px}
+.col-tag{font-size:9px;color:rgba(255,255,255,.45);letter-spacing:1.4px;text-transform:uppercase;margin-top:-8px}
+
+/* iPhone */
+.phone{width:370px;background:var(--bg);border-radius:42px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.55);border:6px solid #1e1e2a;position:relative}
+.notch{width:120px;height:24px;background:#1e1e2a;border-radius:0 0 14px 14px;margin:0 auto;position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:10}
+
+/* Header */
+.hdr{background:linear-gradient(135deg,#1A1A2E 0%,#16213E 60%,#0F3460 100%);padding:46px 16px 14px;color:#E8E8E8;display:flex;align-items:center;gap:10px}
+.hdr .ttl{font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:.4px;flex:1}
+.hdr .icons{display:flex;gap:14px;font-size:14px;opacity:.75}
+
+/* Bottom nav */
+.bnav{display:flex;justify-content:space-around;padding:9px 0 20px;background:var(--card);border-top:1px solid #f0f0f0}
+.bn{text-align:center;font-size:8px;color:var(--text3);letter-spacing:.5px}
+.bn span{display:block;font-size:17px;margin-bottom:2px}
+.bn.active{color:var(--header-dark);font-weight:600}
+
+.body{padding:14px 16px 24px;color:var(--text)}
+
+/* FAB */
+.fab{position:absolute;bottom:78px;right:14px;width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 8px 20px rgba(212,165,116,.45);font-weight:300}
+
+/* Section labels */
+.sec{font-size:9px;font-weight:600;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin:14px 0 8px}
+
+/* ===========================
+   Search bar (shared)
+   =========================== */
+.search{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--card);border-radius:12px;box-shadow:var(--shadow);margin-bottom:10px}
+.search-ic{color:var(--text3);font-size:13px}
+.search-input{font-size:11px;color:var(--text2);flex:1}
+.search-action{font-size:11px;color:var(--accent-dark);font-weight:600}
+
+/* Pill filter row */
+.pills{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px;padding-bottom:2px}
+.pill{font-size:9px;font-weight:600;letter-spacing:.5px;padding:6px 11px;border-radius:8px;background:var(--surface);color:var(--text2);white-space:nowrap;flex-shrink:0;text-transform:uppercase}
+.pill.on{background:var(--header-dark);color:#fff}
+.pill .ct{display:inline-block;background:rgba(255,255,255,.18);font-size:8px;padding:1px 5px;border-radius:8px;margin-left:4px}
+.pill:not(.on) .ct{background:rgba(0,0,0,.06);color:var(--text3)}
+
+/* ===========================
+   SCREEN 1: CUSTOMERS
+   =========================== */
+.cust{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);margin-bottom:6px}
+.av{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--display);color:#fff;font-weight:600;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.av.a{background:linear-gradient(135deg,#E8C49A,#D4A574)}
+.av.b{background:linear-gradient(135deg,#7C5CBF,#5C3FA3)}
+.av.c{background:linear-gradient(135deg,#4A7FC1,#2D5A94)}
+.av.d{background:linear-gradient(135deg,#2BA5A5,#1F7878)}
+.av.e{background:linear-gradient(135deg,#2D8F6F,#1F6650)}
+.av.f{background:linear-gradient(135deg,#CF4747,#992F2F)}
+.cust-info{flex:1;min-width:0}
+.cust-row1{display:flex;align-items:center;gap:6px;margin-bottom:1px}
+.cust-name{font-size:12px;font-weight:600;color:var(--text)}
+.cust-vip{font-size:10px;color:var(--accent)}
+.cust-meta{font-size:9px;color:var(--text3)}
+.cust-right{text-align:right;flex-shrink:0}
+.cust-orders{font-size:11px;font-weight:600;color:var(--text);font-family:var(--display)}
+.cust-spend{font-size:9px;color:var(--text3);margin-top:1px}
+
+/* Index letter */
+.idx{font-family:var(--display);font-size:11px;font-weight:600;color:var(--text3);margin:8px 0 4px;letter-spacing:1px}
+
+/* Stat strip */
+.strip{display:flex;gap:8px;margin-bottom:10px}
+.strip > div{flex:1;background:var(--card);border-radius:10px;padding:10px;box-shadow:var(--shadow)}
+.strip .v{font-family:var(--display);font-size:18px;font-weight:600;line-height:1;color:var(--text)}
+.strip .l{font-size:7px;font-weight:600;letter-spacing:1.4px;color:var(--text3);text-transform:uppercase;margin-top:3px}
+.strip .v.gold{color:var(--accent-dark)}
+.strip .v.green{color:var(--success)}
+
+/* ===========================
+   SCREEN 2: ORDERS
+   =========================== */
+.ord{position:relative;background:var(--card);border-radius:12px;padding:12px;box-shadow:var(--shadow);margin-bottom:7px;overflow:hidden}
+.ord::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+.ord.received::before{background:var(--warning)}
+.ord.cutting::before{background:var(--info)}
+.ord.stitching::before{background:var(--purple)}
+.ord.trial::before{background:var(--teal)}
+.ord.ready::before{background:var(--success)}
+.ord-row1{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.ord-id{font-family:var(--display);font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.6px}
+.ord-stage{font-size:7px;font-weight:700;letter-spacing:.8px;padding:2px 6px;border-radius:4px;text-transform:uppercase}
+.ord-stage.received{background:rgba(224,159,62,.12);color:var(--warning)}
+.ord-stage.cutting{background:rgba(74,127,193,.12);color:var(--info)}
+.ord-stage.stitching{background:rgba(124,92,191,.12);color:var(--purple)}
+.ord-stage.trial{background:rgba(43,165,165,.12);color:var(--teal)}
+.ord-stage.ready{background:rgba(45,143,111,.12);color:var(--success)}
+.ord-due{font-size:9px;color:var(--text3);margin-left:auto;font-weight:500}
+.ord-due.urgent{color:var(--danger);font-weight:600}
+.ord-row2{display:flex;align-items:center;gap:8px}
+.ord-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--display);color:#fff;font-weight:600;font-size:11px;flex-shrink:0}
+.ord-info{flex:1;min-width:0}
+.ord-name{font-size:11px;font-weight:600;color:var(--text)}
+.ord-item{font-size:9px;color:var(--text2);margin-top:1px}
+.ord-amt{text-align:right;flex-shrink:0}
+.ord-total{font-family:var(--display);font-size:13px;font-weight:600;color:var(--text)}
+.ord-paid{font-size:8px;color:var(--success);margin-top:1px;font-weight:600;letter-spacing:.4px}
+.ord-paid.pending{color:var(--warning)}
+
+/* Progress micro-bar */
+.ord-prog{margin-top:8px;display:flex;gap:3px}
+.ord-prog div{flex:1;height:3px;border-radius:2px;background:var(--surface)}
+.ord-prog div.fill{background:var(--accent)}
+
+/* ===========================
+   SCREEN 3: INVOICES
+   =========================== */
+.summary-card{padding:16px;border-radius:14px;background:linear-gradient(135deg,#1C1C1C,#2A2A3A);color:#fff;margin-bottom:12px}
+.summary-card .lbl{font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.4);font-weight:600}
+.summary-card .big{font-family:var(--display);font-size:30px;font-weight:600;color:var(--accent);line-height:1;margin-top:4px}
+.summary-card .sub{font-size:9px;color:rgba(255,255,255,.5);margin-top:3px}
+.summary-card .split{display:flex;gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08)}
+.summary-card .split > div{flex:1}
+.summary-card .split .vv{font-family:var(--display);font-size:18px;font-weight:600;line-height:1}
+.summary-card .split .vv.green{color:#5EC09A}
+.summary-card .split .vv.amber{color:#F0B85A}
+.summary-card .split .ll{font-size:8px;letter-spacing:1.4px;color:rgba(255,255,255,.4);font-weight:600;margin-top:3px;text-transform:uppercase}
+
+.inv{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);margin-bottom:6px}
+.inv-status{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;font-weight:700}
+.inv-status.paid{background:rgba(45,143,111,.12);color:var(--success)}
+.inv-status.pending{background:rgba(224,159,62,.12);color:var(--warning)}
+.inv-status.overdue{background:rgba(207,71,71,.12);color:var(--danger)}
+.inv-info{flex:1;min-width:0}
+.inv-row1{display:flex;align-items:baseline;gap:6px}
+.inv-num{font-family:var(--display);font-size:11px;color:var(--text2);font-weight:600;letter-spacing:.5px}
+.inv-name{font-size:11px;font-weight:600;color:var(--text)}
+.inv-meta{font-size:9px;color:var(--text3);margin-top:1px}
+.inv-amt{text-align:right;flex-shrink:0}
+.inv-amt .v{font-family:var(--display);font-size:13px;font-weight:600;color:var(--text)}
+.inv-amt .l{font-size:7px;font-weight:700;letter-spacing:.6px;margin-top:1px;text-transform:uppercase}
+.inv-amt .l.paid{color:var(--success)}
+.inv-amt .l.pending{color:var(--warning)}
+.inv-amt .l.overdue{color:var(--danger)}
+
+/* ===========================
+   SCREEN 4: SETTINGS
+   =========================== */
+.profile{padding:18px;border-radius:14px;background:linear-gradient(135deg,#1A1A2E,#0F3460);color:#fff;display:flex;align-items:center;gap:12px;margin-bottom:14px;position:relative;overflow:hidden}
+.profile::after{content:"";position:absolute;right:-30px;top:-30px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(212,165,116,.18),transparent 70%)}
+.profile-av{width:60px;height:60px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent-soft));display:flex;align-items:center;justify-content:center;font-family:var(--display);color:var(--header-dark);font-weight:700;font-size:22px;box-shadow:0 6px 20px rgba(212,165,116,.4);flex-shrink:0;z-index:1}
+.profile-info{flex:1;z-index:1}
+.profile-name{font-family:var(--display);font-size:16px;font-weight:600}
+.profile-tier{display:inline-block;font-size:7px;font-weight:700;letter-spacing:1px;padding:2px 7px;border-radius:4px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#1A1A2E;margin-top:3px;text-transform:uppercase}
+.profile-meta{font-size:9px;color:rgba(255,255,255,.55);margin-top:5px}
+.profile-edit{position:absolute;right:14px;top:14px;font-size:11px;color:var(--accent);z-index:1;font-weight:600;letter-spacing:.4px}
+
+.set-group{background:var(--card);border-radius:12px;box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden}
+.set-row{display:flex;align-items:center;gap:11px;padding:13px 14px;border-bottom:1px solid #F0EFEC}
+.set-row:last-child{border-bottom:none}
+.set-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.set-ic.a{background:rgba(74,127,193,.1);color:var(--info)}
+.set-ic.b{background:rgba(45,143,111,.1);color:var(--success)}
+.set-ic.c{background:rgba(124,92,191,.1);color:var(--purple)}
+.set-ic.d{background:rgba(43,165,165,.1);color:var(--teal)}
+.set-ic.e{background:rgba(212,165,116,.15);color:var(--accent-dark)}
+.set-ic.f{background:rgba(224,159,62,.1);color:var(--warning)}
+.set-ic.g{background:rgba(207,71,71,.1);color:var(--danger)}
+.set-info{flex:1;min-width:0}
+.set-t{font-size:11px;font-weight:600;color:var(--text)}
+.set-s{font-size:9px;color:var(--text3);margin-top:1px}
+.set-arrow{color:var(--text3);font-size:14px}
+.set-val{font-size:10px;color:var(--text2);font-weight:500}
+
+/* Toggle */
+.tg{width:34px;height:20px;border-radius:11px;background:var(--accent);position:relative;flex-shrink:0}
+.tg::after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tg.off{background:#D4D2CC}
+.tg.off::after{right:auto;left:2px}
+
+/* note */
+.note{margin-top:32px;font-size:12px;line-height:1.65;color:rgba(255,255,255,.55);text-align:center;max-width:680px;margin-left:auto;margin-right:auto}
+.note b{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="top">TAILORX</div>
+  <div class="sub">CUSTOMERS · ORDERS · INVOICES · SETTINGS</div>
+</div>
+
+<div class="row">
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 1: CUSTOMERS                                           -->
+  <!-- ============================================================ -->
+  <div class="col">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="hdr">
+        <div class="ttl">Customers</div>
+        <div class="icons"><span>⌕</span><span>⇕</span></div>
+      </div>
+
+      <div class="body">
+        <!-- Stat strip -->
+        <div class="strip">
+          <div><div class="v">148</div><div class="l">Total</div></div>
+          <div><div class="v gold">12</div><div class="l">VIP</div></div>
+          <div><div class="v green">+8</div><div class="l">This Month</div></div>
+        </div>
+
+        <!-- Search -->
+        <div class="search">
+          <span class="search-ic">⌕</span>
+          <span class="search-input">Search by name or phone…</span>
+          <span class="search-action">⇕</span>
+        </div>
+
+        <!-- Filter pills -->
+        <div class="pills">
+          <span class="pill on">All<span class="ct">148</span></span>
+          <span class="pill">VIP<span class="ct">12</span></span>
+          <span class="pill">Active<span class="ct">23</span></span>
+          <span class="pill">New<span class="ct">8</span></span>
+        </div>
+
+        <!-- Letter A -->
+        <div class="idx">A</div>
+        <div class="cust">
+          <div class="av d">AS</div>
+          <div class="cust-info">
+            <div class="cust-row1"><div class="cust-name">Amit Shah</div></div>
+            <div class="cust-meta">+91 98765 12340 · Surat</div>
+          </div>
+          <div class="cust-right">
+            <div class="cust-orders">3 orders</div>
+            <div class="cust-spend">₹24,500</div>
+          </div>
+        </div>
+
+        <div class="cust">
+          <div class="av f">AT</div>
+          <div class="cust-info">
+            <div class="cust-row1"><div class="cust-name">Ankita Trivedi</div></div>
+            <div class="cust-meta">+91 91234 56780 · Vadodara</div>
+          </div>
+          <div class="cust-right">
+            <div class="cust-orders">1 order</div>
+            <div class="cust-spend">₹3,200</div>
+          </div>
+        </div>
+
+        <!-- Letter K -->
+        <div class="idx">K</div>
+        <div class="cust">
+          <div class="av a">KJ</div>
+          <div class="cust-info">
+            <div class="cust-row1">
+              <div class="cust-name">Kavita Joshi</div>
+              <span class="cust-vip">★</span>
+            </div>
+            <div class="cust-meta">+91 98765 43210 · Surat · VIP</div>
+          </div>
+          <div class="cust-right">
+            <div class="cust-orders">12 orders</div>
+            <div class="cust-spend">₹1,84,000</div>
+          </div>
+        </div>
+
+        <!-- Letter M -->
+        <div class="idx">M</div>
+        <div class="cust">
+          <div class="av c">MP</div>
+          <div class="cust-info">
+            <div class="cust-row1"><div class="cust-name">Meera Patel</div></div>
+            <div class="cust-meta">+91 97654 32109 · Ahmedabad</div>
+          </div>
+          <div class="cust-right">
+            <div class="cust-orders">5 orders</div>
+            <div class="cust-spend">₹42,300</div>
+          </div>
+        </div>
+
+        <!-- Letter N -->
+        <div class="idx">N</div>
+        <div class="cust">
+          <div class="av b">NR</div>
+          <div class="cust-info">
+            <div class="cust-row1">
+              <div class="cust-name">Neha Rathod</div>
+              <span class="cust-vip">★</span>
+            </div>
+            <div class="cust-meta">+91 99887 76655 · Mumbai · Bridal</div>
+          </div>
+          <div class="cust-right">
+            <div class="cust-orders">2 orders</div>
+            <div class="cust-spend">₹85,000</div>
+          </div>
+        </div>
+
+        <!-- Letter P -->
+        <div class="idx">P</div>
+        <div class="cust">
+          <div class="av a">PS</div>
+          <div class="cust-info">
+            <div class="cust-row1"><div class="cust-name">Priya Sharma</div></div>
+            <div class="cust-meta">+91 90012 34567 · Surat</div>
+          </div>
+          <div class="cust-right">
+            <div class="cust-orders">7 orders</div>
+            <div class="cust-spend">₹68,500</div>
+          </div>
+        </div>
+
+        <!-- Letter R -->
+        <div class="idx">R</div>
+        <div class="cust">
+          <div class="av b">RD</div>
+          <div class="cust-info">
+            <div class="cust-row1"><div class="cust-name">Raju Desai</div></div>
+            <div class="cust-meta">+91 98112 23344 · Surat</div>
+          </div>
+          <div class="cust-right">
+            <div class="cust-orders">4 orders</div>
+            <div class="cust-spend">₹32,000</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fab">+</div>
+
+      <div class="bnav">
+        <div class="bn"><span>▦</span>Dashboard</div>
+        <div class="bn active"><span>♟</span>Customers</div>
+        <div class="bn"><span>▤</span>Orders</div>
+        <div class="bn"><span>₹</span>Invoices</div>
+        <div class="bn"><span>⚙</span>Settings</div>
+      </div>
+    </div>
+    <div class="col-label">Customers</div>
+    <div class="col-tag">A–Z index · VIP star · spend total</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 2: ORDERS                                              -->
+  <!-- ============================================================ -->
+  <div class="col">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="hdr">
+        <div class="ttl">Orders</div>
+        <div class="icons"><span>⌕</span><span>⇕</span></div>
+      </div>
+
+      <div class="body">
+        <!-- Stat strip -->
+        <div class="strip">
+          <div><div class="v">23</div><div class="l">Active</div></div>
+          <div><div class="v gold">7</div><div class="l">Ready</div></div>
+          <div><div class="v" style="color:var(--danger)">3</div><div class="l">Overdue</div></div>
+        </div>
+
+        <!-- Pipeline pills -->
+        <div class="pills">
+          <span class="pill on">All<span class="ct">23</span></span>
+          <span class="pill">Received<span class="ct">4</span></span>
+          <span class="pill">Cutting<span class="ct">3</span></span>
+          <span class="pill">Stitching<span class="ct">6</span></span>
+          <span class="pill">Trial<span class="ct">2</span></span>
+          <span class="pill">Ready<span class="ct">7</span></span>
+        </div>
+
+        <!-- Order 1 — overdue -->
+        <div class="ord ready">
+          <div class="ord-row1">
+            <span class="ord-id">#ORD-2410</span>
+            <span class="ord-stage ready">Ready</span>
+            <span class="ord-due urgent">2 days overdue</span>
+          </div>
+          <div class="ord-row2">
+            <div class="ord-av" style="background:linear-gradient(135deg,#7C5CBF,#5C3FA3)">RD</div>
+            <div class="ord-info">
+              <div class="ord-name">Raju Desai</div>
+              <div class="ord-item">Sherwani · ivory · embroidered</div>
+            </div>
+            <div class="ord-amt">
+              <div class="ord-total">₹18,500</div>
+              <div class="ord-paid">PAID</div>
+            </div>
+          </div>
+          <div class="ord-prog"><div class="fill"></div><div class="fill"></div><div class="fill"></div><div class="fill"></div><div class="fill"></div></div>
+        </div>
+
+        <!-- Order 2 -->
+        <div class="ord trial">
+          <div class="ord-row1">
+            <span class="ord-id">#ORD-2418</span>
+            <span class="ord-stage trial">Trial</span>
+            <span class="ord-due">Today · 11:00</span>
+          </div>
+          <div class="ord-row2">
+            <div class="ord-av" style="background:linear-gradient(135deg,#E8C49A,#D4A574)">PS</div>
+            <div class="ord-info">
+              <div class="ord-name">Priya Sharma</div>
+              <div class="ord-item">Lehenga · maroon · 2nd trial</div>
+            </div>
+            <div class="ord-amt">
+              <div class="ord-total">₹32,000</div>
+              <div class="ord-paid pending">₹16K DUE</div>
+            </div>
+          </div>
+          <div class="ord-prog"><div class="fill"></div><div class="fill"></div><div class="fill"></div><div class="fill"></div><div></div></div>
+        </div>
+
+        <!-- Order 3 -->
+        <div class="ord stitching">
+          <div class="ord-row1">
+            <span class="ord-id">#ORD-2421</span>
+            <span class="ord-stage stitching">Stitching</span>
+            <span class="ord-due">Due 28 Apr</span>
+          </div>
+          <div class="ord-row2">
+            <div class="ord-av" style="background:linear-gradient(135deg,#7C5CBF,#5C3FA3)">NR</div>
+            <div class="ord-info">
+              <div class="ord-name">Neha Rathod</div>
+              <div class="ord-item">Bridal lehenga · red · premium</div>
+            </div>
+            <div class="ord-amt">
+              <div class="ord-total">₹85,000</div>
+              <div class="ord-paid">PAID</div>
+            </div>
+          </div>
+          <div class="ord-prog"><div class="fill"></div><div class="fill"></div><div class="fill"></div><div></div><div></div></div>
+        </div>
+
+        <!-- Order 4 -->
+        <div class="ord cutting">
+          <div class="ord-row1">
+            <span class="ord-id">#ORD-2424</span>
+            <span class="ord-stage cutting">Cutting</span>
+            <span class="ord-due">Due 02 May</span>
+          </div>
+          <div class="ord-row2">
+            <div class="ord-av" style="background:linear-gradient(135deg,#2BA5A5,#1F7878)">AS</div>
+            <div class="ord-info">
+              <div class="ord-name">Amit Shah</div>
+              <div class="ord-item">Suit + Kurta · navy · 2 piece</div>
+            </div>
+            <div class="ord-amt">
+              <div class="ord-total">₹12,000</div>
+              <div class="ord-paid pending">₹6K DUE</div>
+            </div>
+          </div>
+          <div class="ord-prog"><div class="fill"></div><div class="fill"></div><div></div><div></div><div></div></div>
+        </div>
+
+        <!-- Order 5 -->
+        <div class="ord received">
+          <div class="ord-row1">
+            <span class="ord-id">#ORD-2426</span>
+            <span class="ord-stage received">Received</span>
+            <span class="ord-due">Due 05 May</span>
+          </div>
+          <div class="ord-row2">
+            <div class="ord-av" style="background:linear-gradient(135deg,#4A7FC1,#2D5A94)">MP</div>
+            <div class="ord-info">
+              <div class="ord-name">Meera Patel</div>
+              <div class="ord-item">Saree blouse · pink · puff sleeve</div>
+            </div>
+            <div class="ord-amt">
+              <div class="ord-total">₹2,200</div>
+              <div class="ord-paid pending">UNPAID</div>
+            </div>
+          </div>
+          <div class="ord-prog"><div class="fill"></div><div></div><div></div><div></div><div></div></div>
+        </div>
+
+        <!-- Order 6 -->
+        <div class="ord stitching">
+          <div class="ord-row1">
+            <span class="ord-id">#ORD-2428</span>
+            <span class="ord-stage stitching">Stitching</span>
+            <span class="ord-due">Due 30 Apr</span>
+          </div>
+          <div class="ord-row2">
+            <div class="ord-av" style="background:linear-gradient(135deg,#E8C49A,#D4A574)">KJ</div>
+            <div class="ord-info">
+              <div class="ord-name">Kavita Joshi</div>
+              <div class="ord-item">Anarkali · emerald · zari work</div>
+            </div>
+            <div class="ord-amt">
+              <div class="ord-total">₹14,500</div>
+              <div class="ord-paid">PAID</div>
+            </div>
+          </div>
+          <div class="ord-prog"><div class="fill"></div><div class="fill"></div><div class="fill"></div><div></div><div></div></div>
+        </div>
+      </div>
+
+      <div class="fab">+</div>
+
+      <div class="bnav">
+        <div class="bn"><span>▦</span>Dashboard</div>
+        <div class="bn"><span>♟</span>Customers</div>
+        <div class="bn active"><span>▤</span>Orders</div>
+        <div class="bn"><span>₹</span>Invoices</div>
+        <div class="bn"><span>⚙</span>Settings</div>
+      </div>
+    </div>
+    <div class="col-label">Orders</div>
+    <div class="col-tag">Pipeline filter · 5-step progress · due dates</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 3: INVOICES                                            -->
+  <!-- ============================================================ -->
+  <div class="col">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="hdr">
+        <div class="ttl">Invoices</div>
+        <div class="icons"><span>⌕</span><span>⇕</span></div>
+      </div>
+
+      <div class="body">
+        <!-- Hero summary -->
+        <div class="summary-card">
+          <div class="lbl">OUTSTANDING</div>
+          <div class="big">₹42,000</div>
+          <div class="sub">across 8 unpaid invoices</div>
+          <div class="split">
+            <div>
+              <div class="vv green">₹4.8L</div>
+              <div class="ll">Collected</div>
+            </div>
+            <div>
+              <div class="vv amber">₹42K</div>
+              <div class="ll">Pending</div>
+            </div>
+            <div>
+              <div class="vv" style="color:#F08585">₹8.5K</div>
+              <div class="ll">Overdue</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter pills -->
+        <div class="pills">
+          <span class="pill on">All<span class="ct">38</span></span>
+          <span class="pill">Paid<span class="ct">30</span></span>
+          <span class="pill">Pending<span class="ct">5</span></span>
+          <span class="pill">Overdue<span class="ct">3</span></span>
+        </div>
+
+        <!-- Invoice — overdue -->
+        <div class="inv">
+          <div class="inv-status overdue">!</div>
+          <div class="inv-info">
+            <div class="inv-row1">
+              <span class="inv-num">INV-1042</span>
+              <span class="inv-name">Raju Desai</span>
+            </div>
+            <div class="inv-meta">15 Apr · 9 days overdue · Sherwani</div>
+          </div>
+          <div class="inv-amt">
+            <div class="v">₹3,500</div>
+            <div class="l overdue">Overdue</div>
+          </div>
+        </div>
+
+        <!-- Invoice pending -->
+        <div class="inv">
+          <div class="inv-status pending">⏱</div>
+          <div class="inv-info">
+            <div class="inv-row1">
+              <span class="inv-num">INV-1058</span>
+              <span class="inv-name">Priya Sharma</span>
+            </div>
+            <div class="inv-meta">22 Apr · due 30 Apr · Lehenga balance</div>
+          </div>
+          <div class="inv-amt">
+            <div class="v">₹16,000</div>
+            <div class="l pending">Pending</div>
+          </div>
+        </div>
+
+        <!-- Invoice pending 2 -->
+        <div class="inv">
+          <div class="inv-status pending">⏱</div>
+          <div class="inv-info">
+            <div class="inv-row1">
+              <span class="inv-num">INV-1061</span>
+              <span class="inv-name">Amit Shah</span>
+            </div>
+            <div class="inv-meta">23 Apr · due 02 May · Suit + Kurta</div>
+          </div>
+          <div class="inv-amt">
+            <div class="v">₹6,000</div>
+            <div class="l pending">Pending</div>
+          </div>
+        </div>
+
+        <!-- Invoice paid -->
+        <div class="inv">
+          <div class="inv-status paid">✓</div>
+          <div class="inv-info">
+            <div class="inv-row1">
+              <span class="inv-num">INV-1063</span>
+              <span class="inv-name">Meera Patel</span>
+            </div>
+            <div class="inv-meta">24 Apr · UPI · Blouse</div>
+          </div>
+          <div class="inv-amt">
+            <div class="v">₹1,500</div>
+            <div class="l paid">Paid</div>
+          </div>
+        </div>
+
+        <!-- Invoice paid -->
+        <div class="inv">
+          <div class="inv-status paid">✓</div>
+          <div class="inv-info">
+            <div class="inv-row1">
+              <span class="inv-num">INV-1062</span>
+              <span class="inv-name">Kavita Joshi</span>
+            </div>
+            <div class="inv-meta">23 Apr · Cash · Anarkali</div>
+          </div>
+          <div class="inv-amt">
+            <div class="v">₹14,500</div>
+            <div class="l paid">Paid</div>
+          </div>
+        </div>
+
+        <!-- Invoice paid -->
+        <div class="inv">
+          <div class="inv-status paid">✓</div>
+          <div class="inv-info">
+            <div class="inv-row1">
+              <span class="inv-num">INV-1060</span>
+              <span class="inv-name">Neha Rathod</span>
+            </div>
+            <div class="inv-meta">22 Apr · UPI · Bridal advance</div>
+          </div>
+          <div class="inv-amt">
+            <div class="v">₹85,000</div>
+            <div class="l paid">Paid</div>
+          </div>
+        </div>
+
+        <!-- Invoice paid -->
+        <div class="inv">
+          <div class="inv-status paid">✓</div>
+          <div class="inv-info">
+            <div class="inv-row1">
+              <span class="inv-num">INV-1057</span>
+              <span class="inv-name">Ankita Trivedi</span>
+            </div>
+            <div class="inv-meta">21 Apr · Cash · Kurti</div>
+          </div>
+          <div class="inv-amt">
+            <div class="v">₹3,200</div>
+            <div class="l paid">Paid</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fab">+</div>
+
+      <div class="bnav">
+        <div class="bn"><span>▦</span>Dashboard</div>
+        <div class="bn"><span>♟</span>Customers</div>
+        <div class="bn"><span>▤</span>Orders</div>
+        <div class="bn active"><span>₹</span>Invoices</div>
+        <div class="bn"><span>⚙</span>Settings</div>
+      </div>
+    </div>
+    <div class="col-label">Invoices</div>
+    <div class="col-tag">Outstanding hero · paid/pending/overdue</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 4: SETTINGS                                            -->
+  <!-- ============================================================ -->
+  <div class="col">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="hdr">
+        <div class="ttl">Settings</div>
+      </div>
+
+      <div class="body">
+        <!-- Profile card -->
+        <div class="profile">
+          <div class="profile-edit">Edit</div>
+          <div class="profile-av">HB</div>
+          <div class="profile-info">
+            <div class="profile-name">Hingu Boutique</div>
+            <div class="profile-tier">★ Pro Plan</div>
+            <div class="profile-meta">Surat, Gujarat · Since 2018</div>
+          </div>
+        </div>
+
+        <div class="sec">Business</div>
+        <div class="set-group">
+          <div class="set-row">
+            <div class="set-ic a">⌂</div>
+            <div class="set-info">
+              <div class="set-t">Boutique Profile</div>
+              <div class="set-s">Name, address, GST, logo</div>
+            </div>
+            <span class="set-arrow">›</span>
+          </div>
+          <div class="set-row">
+            <div class="set-ic e">₹</div>
+            <div class="set-info">
+              <div class="set-t">Pricing & Tax</div>
+              <div class="set-s">GST 18% · default currency INR</div>
+            </div>
+            <span class="set-arrow">›</span>
+          </div>
+          <div class="set-row">
+            <div class="set-ic c">▦</div>
+            <div class="set-info">
+              <div class="set-t">Invoice Template</div>
+              <div class="set-s">Classic · gold accent</div>
+            </div>
+            <span class="set-val">Classic</span>
+            <span class="set-arrow" style="margin-left:6px">›</span>
+          </div>
+          <div class="set-row">
+            <div class="set-ic d">▤</div>
+            <div class="set-info">
+              <div class="set-t">Order Stages</div>
+              <div class="set-s">5 stages · customize labels</div>
+            </div>
+            <span class="set-arrow">›</span>
+          </div>
+        </div>
+
+        <div class="sec">Notifications</div>
+        <div class="set-group">
+          <div class="set-row">
+            <div class="set-ic b">✉</div>
+            <div class="set-info">
+              <div class="set-t">WhatsApp Updates</div>
+              <div class="set-s">Auto-notify customers on stage change</div>
+            </div>
+            <div class="tg"></div>
+          </div>
+          <div class="set-row">
+            <div class="set-ic f">⏰</div>
+            <div class="set-info">
+              <div class="set-t">Trial Reminders</div>
+              <div class="set-s">SMS + push 1 day before</div>
+            </div>
+            <div class="tg"></div>
+          </div>
+          <div class="set-row">
+            <div class="set-ic g">!</div>
+            <div class="set-info">
+              <div class="set-t">Payment Reminders</div>
+              <div class="set-s">Auto-send for overdue invoices</div>
+            </div>
+            <div class="tg off"></div>
+          </div>
+        </div>
+
+        <div class="sec">Data & Account</div>
+        <div class="set-group">
+          <div class="set-row">
+            <div class="set-ic c">☁</div>
+            <div class="set-info">
+              <div class="set-t">Backup & Sync</div>
+              <div class="set-s">Last sync · 12 min ago</div>
+            </div>
+            <span class="set-val" style="color:var(--success)">Synced</span>
+            <span class="set-arrow" style="margin-left:6px">›</span>
+          </div>
+          <div class="set-row">
+            <div class="set-ic d">⇣</div>
+            <div class="set-info">
+              <div class="set-t">Export Data</div>
+              <div class="set-s">Customers, orders, invoices · CSV</div>
+            </div>
+            <span class="set-arrow">›</span>
+          </div>
+          <div class="set-row">
+            <div class="set-ic a">◐</div>
+            <div class="set-info">
+              <div class="set-t">Theme</div>
+              <div class="set-s">Light · Dark · Auto</div>
+            </div>
+            <span class="set-val">Light</span>
+            <span class="set-arrow" style="margin-left:6px">›</span>
+          </div>
+          <div class="set-row">
+            <div class="set-ic e">A</div>
+            <div class="set-info">
+              <div class="set-t">Language</div>
+              <div class="set-s">English · हिन्दी · ગુજરાતી</div>
+            </div>
+            <span class="set-val">English</span>
+            <span class="set-arrow" style="margin-left:6px">›</span>
+          </div>
+        </div>
+
+        <div class="sec">Support</div>
+        <div class="set-group">
+          <div class="set-row">
+            <div class="set-ic a">?</div>
+            <div class="set-info">
+              <div class="set-t">Help Center</div>
+              <div class="set-s">Guides, FAQs, video tutorials</div>
+            </div>
+            <span class="set-arrow">›</span>
+          </div>
+          <div class="set-row">
+            <div class="set-ic g">⏻</div>
+            <div class="set-info">
+              <div class="set-t" style="color:var(--danger)">Sign Out</div>
+              <div class="set-s">hingu.boutique@gmail.com</div>
+            </div>
+            <span class="set-arrow">›</span>
+          </div>
+        </div>
+
+        <div style="text-align:center;font-size:9px;color:var(--text3);margin-top:14px;letter-spacing:1px">TAILORX · v1.4.0</div>
+      </div>
+
+      <div class="bnav">
+        <div class="bn"><span>▦</span>Dashboard</div>
+        <div class="bn"><span>♟</span>Customers</div>
+        <div class="bn"><span>▤</span>Orders</div>
+        <div class="bn"><span>₹</span>Invoices</div>
+        <div class="bn active"><span>⚙</span>Settings</div>
+      </div>
+    </div>
+    <div class="col-label">Settings</div>
+    <div class="col-tag">Profile hero · grouped rows · toggles</div>
+  </div>
+</div>
+
+<div class="note">
+  All four screens reuse the same palette, type stack, card radius, and shadow vocabulary as the dashboard — gold accents, deep-indigo gradients, Playfair Display for numerics, Plus Jakarta Sans for body. The bottom nav stays consistent across every screen with the active tab highlighted in <b>indigo</b>.
+</div>
+
+</body>
+</html>

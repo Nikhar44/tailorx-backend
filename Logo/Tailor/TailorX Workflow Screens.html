@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TailorX — Workflow Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --header-dark:#1A1A2E; --accent:#D4A574; --accent-soft:#E8C49A; --accent-dark:#B8895A;
+  --bg:#F8F7F4; --card:#FFFFFF; --surface:#F1F0ED; --border:#E8E5DF;
+  --text:#1A1A2E; --text2:#6B6B7B; --text3:#9E9EA8;
+  --success:#2D8F6F; --warning:#E09F3E; --danger:#CF4747; --info:#4A7FC1;
+  --purple:#7C5CBF; --teal:#2BA5A5;
+  --shadow:0 4px 12px rgba(0,0,0,.04),0 1px 4px rgba(0,0,0,.02);
+  --display:'Playfair Display',Georgia,serif;
+  --body:'Plus Jakarta Sans',-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0e14;min-height:100vh;font-family:var(--body);color:#fff;padding:36px 24px 80px}
+
+.hero{text-align:center;margin-bottom:36px}
+.hero .top{font-family:var(--display);font-size:24px;color:var(--accent);letter-spacing:5px}
+.hero .sub{font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1.4px;margin-top:6px}
+
+.row{display:flex;gap:36px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column;align-items:center;gap:14px}
+.col-label{font-family:var(--display);font-size:18px;color:#fff;letter-spacing:.5px}
+.col-tag{font-size:10px;color:rgba(255,255,255,.45);letter-spacing:1.5px;text-transform:uppercase;margin-top:-10px}
+
+/* iPhone */
+.phone{width:380px;background:var(--bg);border-radius:42px;overflow:hidden;box-shadow:0 30px 60px rgba(0,0,0,.55);border:6px solid #1e1e2a;position:relative}
+.notch{width:120px;height:24px;background:#1e1e2a;border-radius:0 0 14px 14px;margin:0 auto;position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:10}
+
+/* Generic header */
+.hdr{background:linear-gradient(135deg,#1A1A2E 0%,#16213E 60%,#0F3460 100%);padding:46px 16px 14px;color:#E8E8E8;display:flex;align-items:center;gap:10px}
+.hdr .back{font-size:18px;color:#E8E8E8;opacity:.85}
+.hdr .ttl{font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:.4px;flex:1}
+.hdr .icons{display:flex;gap:14px;font-size:14px;opacity:.7}
+
+/* Bottom nav (shared) */
+.bnav{display:flex;justify-content:space-around;padding:9px 0 20px;background:var(--card);border-top:1px solid #f0f0f0}
+.bn{text-align:center;font-size:8px;color:var(--text3);letter-spacing:.5px}
+.bn span{display:block;font-size:17px;margin-bottom:2px}
+.bn.active{color:var(--header-dark);font-weight:600}
+
+.sec{font-size:9px;font-weight:600;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin:14px 0 8px}
+.sec.row{display:flex;justify-content:space-between;align-items:center;flex-wrap:nowrap}
+.sec .pill{font-size:8px;background:rgba(212,165,116,.15);color:var(--accent-dark);padding:3px 8px;border-radius:6px;letter-spacing:.6px;text-transform:none;font-weight:600}
+
+/* ===========================
+   SCREEN 1: TODAY'S TASKS
+   =========================== */
+.tasks-body{padding:14px 16px 24px;color:var(--text)}
+
+/* Today summary strip */
+.summary{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;background:linear-gradient(135deg,#1C1C1C,#2A2A3A);color:#fff;margin-bottom:14px}
+.summary .ring{width:54px;height:54px;border-radius:50%;background:conic-gradient(var(--accent) 0 252deg,rgba(255,255,255,.08) 252deg);display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:ring 1100ms cubic-bezier(.22,1,.36,1) forwards}
+@keyframes ring{from{background:conic-gradient(var(--accent) 0 0deg,rgba(255,255,255,.08) 0deg)}}
+.summary .ring-in{width:42px;height:42px;border-radius:50%;background:#1C1C1C;display:flex;align-items:center;justify-content:center;flex-direction:column}
+.summary .ring-in b{font-family:var(--display);font-size:14px;color:var(--accent);line-height:1}
+.summary .ring-in span{font-size:6px;color:rgba(255,255,255,.5);letter-spacing:1px;margin-top:1px}
+.summary .info h3{font-family:var(--display);font-size:14px;font-weight:600}
+.summary .info p{font-size:9px;color:rgba(255,255,255,.55);margin-top:2px}
+.summary .info .row2{display:flex;gap:10px;margin-top:6px}
+.summary .info .row2 div{font-size:8px;color:rgba(255,255,255,.6)}
+.summary .info .row2 b{color:#fff;font-weight:600}
+
+/* Tab strip */
+.tabs{display:flex;gap:4px;margin-bottom:10px;background:var(--surface);padding:3px;border-radius:10px}
+.tab{flex:1;padding:7px 0;font-size:9px;font-weight:600;letter-spacing:.6px;color:var(--text3);text-align:center;border-radius:8px;text-transform:uppercase;cursor:pointer}
+.tab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.tab .count{display:inline-block;background:rgba(0,0,0,.06);font-size:8px;padding:1px 5px;border-radius:8px;margin-left:3px}
+.tab.active .count{background:rgba(212,165,116,.2);color:var(--accent-dark)}
+
+/* Task card */
+.tk{position:relative;display:flex;align-items:center;gap:11px;padding:12px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);margin-bottom:8px;overflow:hidden}
+.tk::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+.tk.trial::before{background:var(--teal)}
+.tk.ready::before{background:var(--success)}
+.tk.due::before{background:var(--danger)}
+.tk.fit::before{background:var(--purple)}
+.tk-grip{color:var(--text3);font-size:14px;cursor:grab;flex-shrink:0;opacity:.4}
+.tk-avatar{width:40px;height:40px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--accent-soft),var(--accent));display:flex;align-items:center;justify-content:center;font-family:var(--display);color:#fff;font-weight:600;font-size:14px;box-shadow:0 2px 6px rgba(212,165,116,.3)}
+.tk-avatar.b{background:linear-gradient(135deg,#7C5CBF,#5C3FA3)}
+.tk-avatar.c{background:linear-gradient(135deg,#4A7FC1,#2D5A94)}
+.tk-avatar.d{background:linear-gradient(135deg,#2BA5A5,#1F7878)}
+.tk-info{flex:1;min-width:0}
+.tk-row1{display:flex;align-items:center;gap:6px}
+.tk-name{font-size:12px;font-weight:600;color:var(--text)}
+.tk-time{font-size:9px;color:var(--text3);margin-left:auto;flex-shrink:0;font-weight:500}
+.tk-detail{font-size:9px;color:var(--text2);margin-top:2px}
+.tk-row3{display:flex;align-items:center;gap:6px;margin-top:6px}
+.tk-badge{font-size:7px;font-weight:600;letter-spacing:.7px;padding:3px 7px;border-radius:5px;text-transform:uppercase}
+.tk-badge.trial{background:rgba(43,165,165,.12);color:var(--teal)}
+.tk-badge.ready{background:rgba(45,143,111,.12);color:var(--success)}
+.tk-badge.due{background:rgba(207,71,71,.12);color:var(--danger)}
+.tk-badge.fit{background:rgba(124,92,191,.12);color:var(--purple)}
+.tk-meta{font-size:8px;color:var(--text3)}
+
+/* Swipe-revealed */
+.tk-swiped{transform:translateX(-72px);transition:transform .28s ease}
+.tk-actions{position:absolute;right:0;top:0;bottom:8px;display:flex;align-items:center;gap:4px;padding-right:6px}
+.tk-act{width:62px;background:var(--success);color:#fff;border-radius:10px;height:calc(100% - 0px);display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:9px;gap:2px;font-weight:600;letter-spacing:.4px}
+.tk-act .ic{font-size:16px}
+.tk-act.skip{background:var(--text3)}
+
+/* Done card */
+.tk.done .tk-name{text-decoration:line-through;color:var(--text3)}
+.tk.done .tk-detail{opacity:.5}
+.tk.done .tk-avatar{opacity:.5}
+.tk-check-done{width:22px;height:22px;border-radius:50%;background:var(--success);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;font-weight:700}
+
+.fab{position:absolute;bottom:78px;right:14px;width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent-dark));color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 8px 20px rgba(212,165,116,.45);font-weight:300}
+
+/* Demo: swipe hint animation on first card */
+.swipe-demo{animation:swipeHint 4s ease-in-out 1.4s infinite}
+@keyframes swipeHint{0%,100%{transform:translateX(0)}40%,55%{transform:translateX(-72px)}}
+
+/* ===========================
+   SCREEN 2: TRIAL CALENDAR
+   =========================== */
+.cal-body{padding:0 0 24px;color:var(--text)}
+
+/* Month banner */
+.mn{padding:14px 16px 8px;display:flex;align-items:center;justify-content:space-between}
+.mn-l{display:flex;align-items:baseline;gap:8px}
+.mn-l h2{font-family:var(--display);font-size:18px;font-weight:600;color:var(--text)}
+.mn-l span{font-size:11px;color:var(--text3)}
+.mn-r{display:flex;gap:6px}
+.mn-r .seg{display:flex;background:var(--surface);border-radius:8px;padding:2px}
+.mn-r .seg div{padding:4px 10px;font-size:8px;font-weight:600;letter-spacing:.6px;color:var(--text3);border-radius:6px;text-transform:uppercase}
+.mn-r .seg div.on{background:#fff;color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+/* Week strip */
+.week{display:flex;gap:6px;padding:6px 16px 14px;overflow:hidden}
+.day{flex:1;min-width:0;padding:10px 0 8px;border-radius:12px;text-align:center;background:var(--card);box-shadow:var(--shadow);position:relative;cursor:pointer}
+.day .dow{font-size:8px;color:var(--text3);font-weight:600;letter-spacing:.8px;text-transform:uppercase}
+.day .num{font-family:var(--display);font-size:18px;font-weight:600;color:var(--text);margin-top:2px;line-height:1}
+.day .dots{display:flex;gap:2px;justify-content:center;margin-top:6px;height:5px}
+.day .dots b{width:5px;height:5px;border-radius:50%;display:block}
+.day .dots b.t{background:var(--teal)}
+.day .dots b.r{background:var(--success)}
+.day .dots b.f{background:var(--purple)}
+.day.active{background:linear-gradient(135deg,#1A1A2E,#16213E);box-shadow:0 6px 18px rgba(26,26,46,.35)}
+.day.active .dow{color:rgba(255,255,255,.5)}
+.day.active .num{color:var(--accent)}
+
+/* Day header */
+.dh{padding:12px 16px 4px;display:flex;justify-content:space-between;align-items:flex-end}
+.dh-l h3{font-family:var(--display);font-size:20px;font-weight:600}
+.dh-l p{font-size:10px;color:var(--text3);margin-top:1px}
+.dh-r{font-size:9px;color:var(--text2);text-align:right;line-height:1.5}
+.dh-r b{color:var(--teal);font-size:14px;font-family:var(--display);display:block;line-height:1}
+
+/* Timeline (hour grid) */
+.tl{padding:8px 16px 0;position:relative}
+.hr{display:flex;gap:10px;min-height:50px;position:relative}
+.hr .hour{font-size:8px;color:var(--text3);width:34px;flex-shrink:0;padding-top:0;letter-spacing:.5px;font-weight:600}
+.hr .lane{flex:1;border-top:1px solid var(--border);position:relative;padding:6px 0}
+
+/* Appointment block */
+.appt{position:relative;border-radius:10px;padding:9px 11px;margin-bottom:5px;color:#fff;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.appt::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:rgba(255,255,255,.4)}
+.appt.t{background:linear-gradient(135deg,#2BA5A5,#1F7878)}
+.appt.r{background:linear-gradient(135deg,#2D8F6F,#1F6650)}
+.appt.f{background:linear-gradient(135deg,#7C5CBF,#5C3FA3)}
+.appt.tent{background:#fff;color:var(--text);border:1px dashed var(--text3);box-shadow:none}
+.appt.tent::before{background:var(--text3)}
+.appt-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.appt-time{font-size:8px;font-weight:600;letter-spacing:.6px;opacity:.85;text-transform:uppercase}
+.appt-name{font-size:11px;font-weight:700;margin-top:1px}
+.appt-detail{font-size:9px;opacity:.85;margin-top:1px}
+.appt-mini{display:flex;gap:-6px;align-items:center}
+.appt-mini .mini-av{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;border:1.5px solid #fff;margin-left:-4px;color:#fff}
+.appt-mini .mini-av:first-child{margin-left:0}
+
+/* Now line */
+.now{position:absolute;left:34px;right:0;display:flex;align-items:center;gap:0;pointer-events:none;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.now-dot{width:9px;height:9px;border-radius:50%;background:var(--danger);box-shadow:0 0 0 4px rgba(207,71,71,.2);margin-left:-4px}
+.now-line{flex:1;height:1.5px;background:var(--danger)}
+.now-time{position:absolute;left:-2px;font-size:7px;color:var(--danger);font-weight:700;background:var(--bg);padding:1px 4px;border-radius:3px;top:-7px;letter-spacing:.4px}
+
+/* Free block */
+.free{padding:10px;border-radius:10px;background:rgba(45,143,111,.06);border:1px dashed rgba(45,143,111,.3);text-align:center;color:var(--success);font-size:9px;font-weight:600;letter-spacing:.5px;margin:4px 0}
+
+/* note */
+.note{margin-top:32px;font-size:12px;line-height:1.65;color:rgba(255,255,255,.55);text-align:center;max-width:680px;margin-left:auto;margin-right:auto}
+.note b{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="top">TAILORX</div>
+  <div class="sub">WORKFLOW · TODAY'S TASKS + TRIAL CALENDAR</div>
+</div>
+
+<div class="row">
+  <!-- ============================================================ -->
+  <!-- SCREEN 1: TODAY'S TASKS                                       -->
+  <!-- ============================================================ -->
+  <div class="col">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="hdr">
+        <span class="back">‹</span>
+        <div class="ttl">Today's Tasks</div>
+        <div class="icons"><span>⌕</span><span>⚙</span></div>
+      </div>
+
+      <div class="tasks-body">
+        <!-- Summary ring -->
+        <div class="summary">
+          <div class="ring"><div class="ring-in"><b>5/7</b><span>DONE</span></div></div>
+          <div class="info" style="flex:1">
+            <h3>You're crushing it.</h3>
+            <p>2 tasks left · finish by 7:30 PM</p>
+            <div class="row2">
+              <div><b>3</b> trials</div>
+              <div><b>2</b> deliveries</div>
+              <div><b>2</b> payments</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+          <div class="tab active">Today<span class="count">7</span></div>
+          <div class="tab">Tomorrow<span class="count">4</span></div>
+          <div class="tab">Week<span class="count">23</span></div>
+        </div>
+
+        <!-- TASK 1 — swipe demo -->
+        <div class="tk trial swipe-demo">
+          <div class="tk-actions">
+            <div class="tk-act"><div class="ic">✓</div>Done</div>
+          </div>
+          <div class="tk-grip">⋮⋮</div>
+          <div class="tk-avatar">PS</div>
+          <div class="tk-info">
+            <div class="tk-row1">
+              <div class="tk-name">Priya Sharma</div>
+              <div class="tk-time">11:00 AM</div>
+            </div>
+            <div class="tk-detail">Lehenga · 2nd trial · waist adjustment</div>
+            <div class="tk-row3">
+              <span class="tk-badge trial">Trial</span>
+              <span class="tk-meta">+91 98765 43210</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TASK 2 -->
+        <div class="tk ready">
+          <div class="tk-grip">⋮⋮</div>
+          <div class="tk-avatar b">RD</div>
+          <div class="tk-info">
+            <div class="tk-row1">
+              <div class="tk-name">Raju Desai</div>
+              <div class="tk-time">12:30 PM</div>
+            </div>
+            <div class="tk-detail">Sherwani · ready for pickup · ₹0 due</div>
+            <div class="tk-row3">
+              <span class="tk-badge ready">Deliver</span>
+              <span class="tk-meta">Notify on WhatsApp</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TASK 3 (done) -->
+        <div class="tk done">
+          <div class="tk-check-done">✓</div>
+          <div class="tk-avatar c">MP</div>
+          <div class="tk-info">
+            <div class="tk-row1">
+              <div class="tk-name">Meera Patel</div>
+              <div class="tk-time">10:15 AM</div>
+            </div>
+            <div class="tk-detail">Blouse · payment ₹1,500 collected</div>
+          </div>
+        </div>
+
+        <!-- TASK 4 -->
+        <div class="tk fit">
+          <div class="tk-grip">⋮⋮</div>
+          <div class="tk-avatar d">AS</div>
+          <div class="tk-info">
+            <div class="tk-row1">
+              <div class="tk-name">Amit Shah</div>
+              <div class="tk-time">3:00 PM</div>
+            </div>
+            <div class="tk-detail">Suit · measurement update + fitting</div>
+            <div class="tk-row3">
+              <span class="tk-badge fit">Fitting</span>
+              <span class="tk-meta">Walk-in · Surat</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TASK 5 -->
+        <div class="tk due">
+          <div class="tk-grip">⋮⋮</div>
+          <div class="tk-avatar">KJ</div>
+          <div class="tk-info">
+            <div class="tk-row1">
+              <div class="tk-name">Kavita Joshi</div>
+              <div class="tk-time">5:30 PM</div>
+            </div>
+            <div class="tk-detail">Saree blouse · balance ₹2,200 due</div>
+            <div class="tk-row3">
+              <span class="tk-badge due">Payment</span>
+              <span class="tk-meta">UPI link sent</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TASK 6 -->
+        <div class="tk trial">
+          <div class="tk-grip">⋮⋮</div>
+          <div class="tk-avatar b">NR</div>
+          <div class="tk-info">
+            <div class="tk-row1">
+              <div class="tk-name">Neha Rathod</div>
+              <div class="tk-time">6:45 PM</div>
+            </div>
+            <div class="tk-detail">Bridal lehenga · 1st trial · 2 hrs blocked</div>
+            <div class="tk-row3">
+              <span class="tk-badge trial">Trial</span>
+              <span class="tk-meta">Premium · ₹85,000</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fab">+</div>
+
+      <div class="bnav">
+        <div class="bn"><span>▦</span>Dashboard</div>
+        <div class="bn"><span>♟</span>Customers</div>
+        <div class="bn active"><span>✓</span>Tasks</div>
+        <div class="bn"><span>▤</span>Orders</div>
+        <div class="bn"><span>⚙</span>More</div>
+      </div>
+    </div>
+    <div class="col-label">Today's Tasks</div>
+    <div class="col-tag">Swipe right → done · drag to reorder</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SCREEN 2: TRIAL CALENDAR                                      -->
+  <!-- ============================================================ -->
+  <div class="col">
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="hdr">
+        <span class="back">‹</span>
+        <div class="ttl">Calendar</div>
+        <div class="icons"><span>⌕</span><span>⊕</span></div>
+      </div>
+
+      <div class="cal-body">
+        <!-- Month + view toggle -->
+        <div class="mn">
+          <div class="mn-l">
+            <h2>April</h2>
+            <span>2026</span>
+          </div>
+          <div class="mn-r">
+            <div class="seg">
+              <div>Day</div><div class="on">Week</div><div>Month</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Week strip -->
+        <div class="week">
+          <div class="day"><div class="dow">Mon</div><div class="num">20</div><div class="dots"><b class="t"></b></div></div>
+          <div class="day"><div class="dow">Tue</div><div class="num">21</div><div class="dots"><b class="t"></b><b class="r"></b></div></div>
+          <div class="day"><div class="dow">Wed</div><div class="num">22</div><div class="dots"><b class="r"></b></div></div>
+          <div class="day"><div class="dow">Thu</div><div class="num">23</div><div class="dots"><b class="t"></b><b class="f"></b><b class="r"></b></div></div>
+          <div class="day active"><div class="dow">Fri</div><div class="num">24</div><div class="dots"><b style="background:var(--accent)"></b><b style="background:var(--accent)"></b><b style="background:var(--accent)"></b></div></div>
+          <div class="day"><div class="dow">Sat</div><div class="num">25</div><div class="dots"><b class="t"></b><b class="t"></b></div></div>
+          <div class="day"><div class="dow">Sun</div><div class="num">26</div></div>
+        </div>
+
+        <!-- Day header -->
+        <div class="dh">
+          <div class="dh-l">
+            <h3>Friday, 24 April</h3>
+            <p>3 trials · 2 deliveries · 1 fitting</p>
+          </div>
+          <div class="dh-r">
+            <b>6</b>
+            <span>appointments</span>
+          </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="tl">
+          <!-- 9 AM -->
+          <div class="hr">
+            <div class="hour">9 AM</div>
+            <div class="lane">
+              <div class="appt r">
+                <div class="appt-row">
+                  <div>
+                    <div class="appt-time">9:30 — 10:00</div>
+                    <div class="appt-name">Meera Patel</div>
+                    <div class="appt-detail">Blouse pickup · ₹1,500 collected</div>
+                  </div>
+                  <div class="appt-mini"><div class="mini-av" style="background:linear-gradient(135deg,#4A7FC1,#2D5A94)">MP</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 10 AM -->
+          <div class="hr">
+            <div class="hour">10 AM</div>
+            <div class="lane"></div>
+          </div>
+
+          <!-- 11 AM — current -->
+          <div class="hr" style="position:relative">
+            <div class="hour">11 AM</div>
+            <div class="lane">
+              <div class="appt t">
+                <div class="appt-row">
+                  <div>
+                    <div class="appt-time">11:00 — 11:45</div>
+                    <div class="appt-name">Priya Sharma · Lehenga</div>
+                    <div class="appt-detail">2nd trial · waist adjustment</div>
+                  </div>
+                  <div class="appt-mini"><div class="mini-av" style="background:linear-gradient(135deg,#E8C49A,#D4A574)">PS</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="now" style="top:-3px"><div class="now-time">NOW</div><div class="now-dot"></div><div class="now-line"></div></div>
+          </div>
+
+          <!-- 12 -->
+          <div class="hr">
+            <div class="hour">12 PM</div>
+            <div class="lane">
+              <div class="appt r">
+                <div class="appt-row">
+                  <div>
+                    <div class="appt-time">12:30 — 1:00</div>
+                    <div class="appt-name">Raju Desai</div>
+                    <div class="appt-detail">Sherwani delivery</div>
+                  </div>
+                  <div class="appt-mini"><div class="mini-av" style="background:linear-gradient(135deg,#7C5CBF,#5C3FA3)">RD</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 1 PM -->
+          <div class="hr">
+            <div class="hour">1 PM</div>
+            <div class="lane">
+              <div class="free">LUNCH · 1:00 — 2:00 PM</div>
+            </div>
+          </div>
+
+          <!-- 3 PM -->
+          <div class="hr">
+            <div class="hour">3 PM</div>
+            <div class="lane">
+              <div class="appt f">
+                <div class="appt-row">
+                  <div>
+                    <div class="appt-time">3:00 — 3:45</div>
+                    <div class="appt-name">Amit Shah · Suit</div>
+                    <div class="appt-detail">Measurement update + fitting</div>
+                  </div>
+                  <div class="appt-mini"><div class="mini-av" style="background:linear-gradient(135deg,#2BA5A5,#1F7878)">AS</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 6 PM -->
+          <div class="hr">
+            <div class="hour">6 PM</div>
+            <div class="lane">
+              <div class="appt t">
+                <div class="appt-row">
+                  <div>
+                    <div class="appt-time">6:45 — 8:45</div>
+                    <div class="appt-name">Neha Rathod · Bridal</div>
+                    <div class="appt-detail">1st trial · 2 hours blocked · Premium</div>
+                  </div>
+                  <div class="appt-mini">
+                    <div class="mini-av" style="background:linear-gradient(135deg,#7C5CBF,#5C3FA3)">NR</div>
+                    <div class="mini-av" style="background:linear-gradient(135deg,#E8C49A,#D4A574)">+1</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bnav">
+        <div class="bn"><span>▦</span>Dashboard</div>
+        <div class="bn"><span>♟</span>Customers</div>
+        <div class="bn"><span>✓</span>Tasks</div>
+        <div class="bn active"><span>▦</span>Calendar</div>
+        <div class="bn"><span>⚙</span>More</div>
+      </div>
+    </div>
+    <div class="col-label">Trial Calendar</div>
+    <div class="col-tag">Tap day · drag appt to reschedule</div>
+  </div>
+</div>
+
+<div class="note">
+  Both screens reuse the dashboard's palette, type stack, card radius, and shadow vocabulary — they feel like the <b>same app</b>, not new modules. The animated progress ring on Tasks and the live <b>NOW</b> line on Calendar are the two emotional beats your boutique will see dozens of times a day.
+</div>
+
+</body>
+</html>

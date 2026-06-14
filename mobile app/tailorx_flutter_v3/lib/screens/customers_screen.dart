@@ -925,6 +925,7 @@ class CustomersScreenState extends State<CustomersScreen> {
               MeasurementSection(
                 key: ValueKey(femTopTab),
                 title: femTopTab == 'blouse' ? 'Blouse Measurements' : 'Dress Measurements',
+                section: femTopTab == 'blouse' ? 'femaleTopBlouse' : 'femaleTopDress',
                 fields: femTopTab == 'blouse' ? C.femaleTopBlouse : C.femaleTopDress,
                 values: Map.fromEntries(meas.entries
                   .where((e) => e.key.startsWith('${femTopTab}_'))
@@ -940,8 +941,8 @@ class CustomersScreenState extends State<CustomersScreen> {
                 }),
               ),
             ] else
-              MeasurementSection(title: 'Top', fields: C.maleTop, values: meas, onChanged: (f, v) => meas[f] = v, customFields: customTop, onAddCustom: (f) => setSt(() => customTop.add(f)), onRemoveCustom: (f) => setSt(() { customTop.remove(f); meas.remove(f); })),
-            MeasurementSection(title: 'Bottom', fields: gender == 'male' ? C.maleBottom : C.femaleBottom, values: meas, onChanged: (f, v) => meas[f] = v, customFields: customBottom, onAddCustom: (f) => setSt(() => customBottom.add(f)), onRemoveCustom: (f) => setSt(() { customBottom.remove(f); meas.remove(f); })),
+              MeasurementSection(title: 'Top', section: 'maleTop', fields: C.maleTop, values: meas, onChanged: (f, v) => meas[f] = v, customFields: customTop, onAddCustom: (f) => setSt(() => customTop.add(f)), onRemoveCustom: (f) => setSt(() { customTop.remove(f); meas.remove(f); })),
+            MeasurementSection(title: 'Bottom', section: gender == 'male' ? 'maleBottom' : 'femaleBottom', fields: gender == 'male' ? C.maleBottom : C.femaleBottom, values: meas, onChanged: (f, v) => meas[f] = v, customFields: customBottom, onAddCustom: (f) => setSt(() => customBottom.add(f)), onRemoveCustom: (f) => setSt(() { customBottom.remove(f); meas.remove(f); })),
             const SizedBox(height: 12),
             TxField(label: _lang.t('notes'), hint: 'Fitting notes...', controller: nt, maxLines: 2),
             const SizedBox(height: 16),

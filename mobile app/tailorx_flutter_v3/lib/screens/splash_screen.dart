@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/lang.dart';
 import 'auth_screen.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -40,15 +42,24 @@ class _SplashState extends State<SplashScreen> with TickerProviderStateMixin {
     await Future.delayed(const Duration(milliseconds: 800));
     await AppLang().init();
     final ok = await Api().init();
+
+    // Fire warmUp in the background — don't block navigation
+    // The Render free tier can take up to 60s to wake; waiting here
+    // just freezes the splash screen. Individual API calls will retry anyway.
+    if (ok) Api().warmUp();
+
+    if (!mounted) return;
+    Widget dest;
     if (ok) {
-      // Wake up Render (free tier sleeps after inactivity)
-      if (mounted) setState(() => _status = 'Connecting to server...');
-      await Api().warmUp();
-      if (mounted) setState(() => _status = '');
+      final prefs = await SharedPreferences.getInstance();
+      final onboardingDone = prefs.getBool('onboarding_done') ?? false;
+      dest = onboardingDone ? const HomeScreen() : const OnboardingScreen();
+    } else {
+      dest = const AuthScreen();
     }
     if (!mounted) return;
     Navigator.of(context).pushReplacement(PageRouteBuilder(
-      pageBuilder: (_, __, ___) => ok ? const HomeScreen() : const AuthScreen(),
+      pageBuilder: (_, __, ___) => dest,
       transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
       transitionDuration: const Duration(milliseconds: 600)));
   }

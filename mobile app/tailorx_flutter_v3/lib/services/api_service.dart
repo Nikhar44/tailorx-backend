@@ -61,6 +61,13 @@ class Api {
 
   bool get isTrialActive => trialDaysRemaining > 0;
 
+  /// Strips the "Exception: " prefix Dart adds to Exception.toString(),
+  /// so raw error text isn't shown to users.
+  static String _cleanMsg(Object e) {
+    final s = e.toString();
+    return s.startsWith('Exception: ') ? s.substring(11) : s;
+  }
+
   // ─── HTTP HELPER ────────────────────────────────────────────────
   Future<dynamic> _call(String endpoint, {String method = 'GET', Map<String, dynamic>? body}) async {
     final uri = Uri.parse('$_baseUrl$endpoint');
@@ -92,7 +99,8 @@ class Api {
       _token = null;
       _boutique = null;
       final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      await prefs.remove('tx_token');
+      await prefs.remove('tx_boutique');
       throw Exception('Session expired. Please login again.');
     }
     if (res.statusCode >= 400) {
@@ -148,7 +156,7 @@ class Api {
       
       return {'success': true, 'boutique': _boutique?['name']};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {'success': false, 'message': _cleanMsg(e)};
     }
   }
 
@@ -166,7 +174,7 @@ class Api {
       });
       return {'success': true};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {'success': false, 'message': _cleanMsg(e)};
     }
   }
 
@@ -182,7 +190,7 @@ class Api {
       await prefs.setString('tx_boutique', jsonEncode(_boutique));
       return {'success': true};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {'success': false, 'message': _cleanMsg(e)};
     }
   }
 
@@ -208,31 +216,35 @@ class Api {
       
       return {'success': true};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {'success': false, 'message': _cleanMsg(e)};
     }
   }
 
   Future<Map<String, dynamic>> socialLogin({
     required String provider,
-    required String idToken,
+    String? idToken,
+    String? googleId,
     String? name,
     String? email,
   }) async {
     try {
       final data = await _call('/api/auth/social', method: 'POST', body: {
         'provider': provider,
-        'idToken':  idToken,
-        if (name  != null) 'name':  name,
-        if (email != null) 'email': email,
+        if (idToken   != null) 'idToken':  idToken,
+        if (googleId  != null) 'googleId': googleId,
+        if (name      != null) 'name':     name,
+        if (email     != null) 'email':    email,
       });
-      _token    = data['token'];
+      final token = data['token'] as String?;
+      if (token == null) throw Exception('Sign-in failed — no token received from server');
+      _token    = token;
       _boutique = data['boutique'];
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('tx_token',    _token!);
       await prefs.setString('tx_boutique', jsonEncode(_boutique));
       return {'success': true, 'isNewUser': data['isNewUser'] ?? false};
     } catch (e) {
-      return {'success': false, 'message': e.toString()};
+      return {'success': false, 'message': _cleanMsg(e)};
     }
   }
 
@@ -278,7 +290,9 @@ class Api {
     _token = null;
     _boutique = null;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    // Only remove auth keys — preserve onboarding_done and other user prefs
+    await prefs.remove('tx_token');
+    await prefs.remove('tx_boutique');
   }
 
   // ─── ADMIN ──────────────────────────────────────────────────────
@@ -416,7 +430,7 @@ class Api {
     return Order.fromJson(data);
   }
 
-  Future<Order> updateOrder(dynamic id, {String? garment, String? fabric, double? amount, double? advance, String? dueDate, String? notes}) async {
+  Future<Order> updateOrder(dynamic id, {String? garment, String? fabric, double? amount, double? advance, String? dueDate, String? notes, String? clothPhotoUrl, String? designPhotoUrl}) async {
     final body = <String, dynamic>{};
     if (garment != null) body['garment'] = garment;
     if (fabric != null) body['fabric'] = fabric;
@@ -429,6 +443,8 @@ class Api {
     }
     if (dueDate != null) body['due_date'] = dueDate;
     if (notes != null) body['notes'] = notes;
+    if (clothPhotoUrl != null) body['cloth_photo_url'] = clothPhotoUrl;
+    if (designPhotoUrl != null) body['design_photo_url'] = designPhotoUrl;
     final data = await _call('/api/orders/$id', method: 'PUT', body: body);
     return Order.fromJson(data);
   }

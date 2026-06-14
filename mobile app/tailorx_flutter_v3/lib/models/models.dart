@@ -112,7 +112,10 @@ class Order {
   final String stage;
   final bool notify;
   final String? notes;
+  final String? clothPhotoUrl;
+  final String? designPhotoUrl;
   final String? createdAt;
+  final String? updatedAt;
 
   Order({
     this.id, this.boutiqueId, this.customerId, this.customerName,
@@ -120,7 +123,8 @@ class Order {
     this.garment, this.fabric, this.dueDate,
     this.amount = 0, this.advance = 0, this.balance = 0,
     this.stage = 'Received', this.notify = true, this.notes,
-    this.createdAt,
+    this.clothPhotoUrl, this.designPhotoUrl,
+    this.createdAt, this.updatedAt,
   });
 
   String get description => garment ?? '';
@@ -146,7 +150,10 @@ class Order {
     stage: j['stage'] ?? j['status'] ?? 'Received',
     notify: j['notify'] != false,
     notes: j['notes'],
+    clothPhotoUrl: j['cloth_photo_url'],
+    designPhotoUrl: j['design_photo_url'],
     createdAt: j['created_at'],
+    updatedAt: j['updated_at'],
   );
 
   Map<String, dynamic> toJson() {
@@ -167,6 +174,8 @@ class Order {
     };
     if (dueDate != null) m['due_date'] = dueDate;
     if (notes?.isNotEmpty == true) m['notes'] = notes;
+    if (clothPhotoUrl != null) m['cloth_photo_url'] = clothPhotoUrl;
+    if (designPhotoUrl != null) m['design_photo_url'] = designPhotoUrl;
     return m;
   }
 }
@@ -189,6 +198,9 @@ class Invoice {
   final double discountAmt;
   final double advance;
   final double dueAmount;
+  final bool gstEnabled;
+  final double gstPct;
+  final double gstAmt;
   final String? remarks;
   final String status;
   final String? createdAt;
@@ -199,11 +211,13 @@ class Invoice {
     this.customerAddress, this.garment, this.billDate,
     this.trialDate, this.deliveryDate,
     this.subtotal = 0, this.discountPct = 0, this.discountAmt = 0,
-    this.advance = 0, this.dueAmount = 0, this.remarks,
+    this.advance = 0, this.dueAmount = 0,
+    this.gstEnabled = false, this.gstPct = 0, this.gstAmt = 0,
+    this.remarks,
     this.status = 'unpaid', this.createdAt,
   });
 
-  double get totalAmount => subtotal - discountAmt;
+  double get totalAmount => subtotal - discountAmt + gstAmt;
   double get paidAmount => advance;
   double get balanceAmount => dueAmount;
   double get progress => totalAmount > 0 ? (advance / totalAmount).clamp(0.0, 1.0) : 0.0;
@@ -226,6 +240,9 @@ class Invoice {
     discountAmt: _n(j['discount_amt'] ?? j['tax']),
     advance: _n(j['advance'] ?? j['advance_paid']),
     dueAmount: _n(j['due_amount'] ?? j['balance_due']),
+    gstEnabled: j['gst_enabled'] == true,
+    gstPct: _n(j['gst_pct']),
+    gstAmt: _n(j['gst_amt']),
     remarks: j['remarks'],
     status: j['status'] ?? 'unpaid',
     createdAt: j['created_at'],
@@ -248,11 +265,44 @@ class Invoice {
       'advance_paid': advance,      // old server compat
       'due_amount': dueAmount,
       'balance_due': dueAmount,     // old server compat
+      'gst_enabled': gstEnabled,
+      'gst_pct': gstPct,
+      'gst_amt': gstAmt,
       'status': status,
     };
     if (remarks?.isNotEmpty == true) m['remarks'] = remarks;
+    if (trialDate?.isNotEmpty == true) m['trial_date'] = trialDate;
+    if (deliveryDate?.isNotEmpty == true) m['delivery_date'] = deliveryDate;
     return m;
   }
+}
+
+class TodayTask {
+  final String id;
+  final String type; // 'Trial' | 'Delivery' | 'Payment'
+  final String stage;
+  final String title;
+  final String sub;
+  final String? customerName;
+  final String? garment;
+  final double balance;
+
+  TodayTask({
+    required this.id, required this.type, this.stage = '',
+    required this.title, required this.sub,
+    this.customerName, this.garment, this.balance = 0,
+  });
+
+  factory TodayTask.fromJson(Map<String, dynamic> j) => TodayTask(
+    id: j['id']?.toString() ?? '',
+    type: j['type'] ?? '',
+    stage: j['stage'] ?? '',
+    title: j['title'] ?? '',
+    sub: j['sub'] ?? '',
+    customerName: j['customer_name'],
+    garment: j['garment'],
+    balance: _n(j['balance']),
+  );
 }
 
 class DashboardData {
@@ -262,6 +312,7 @@ class DashboardData {
   final double totalRevenue;
   final double pendingPayments;
   final List<Order> recentOrders;
+  final List<TodayTask> todayTasks;
 
   DashboardData({
     this.totalCustomers = 0,
@@ -270,11 +321,13 @@ class DashboardData {
     this.totalRevenue = 0,
     this.pendingPayments = 0,
     this.recentOrders = const [],
+    this.todayTasks = const [],
   });
 
   factory DashboardData.fromJson(Map<String, dynamic> j) {
     final s = j['stats'] as Map<String, dynamic>? ?? j;
     final o = j['recentOrders'] ?? j['recent_orders'] ?? [];
+    final t = j['todayTasks'] ?? j['today_tasks'] ?? [];
     return DashboardData(
       totalCustomers: _i(s['totalCustomers'] ?? s['total_customers']),
       totalOrders: _i(s['totalOrders'] ?? s['total_orders']),
@@ -282,6 +335,7 @@ class DashboardData {
       totalRevenue: _n(s['totalRevenue'] ?? s['total_revenue']),
       pendingPayments: _n(s['pendingPayments'] ?? s['pending_payments']),
       recentOrders: (o as List).map((e) => Order.fromJson(e)).toList(),
+      todayTasks: (t as List).map((e) => TodayTask.fromJson(e)).toList(),
     );
   }
 }

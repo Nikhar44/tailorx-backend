@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TailorX — Improvements & Animation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="screens/CurrentDashboard.jsx"></script>
+  <script type="text/babel" src="screens/ImprovedDashboard.jsx"></script>
+  <script type="text/babel" src="screens/OrderDetail.jsx"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { DesignCanvas, DCSection, DCArtboard } = window;
+
+    const Note = ({ tag = "IMPROVED", tagClass = "", title, children }) => (
+      <div className="note-card">
+        <span className={`note-tag ${tagClass}`}>{tag}</span>
+        <h3 className="note-h">{title}</h3>
+        <ul>{children}</ul>
+      </div>
+    );
+
+    const App = () => (
+      <DesignCanvas
+        title="TailorX — what to improve, with proper animation"
+        subtitle="Side-by-side: today's screens vs. the upgraded versions. Tap artboards to focus; tap the order detail's status nodes to advance the pipeline."
+        initialZoom={0.7}
+      >
+        <DCSection id="dash" title="01 · Dashboard — current vs. improved">
+          <DCArtboard id="cur" label="Current" width={390} height={844}>
+            <window.CurrentDashboard />
+          </DCArtboard>
+
+          <DCArtboard id="imp" label="Improved" width={390} height={844}>
+            <window.ImprovedDashboard />
+          </DCArtboard>
+
+          <DCArtboard id="dash-notes" label="What changed" width={320} height={844} chrome={false}>
+            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14, height: "100%", overflowY: "auto" }}>
+              <Note tag="HIERARCHY" tagClass="" title="One focal KPI, not four">
+                <li>Today's revenue is the <b>hero</b>; secondary metrics live as small siblings under it. The current 2×2 grid gives every number equal weight, so nothing reads first.</li>
+                <li>Animated <b>counter</b> + <b>sparkline that draws in</b> on load reinforce "this is alive, this is today."</li>
+              </Note>
+
+              <Note tag="NEW MODULE" tagClass="new" title="Workshop capacity">
+                <li>Tailors don't track utilisation anywhere in v3. A <b>radial</b> showing "23 of 32 slots booked" answers "can I take this rush job?" without opening orders.</li>
+                <li>Animation: ring sweeps from 0 → target on mount.</li>
+              </Note>
+
+              <Note tag="REWORKED" title="Priority queue, not recent orders">
+                <li>"Recent" sorts by <b>created_at</b> — almost never what a shop owner needs. Sort by <b>due date + status</b>; surface urgency with a coloured left bar (red/amber/green).</li>
+                <li>Each card shows a <b>stitched progress bar</b> with a travelling needle — the metaphor matches the trade.</li>
+              </Note>
+
+              <Note tag="MICRO" title="Motion polish">
+                <li><b>Staggered entrance</b> (80 ms steps) replaces the single FadeTransition.</li>
+                <li>Notification dot <b>pulses</b> instead of sitting static. Logo <b>shimmers</b> every few seconds to feel premium.</li>
+                <li>Quick actions lift on hover, depress on tap — feels physical.</li>
+              </Note>
+
+              <Note tag="TO FIX" tagClass="fix" title="Code hygiene (out of scope of visuals)">
+                <li><code>orders_screen.dart</code> declares <b>top-level</b> <code>_search</code> and <code>_searchCtrl</code> outside the State class — they're shared across instances and never disposed. Move into <code>_OrdersScreenState</code>.</li>
+                <li>Splash navigates after a <b>fixed delay</b> regardless of <code>Api().init()</code> — race condition. Await first, then animate out.</li>
+                <li>Theme has duplicate <code>headerDark</code>/<code>headerAccent</code> as both palette and gradient stops; consolidate.</li>
+              </Note>
+            </div>
+          </DCArtboard>
+        </DCSection>
+
+        <DCSection id="motion" title="02 · Order detail — the proper status animation">
+          <DCArtboard id="ord" label="Order #1284 — interactive" width={390} height={844}>
+            <window.OrderDetail />
+          </DCArtboard>
+
+          <DCArtboard id="ord-notes" label="Animation breakdown" width={340} height={844} chrome={false}>
+            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14, height: "100%", overflowY: "auto" }}>
+              <Note tag="CENTERPIECE" tagClass="new" title="Stage pipeline">
+                <li>Six nodes (<b>Received → Cutting → Stitching → Trial → Ready → Delivered</b>) sit on a track. The active node <b>scales 1.18×</b> with a soft halo and a <b>ring-ping</b> radiating outward.</li>
+                <li>The fill bar's gradient retints to the <b>colour of the new stage</b> as you advance — visually "this order is now in stitching."</li>
+                <li>A <b>glowing thread node</b> slides along the track between stages with a 700 ms cubic-bezier(0.22, 1, 0.36, 1).</li>
+                <li>Tap <b>▶ Auto-advance</b> on the card to watch the full sequence loop.</li>
+              </Note>
+
+              <Note tag="METAPHOR" title="Stitched progress bar">
+                <li>The fill grows in, then <b>24 dashes pop in sequentially</b> (60 ms apart) to look like running stitches.</li>
+                <li>A tiny <b>needle SVG bobs</b> at the leading edge with a faint thread trailing behind it.</li>
+                <li>Used in two places: the order detail and each priority card on the dashboard, so the metaphor is consistent.</li>
+              </Note>
+
+              <Note tag="FEEDBACK" title="Payment flip card">
+                <li>Tap "Mark paid" → the card <b>flips on Y axis</b> (700 ms). On the back, a green ring + checkmark <b>draw themselves in</b> via stroke-dashoffset.</li>
+                <li>Replaces a Material SnackBar — much more satisfying for the moment money clears.</li>
+              </Note>
+
+              <Note tag="WHY" title="Why these and not generic Material">
+                <li>Flutter's defaults (CircularProgressIndicator, Material ripples) are <b>functional but generic</b>. A boutique app should feel <b>crafted</b> — that's the brand promise.</li>
+                <li>Every animation here is rooted in the trade: <b>needles, thread, stitching, fitting</b>. Motion = identity.</li>
+              </Note>
+            </div>
+          </DCArtboard>
+        </DCSection>
+      </DesignCanvas>
+    );
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TailorX — New Dashboard Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --header-dark:#1A1A2E; --accent:#D4A574; --accent-soft:#E8C49A; --accent-dark:#B8895A;
+  --bg:#F8F7F4; --card:#FFFFFF; --surface:#F1F0ED; --border:#E8E5DF;
+  --text:#1A1A2E; --text2:#6B6B7B; --text3:#9E9EA8;
+  --success:#2D8F6F; --warning:#E09F3E; --danger:#CF4747; --info:#4A7FC1;
+  --purple:#7C5CBF; --teal:#2BA5A5;
+  --shadow:0 4px 12px rgba(0,0,0,.04),0 1px 4px rgba(0,0,0,.02);
+  --display:'Playfair Display',Georgia,serif;
+  --body:'Plus Jakarta Sans',-apple-system,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0e0e14;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:30px 16px;font-family:var(--body);color:#fff}
+.top-label{font-family:var(--display);font-size:22px;color:var(--accent);letter-spacing:4px;margin-bottom:4px}
+.top-sub{font-size:11px;color:rgba(255,255,255,.4);margin-bottom:24px;letter-spacing:1px}
+
+/* iPhone frame */
+.phone{width:390px;background:var(--bg);border-radius:44px;overflow:hidden;box-shadow:0 40px 80px rgba(0,0,0,.6);border:6px solid #1e1e2a;position:relative}
+.notch{width:130px;height:26px;background:#1e1e2a;border-radius:0 0 16px 16px;margin:0 auto;position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:10}
+
+/* Header (matches AppBar in theme.dart) */
+.hdr{background:linear-gradient(135deg,#1A1A2E 0%,#16213E 60%,#0F3460 100%);padding:48px 16px 14px;display:flex;align-items:center;color:#E8E8E8}
+.hdr-logo{width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent-soft));border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--header-dark);font-size:11px;letter-spacing:1px}
+.hdr-name{flex:1;margin-left:10px;font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:.5px}
+.hdr-icons{display:flex;gap:14px;color:#E8E8E8;font-size:16px;opacity:.7}
+
+/* Body */
+.dash{padding:16px 18px 32px;color:var(--text)}
+
+.stagger{opacity:0;transform:translateY(14px);animation:rise 600ms cubic-bezier(.22,1,.36,1) forwards;animation-delay:calc(var(--i,0)*80ms + 100ms)}
+@keyframes rise{to{opacity:1;transform:translateY(0)}}
+
+/* 1. Greeting */
+.greeting h2{font-family:var(--display);font-size:22px;font-weight:600;color:var(--text)}
+.greeting p{font-size:11px;color:var(--text2);margin-top:2px}
+
+/* 2. Alert banner */
+.alert{margin-top:14px;padding:12px;border-radius:12px;background:linear-gradient(135deg,rgba(224,159,62,.1),rgba(224,159,62,.03));border:1px solid rgba(224,159,62,.2);display:flex;align-items:center;gap:12px}
+.alert-ic{width:36px;height:36px;border-radius:10px;background:rgba(224,159,62,.15);color:var(--warning);display:flex;align-items:center;justify-content:center;font-size:14px}
+.alert h4{font-size:12px;font-weight:600}
+.alert p{font-size:9px;color:var(--text2)}
+.alert-arrow{color:var(--text3);font-size:12px;margin-left:auto}
+
+/* 3. Stats */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px}
+.stat{position:relative;background:var(--card);border-radius:12px;padding:14px;box-shadow:var(--shadow);overflow:hidden}
+.stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:0 2px 2px 0}
+.stat.info::before{background:var(--info)}
+.stat.purple::before{background:var(--purple)}
+.stat.success::before{background:var(--success)}
+.stat.warning::before{background:var(--warning)}
+.stat-ic{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;margin-bottom:8px}
+.stat.info .stat-ic{background:rgba(74,127,193,.1);color:var(--info)}
+.stat.purple .stat-ic{background:rgba(124,92,191,.1);color:var(--purple)}
+.stat.success .stat-ic{background:rgba(45,143,111,.1);color:var(--success)}
+.stat.warning .stat-ic{background:rgba(224,159,62,.1);color:var(--warning)}
+.stat-v{font-family:var(--display);font-size:22px;font-weight:600;line-height:1}
+.stat.success .stat-v{color:var(--success)} .stat.warning .stat-v{color:var(--warning)}
+.stat-l{font-size:8px;font-weight:600;letter-spacing:1.8px;color:var(--text3);text-transform:uppercase;margin-top:3px}
+
+/* Section title */
+.sec{font-size:9px;font-weight:600;letter-spacing:2.5px;color:var(--text3);text-transform:uppercase;margin:18px 0 8px}
+
+/* 4. Pipeline */
+.pipeline{display:flex;gap:6px}
+.pip{flex:1;padding:10px 0;border-radius:10px;text-align:center}
+.pip-c{font-family:var(--display);font-size:20px;font-weight:700;line-height:1}
+.pip-l{font-size:7px;font-weight:600;letter-spacing:1.2px;margin-top:3px;text-transform:uppercase}
+.pip.received{background:rgba(224,159,62,.1)} .pip.received .pip-c,.pip.received .pip-l{color:var(--warning)}
+.pip.cutting{background:rgba(74,127,193,.1)} .pip.cutting .pip-c,.pip.cutting .pip-l{color:var(--info)}
+.pip.stitching{background:rgba(124,92,191,.1)} .pip.stitching .pip-c,.pip.stitching .pip-l{color:var(--purple)}
+.pip.trial{background:rgba(43,165,165,.1)} .pip.trial .pip-c,.pip.trial .pip-l{color:var(--teal)}
+.pip.ready{background:rgba(45,143,111,.1)} .pip.ready .pip-c,.pip.ready .pip-l{color:var(--success)}
+
+/* 5. Quick actions */
+.quick{display:flex;gap:6px}
+.q{flex:1;padding:14px 6px;border-radius:10px;text-align:center;cursor:pointer;transition:transform .2s ease}
+.q:hover{transform:translateY(-1px)}
+.q-ic{font-size:18px;margin-bottom:4px}
+.q-t{font-size:8px;font-weight:600;letter-spacing:.8px;text-transform:uppercase}
+.q.cust{background:rgba(74,127,193,.07)} .q.cust .q-ic,.q.cust .q-t{color:var(--info)}
+.q.ord{background:rgba(45,143,111,.07)} .q.ord .q-ic,.q.ord .q-t{color:var(--success)}
+.q.inv{background:rgba(212,165,116,.1)} .q.inv .q-ic,.q.inv .q-t{color:var(--accent-dark)}
+.q.not{background:rgba(124,92,191,.07)} .q.not .q-ic,.q.not .q-t{color:var(--purple)}
+
+/* 6. Monthly card */
+.month{padding:16px;border-radius:12px;background:linear-gradient(135deg,#1C1C1C,#2A2A3A);color:#fff}
+.month-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.month-l{font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.4);font-weight:600}
+.month-v{font-family:var(--display);font-size:24px;font-weight:600;color:var(--accent)}
+.month-bar{height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.month-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-soft));border-radius:3px;animation:fill 1100ms cubic-bezier(.22,1,.36,1) forwards;animation-delay:600ms}
+@keyframes fill{to{width:72%}}
+.month-sub{font-size:9px;color:rgba(255,255,255,.35);margin-top:6px}
+
+/* 7. Tasks */
+.task{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--card);box-shadow:var(--shadow);margin-bottom:6px}
+.task-chk{width:18px;height:18px;border:2px solid var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--accent);flex-shrink:0}
+.task-info{flex:1;min-width:0}
+.task-t{font-size:11px;font-weight:600;color:var(--text)}
+.task-s{font-size:9px;color:var(--text3)}
+.task-b{font-size:7px;font-weight:600;letter-spacing:.8px;padding:3px 8px;border-radius:6px;text-transform:uppercase}
+.task-b.trial{background:rgba(43,165,165,.1);color:var(--teal)}
+.task-b.ready{background:rgba(45,143,111,.1);color:var(--success)}
+.task-b.due{background:rgba(207,71,71,.1);color:var(--danger)}
+
+/* 8. Timeline */
+.tl{position:relative;padding-left:22px}
+.tl::before{content:"";position:absolute;left:6px;top:4px;bottom:4px;width:1.5px;background:#eee}
+.tl-it{position:relative;padding-bottom:14px}
+.tl-it:last-child{padding-bottom:0}
+.tl-dot{position:absolute;left:-19px;top:4px;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #ddd}
+.tl-time{font-size:8px;color:var(--text3);letter-spacing:.5px}
+.tl-c{background:var(--card);border-radius:10px;padding:10px 12px;margin-top:3px;box-shadow:var(--shadow)}
+.tl-t{font-size:11px;font-weight:600;color:var(--text)}
+.tl-d{font-size:9px;color:var(--text3);margin-top:1px}
+.tl-b{display:inline-block;font-size:7px;font-weight:600;letter-spacing:.8px;padding:2px 7px;border-radius:4px;margin-top:4px;text-transform:uppercase}
+
+/* Bottom nav */
+.bnav{display:flex;justify-content:space-around;padding:10px 0 22px;background:var(--card);border-top:1px solid #f0f0f0}
+.bn{text-align:center;font-size:8px;color:var(--text3);letter-spacing:.5px}
+.bn span{display:block;font-size:18px;margin-bottom:2px}
+.bn.active{color:var(--header-dark);font-weight:600}
+
+/* note */
+.note{margin-top:24px;max-width:390px;font-size:12px;line-height:1.6;color:rgba(255,255,255,.55);text-align:center}
+.note b{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="top-label">TAILORX</div>
+<div class="top-sub">DASHBOARD · FLUTTER PREVIEW</div>
+
+<div class="phone">
+  <div class="notch"></div>
+
+  <div class="hdr">
+    <div class="hdr-logo">TX</div>
+    <div class="hdr-name">Hingu Boutique</div>
+    <div class="hdr-icons"><span>⌕</span><span>◔</span></div>
+  </div>
+
+  <div class="dash" style="padding-top:18px">
+    <!-- 3. Stat cards -->
+    <div class="stats stagger" style="--i:0">
+      <div class="stat info"><div class="stat-ic">👥</div><div class="stat-v">148</div><div class="stat-l">Customers</div></div>
+      <div class="stat purple"><div class="stat-ic">▤</div><div class="stat-v">23</div><div class="stat-l">Active Orders</div></div>
+      <div class="stat success"><div class="stat-ic">↗</div><div class="stat-v">₹4.8L</div><div class="stat-l">Revenue</div></div>
+      <div class="stat warning"><div class="stat-ic">⏳</div><div class="stat-v">₹42K</div><div class="stat-l">Pending</div></div>
+    </div>
+
+    <!-- 4. Pipeline -->
+    <div class="sec stagger" style="--i:1">Order Pipeline</div>
+    <div class="pipeline stagger" style="--i:2">
+      <div class="pip received"><div class="pip-c">4</div><div class="pip-l">Received</div></div>
+      <div class="pip cutting"><div class="pip-c">3</div><div class="pip-l">Cutting</div></div>
+      <div class="pip stitching"><div class="pip-c">6</div><div class="pip-l">Stitching</div></div>
+      <div class="pip trial"><div class="pip-c">2</div><div class="pip-l">Trial</div></div>
+      <div class="pip ready"><div class="pip-c">7</div><div class="pip-l">Ready</div></div>
+    </div>
+
+    <!-- 5. Quick actions -->
+    <div class="sec stagger" style="--i:3">Quick Actions</div>
+    <div class="quick stagger" style="--i:4">
+      <div class="q cust"><div class="q-ic">👤</div><div class="q-t">Customer</div></div>
+      <div class="q ord"><div class="q-ic">✂</div><div class="q-t">Order</div></div>
+      <div class="q inv"><div class="q-ic">📄</div><div class="q-t">Invoice</div></div>
+      <div class="q not"><div class="q-ic">📨</div><div class="q-t">Notify</div></div>
+    </div>
+
+    <!-- 6. Monthly card -->
+    <div class="month stagger" style="--i:5;margin-top:16px">
+      <div class="month-row">
+        <div class="month-l">MONTHLY COLLECTION</div>
+        <div class="month-v">72%</div>
+      </div>
+      <div class="month-bar"><div class="month-fill"></div></div>
+      <div class="month-sub">₹3,48,000 of ₹5,00,000 target</div>
+    </div>
+
+    <!-- 7. Tasks -->
+    <div class="sec stagger" style="--i:6">Today's Tasks</div>
+    <div class="stagger" style="--i:7">
+      <div class="task">
+        <div class="task-chk">✓</div>
+        <div class="task-info"><div class="task-t">Trial — Priya Sharma</div><div class="task-s">Lehenga fitting at 11:00 AM</div></div>
+        <div class="task-b trial">Trial</div>
+      </div>
+      <div class="task">
+        <div class="task-chk"></div>
+        <div class="task-info"><div class="task-t">Deliver — Raju Desai</div><div class="task-s">Sherwani ready for pickup</div></div>
+        <div class="task-b ready">Ready</div>
+      </div>
+      <div class="task">
+        <div class="task-chk"></div>
+        <div class="task-info"><div class="task-t">Payment — Meera Patel</div><div class="task-s">₹1,500 balance pending</div></div>
+        <div class="task-b due">Due</div>
+      </div>
+    </div>
+
+    <!-- 8. Activity feed -->
+    <div class="sec stagger" style="--i:8">Activity Feed</div>
+    <div class="tl stagger" style="--i:9">
+      <div class="tl-it">
+        <div class="tl-dot" style="background:var(--success)"></div>
+        <div class="tl-time">10 min ago</div>
+        <div class="tl-c">
+          <div class="tl-t">Payment Received</div>
+          <div class="tl-d">Meera Patel paid ₹2,200 for Blouse</div>
+          <div class="tl-b" style="background:rgba(45,143,111,.1);color:var(--success)">₹2,200</div>
+        </div>
+      </div>
+      <div class="tl-it">
+        <div class="tl-dot" style="background:var(--purple)"></div>
+        <div class="tl-time">1 hour ago</div>
+        <div class="tl-c">
+          <div class="tl-t">Status Changed</div>
+          <div class="tl-d">Priya's Lehenga → Stitching</div>
+          <div class="tl-b" style="background:rgba(124,92,191,.1);color:var(--purple)">Stitching</div>
+        </div>
+      </div>
+      <div class="tl-it">
+        <div class="tl-dot" style="background:var(--warning)"></div>
+        <div class="tl-time">3 hours ago</div>
+        <div class="tl-c">
+          <div class="tl-t">New Order</div>
+          <div class="tl-d">Amit Shah — Suit + Kurta (₹12,000)</div>
+          <div class="tl-b" style="background:rgba(224,159,62,.1);color:var(--warning)">Received</div>
+        </div>
+      </div>
+      <div class="tl-it">
+        <div class="tl-dot" style="background:var(--info)"></div>
+        <div class="tl-time">Yesterday</div>
+        <div class="tl-c">
+          <div class="tl-t">New Customer</div>
+          <div class="tl-d">Kavita Joshi — Surat</div>
+          <div class="tl-b" style="background:rgba(74,127,193,.1);color:var(--info)">Customer</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bnav">
+    <div class="bn active"><span>▦</span>Dashboard</div>
+    <div class="bn"><span>♟</span>Customers</div>
+    <div class="bn"><span>▤</span>Orders</div>
+    <div class="bn"><span>₹</span>Invoices</div>
+    <div class="bn"><span>⚙</span>Settings</div>
+  </div>
+</div>
+
+<div class="note">
+  This is a pixel-faithful preview of how <b>flutter/lib/screens/dashboard_screen.dart</b> will render — palette, typography, spacing, and the staggered entry + animated progress bar all map 1:1 to the Flutter widgets in that file.
+</div>
+
+</body>
+</html>
