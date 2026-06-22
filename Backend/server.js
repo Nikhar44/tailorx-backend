@@ -153,7 +153,7 @@ setInterval(autoHoldExpiredTrials, 60 * 60 * 1000);
 //  MIDDLEWARE
 // ─────────────────────────────────────────────
 app.use(cors({ origin: process.env.FRONTEND_URL || '*', credentials: true }));
-app.use(express.json());
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf; } }));
 
 // Auth middleware — verify JWT and attach boutique_id
 function auth(req, res, next) {
@@ -706,6 +706,204 @@ app.post('/api/auth/reset-password', async (req, res) => {
     console.error('Reset password error:', e);
     res.status(500).json({ error: 'Server error' });
   }
+});
+// ─────────────────────────────────────────────
+//  PAYMENTS — Razorpay integration
+// ─────────────────────────────────────────────
+let razorpay = null;
+try {
+    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+          const Razorpay = require('razorpay');
+          razorpay = new Razorpay({
+                  key_id: process.env.RAZORPAY_KEY_ID,
+                  key_secret: process.env.RAZORPAY_KEY_SECRET,
+          });
+          console.log('✅ Razorpay client ready');
+    } else {
+          console.log('⚠️  No RAZORPAY_KEY_ID/SECRET — payments disabled');
+    }
+} catch (e) {
+    console.log('⚠️  Razorpay not installed:', e.message);
+}
+
+// Plan keys match the existing admin plan vocabulary: monthly, yearly, pro_monthly, pro (pro = yearly Pro)
+const PAYMENT_PLANS = {
+    monthly:     { amount: 19900,  months: 1,  dbPlan: 'monthly' },
+    yearly:      { amount: 199900, months: 12, dbPlan: 'yearly' },
+    pro_monthly: { amount: 39900,  months: 1,  dbPlan: 'pro_monthly' },
+    pro:         { amount: 399900, months: 12, dbPlan: 'pro' },
+};
+
+// Add razorpay-specific columns to subscription_payments if missing (table already exists)
+pool.query(`
+  ALTER TABLE subscription_payments
+      ADD COLUMN IF NOT EXISTS razorpay_payment_id TEXT,
+          ADD COLUMN IF NOT EXISTS razorpay_order_id   TEXT,
+              ADD COLUMN IF NOT EXISTS status              TEXT
+              `).catch(() => {});
+
+// Create Razorpay order
+app.post('/api/payments/create-order', async (req, res) => {
+    try {
+          if (!razorpay) return res.status(503).json({ error: 'Payments are not configured yet.' });
+          const { phone, plan } = req.body;
+          if (!phone || !plan) return res.status(400).json({ error: 'phone and plan required' });
+
+          const planConfig = PAYMENT_PLANS[plan];
+          if (!planConfig) return res.status(400).json({ error: 'Invalid plan' });
+
+          const boutique = await db.query('SELECT id FROM boutiques WHERE phone = $1', [phone]);
+          if (!boutique.rows.length) {
+                  return res.status(404).json({
+                            error: 'No TailorX account found for this number. Please download the app and register first.',
+                  });
+          }
+
+          const order = await razorpay.orders.create({
+                  amount: planConfig.amount,
+                  currency: 'INR',
+                  notes: { phone, plan, boutique_id: boutique.rows[0].id },
+          });
+
+          res.json({
+                  razorpay_order_id: order.id,
+                  amount: order.amount,
+                  currency: order.currency,
+                  key_id: process.env.RAZORPAY_KEY_ID,
+          });
+    } catch (e) {
+          console.error('create-order error:', e);
+          res.status(500).json({ error: 'Failed to create order' });
+    }
+});
+
+// Razorpay webhook — called by Razorpay after payment
+app.post('/api/payments/webhook', async (req, res) => {
+    try {
+          const signature = req.headers['x-razorpay-signature'];
+          const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+          const body = req.rawBody;
+          if (!body) return res.status(400).json({ error: 'Missing raw body' });
+
+          const expected = crypto.createHmac('sha256', secret).update(body).digest('hex');
+          if (expected !== signature) {
+                  console.warn('Webhook signature mismatch');
+                  return res.status(400).json({ error: 'Invalid signature' });
+          }
+
+          const event = JSON.parse(body.toString());
+          if (event.event !== 'payment.captured') return res.json({ ok: true });
+
+          const payment = event.payload.payment.entity;
+          const notes = payment.notes || {};
+          const phone = notes.phone;
+          const plan = notes.plan;
+          const planConfig = PAYMENT_PLANS[plan];
+          if (!phone || !planConfig) return res.json({ ok: true });
+
+          const boutique = await db.query('SELECT id FROM boutiques WHERE phone = $1', [phone]);
+          if (!boutique.rows.length) return res.json({ ok: true });
+          const boutiqueId = boutique.rows[0].id;
+
+          await db.query(
+                  `UPDATE boutiques
+                         SET plan=$1, is_active=true,
+                                    expires_at = GREATEST(NOW(), COALESCE(expires_at, NOW())) + ($2 || ' months')::INTERVAL,
+                                               updated_at = NOW()
+                                                      WHERE phone=$3`,
+                  [planConfig.dbPlan, planConfig.months, phone]
+                );
+
+          const existing = await db.query('SELECT id FROM subscription_payments WHERE razorpay_payment_id=$1', [payment.id]);
+          if (!existing.rows.length) {
+                  await db.query(
+                            `INSERT INTO subscription_payments (boutique_id, amount, months, plan, notes, razorpay_payment_id, razorpay_order_id, status)
+                                     VALUES ($1,$2,$3,$4,$5,$6,$7,'captured')`,
+                            [boutiqueId, payment.amount / 100, planConfig.months, planConfig.dbPlan, 'Razorpay webhook', payment.id, payment.order_id]
+                          );
+          }
+
+          console.log(`✅ Payment captured: boutique ${boutiqueId}, plan ${planConfig.dbPlan}`);
+          res.json({ ok: true });
+    } catch (e) {
+          console.error('webhook error:', e);
+          res.status(500).json({ error: 'Webhook processing failed' });
+    }
+});
+
+// Verify payment after Razorpay checkout popup (client-side confirmation)
+app.post('/api/payments/verify', async (req, res) => {
+    try {
+          const { razorpay_payment_id, razorpay_order_id, razorpay_signature, phone, plan } = req.body;
+          if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
+                  return res.status(400).json({ error: 'Missing payment fields' });
+          }
+
+          const expected = crypto
+            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+            .digest('hex');
+          if (expected !== razorpay_signature) {
+                  return res.status(400).json({ success: false, error: 'Signature mismatch' });
+          }
+
+          const planConfig = PAYMENT_PLANS[plan];
+          if (!planConfig) return res.status(400).json({ error: 'Invalid plan' });
+
+          const result = await db.query(
+                  `UPDATE boutiques
+                         SET plan=$1, is_active=true,
+                                    expires_at = GREATEST(NOW(), COALESCE(expires_at, NOW())) + ($2 || ' months')::INTERVAL,
+                                               updated_at = NOW()
+                                                      WHERE phone=$3
+                                                             RETURNING plan, expires_at`,
+                  [planConfig.dbPlan, planConfig.months, phone]
+                );
+          const boutique = result.rows[0] || {};
+
+          res.json({ success: true, plan: boutique.plan, expiry: boutique.expires_at });
+    } catch (e) {
+          console.error('verify error:', e);
+          res.status(500).json({ error: 'Verification failed' });
+    }
+});
+
+// ─────────────────────────────────────────────
+//  TRIAL
+// ─────────────────────────────────────────────
+app.post('/api/trial/start', async (req, res) => {
+    try {
+          const { phone } = req.body;
+          if (!phone) return res.status(400).json({ error: 'phone required' });
+
+          const result = await db.query('SELECT id, plan, expires_at FROM boutiques WHERE phone = $1', [phone]);
+          if (!result.rows.length) {
+                  return res.status(404).json({
+                            error: 'No TailorX account found for this number. Please download the app and register first.',
+                  });
+          }
+
+          const b = result.rows[0];
+          const isActive = b.expires_at && new Date(b.expires_at) > new Date();
+
+          if (isActive && b.plan && b.plan !== 'trial' && b.plan !== 'free') {
+                  return res.status(409).json({ error: 'This boutique already has an active paid plan', plan: b.plan });
+          }
+          if (isActive && b.plan === 'trial') {
+                  return res.json({ success: true, plan: 'trial', expiry: b.expires_at });
+          }
+
+          const updated = await db.query(
+                  `UPDATE boutiques SET plan='trial', is_active=true, expires_at=NOW() + INTERVAL '14 days', updated_at=NOW()
+                         WHERE phone=$1 RETURNING plan, expires_at`,
+                  [phone]
+                );
+
+          res.json({ success: true, plan: 'trial', expiry: updated.rows[0].expires_at });
+    } catch (e) {
+          console.error('trial/start error:', e);
+          res.status(500).json({ error: 'Server error' });
+    }
 });
 
 // ─────────────────────────────────────────────
