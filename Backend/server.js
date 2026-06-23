@@ -24,6 +24,22 @@ try {
   console.log('⚠️  Resend not installed:', e.message);
 }
 
+// ─────────────────────────────────────────────
+//  SECRETS GUARD — refuse to boot with weak/missing secrets
+//  Previously these silently fell back to 'dev_secret' / 'Admin@123'
+//  if the env var was missing — that means a misconfigured deploy
+//  would run with a publicly-known secret, letting anyone forge a
+//  valid JWT for ANY boutique or hit every admin endpoint.
+// ─────────────────────────────────────────────
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'dev_secret') {
+  console.error('❌ FATAL: JWT_SECRET is not set (or is the insecure default). Set a strong random value in Render env vars.');
+  process.exit(1);
+}
+if (!process.env.ADMIN_SECRET || process.env.ADMIN_SECRET === 'Admin@123') {
+  console.error('❌ FATAL: ADMIN_SECRET is not set (or is the insecure default). Set a strong random value in Render env vars.');
+  process.exit(1);
+}
+
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
@@ -101,6 +117,13 @@ pool.connect()
         ADD COLUMN IF NOT EXISTS design_photo_url TEXT
     `).catch(() => {});
 
+    // Auto-add items JSONB column to orders table if missing
+    // Stores per-item details for multi-garment orders: [{garment, fabric, cloth_photo_url, design_photo_url}]
+    await pool.query(`
+      ALTER TABLE orders
+        ADD COLUMN IF NOT EXISTS items JSONB
+    `).catch(() => {});
+
     // Auto-add AI measurement usage tracking columns to boutiques table if missing
     // ai_usage_count = number of AI measurement suggestions used this month
     // ai_usage_month = 'YYYY-MM' the count applies to (reset when month changes)
@@ -161,7 +184,7 @@ function auth(req, res, next) {
   const token  = header && header.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'No token' });
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret');
+    const payload = jwt.verify(token, process.env.JWT_SECRET);
     req.boutiqueId = payload.boutiqueId;
     next();
   } catch {
@@ -300,7 +323,7 @@ app.post('/api/auth/verify-otp', async (req, res) => {
     const boutique = result.rows[0];
     const token = jwt.sign(
       { boutiqueId: boutique.id },
-      process.env.JWT_SECRET || 'dev_secret',
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
     res.status(201).json({ token, boutique });
@@ -330,7 +353,7 @@ app.post('/api/auth/register', async (req, res) => {
     const boutique = result.rows[0];
     const token = jwt.sign(
       { boutiqueId: boutique.id },
-      process.env.JWT_SECRET || 'dev_secret',
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
     res.status(201).json({ token, boutique });
@@ -424,7 +447,7 @@ app.post('/api/auth/social', async (req, res) => {
 
     const token = jwt.sign(
       { boutiqueId: boutique.id },
-      process.env.JWT_SECRET || 'dev_secret',
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
     res.json({ token, boutique, isNewUser });
@@ -493,7 +516,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     const token = jwt.sign(
       { boutiqueId: boutique.id },
-      process.env.JWT_SECRET || 'dev_secret',
+      process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
     delete boutique.password;
@@ -911,7 +934,7 @@ app.post('/api/trial/start', async (req, res) => {
 //  Protected by ADMIN_SECRET env var (set in Render dashboard)
 // ─────────────────────────────────────────────
 
-const ADMIN_SECRET = process.env.ADMIN_SECRET || 'Admin@123';
+const ADMIN_SECRET = process.env.ADMIN_SECRET;
 
 const adminAuth = (req, res, next) => {
   const secret = req.headers['x-admin-secret'];
@@ -2289,21 +2312,22 @@ app.get('/api/orders/:id', auth, async (req, res) => {
 app.post('/api/orders', auth, async (req, res) => {
   try {
     const { customer_id, customer_name, customer_phone,
-            garment, fabric, due_date, amount, advance,
-            stage, notify, notes, cloth_photo_url, design_photo_url } = req.body;
+            garment, fabric, due_date, trial_date, amount, advance,
+            stage, notify, notes, cloth_photo_url, design_photo_url, items } = req.body;
     if (!garment) return res.status(400).json({ error: 'Garment required' });
     const bal = Math.max(0, (amount||0) - (advance||0));
     const result = await db.query(
       `INSERT INTO orders
          (boutique_id, customer_id, customer_name, customer_phone,
-          garment, fabric, due_date, amount, advance, balance, stage, notify, notes,
-          cloth_photo_url, design_photo_url)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
+          garment, fabric, due_date, trial_date, amount, advance, balance, stage, notify, notes,
+          cloth_photo_url, design_photo_url, items)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17) RETURNING *`,
       [req.boutiqueId, customer_id||null, customer_name||'', customer_phone||'',
-       garment, fabric||'', due_date||null,
+       garment, fabric||'', due_date||null, trial_date||null,
        amount||0, advance||0, bal,
        stage||'received', notify !== false, notes||'',
-       cloth_photo_url||null, design_photo_url||null]
+       cloth_photo_url||null, design_photo_url||null,
+       items ? JSON.stringify(items) : null]
     );
     const order = result.rows[0];
     if ((stage||'').toLowerCase() === 'ready' && notify !== false) {
@@ -2333,6 +2357,7 @@ app.put('/api/orders/:id', auth, async (req, res) => {
     const garment       = b.garment       ?? prev.garment;
     const fabric        = b.fabric        ?? prev.fabric;
     const due_date      = 'due_date' in b ? b.due_date : prev.due_date;
+    const trial_date    = 'trial_date' in b ? b.trial_date : prev.trial_date;
     const amount        = b.amount        !== undefined ? b.amount        : (b.total_amount  !== undefined ? b.total_amount  : prev.amount);
     const advance       = b.advance       !== undefined ? b.advance       : (b.advance_paid  !== undefined ? b.advance_paid  : prev.advance);
     const stage         = b.stage         ?? b.status  ?? prev.stage;
@@ -2340,21 +2365,24 @@ app.put('/api/orders/:id', auth, async (req, res) => {
     const notes         = b.notes         ?? prev.notes;
     const cloth_photo_url  = 'cloth_photo_url'  in b ? b.cloth_photo_url  : prev.cloth_photo_url;
     const design_photo_url = 'design_photo_url' in b ? b.design_photo_url : prev.design_photo_url;
+    const items         = 'items' in b
+      ? (b.items ? JSON.stringify(b.items) : null)
+      : (prev.items != null ? JSON.stringify(prev.items) : null);
     const bal           = Math.max(0, amount - advance);
 
     const result = await db.query(
       `UPDATE orders SET
          customer_id=$1, customer_name=$2, customer_phone=$3,
-         garment=$4, fabric=$5, due_date=$6,
-         amount=$7, advance=$8, balance=$9,
-         stage=$10, notify=$11, notes=$12,
-         cloth_photo_url=$13, design_photo_url=$14, updated_at=NOW()
-       WHERE id=$15 AND boutique_id=$16 RETURNING *`,
+         garment=$4, fabric=$5, due_date=$6, trial_date=$7,
+         amount=$8, advance=$9, balance=$10,
+         stage=$11, notify=$12, notes=$13,
+         cloth_photo_url=$14, design_photo_url=$15, items=$16, updated_at=NOW()
+       WHERE id=$17 AND boutique_id=$18 RETURNING *`,
       [customer_id, customer_name, customer_phone,
-       garment, fabric, due_date,
+       garment, fabric, due_date, trial_date,
        amount, advance, bal,
        stage, notify, notes,
-       cloth_photo_url, design_photo_url,
+       cloth_photo_url, design_photo_url, items,
        req.params.id, req.boutiqueId]
     );
 
@@ -2659,18 +2687,8 @@ async function autoNotify(boutiqueId, customerId, customerName, garment) {
 }
 
 // ─────────────────────────────────────────────
-//  Serve Flutter web app (built with: flutter build web --release)
-// ─────────────────────────────────────────────
-const webBuildPath = path.join(__dirname, '..', 'mobile app', 'tailorx_flutter_v3', 'build', 'web');
-app.use(express.static(webBuildPath));
-// For Flutter web — send index.html for any unknown route so Flutter router handles it
-app.get('/{*splat}', (req, res) => {
-  res.sendFile(path.join(webBuildPath, 'index.html'));
-});
-
-// ─────────────────────────────────────────────
 //  CRASH PROTECTION — Layer 3
-//  404 handler for unknown routes (API only — unreachable for web routes above)
+//  404 handler for unknown routes
 // ─────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
