@@ -1697,7 +1697,7 @@ async function doRenew() {
   const b = boutiques.find(x => x.id === selectedId);
   // PRO plan is yearly only — block renewal < 12 months
   if (b && b.plan === 'pro' && m < 12) {
-    alert('PRO plan is yearly only.\nPlease enter 12 months or more to renew a PRO account.');
+    alert('PRO plan is yearly only.\\nPlease enter 12 months or more to renew a PRO account.');
     return;
   }
   try {
@@ -1725,9 +1725,9 @@ async function doChangePlan(newPlan) {
   var name = b ? b.name : 'this boutique';
   var reason = (document.getElementById('plan-reason').value || '').trim();
   var confirmMsg = newPlan === 'pro'
-    ? 'Switch ' + name + ' to PRO YEARLY?\n\nUnlimited AI Measurements — expiry will be set to 1 year from today.'
+    ? 'Switch ' + name + ' to PRO YEARLY?\\n\\nUnlimited AI Measurements - expiry will be set to 1 year from today.'
     : newPlan === 'pro_monthly'
-    ? 'Switch ' + name + ' to PRO MONTHLY?\n\n25 AI Measurement Suggestions/month — expiry will be set to 1 month from today.'
+    ? 'Switch ' + name + ' to PRO MONTHLY?\\n\\n25 AI Measurement Suggestions/month - expiry will be set to 1 month from today.'
     : 'Change plan for ' + name + ' to ' + newPlan.toUpperCase() + '?';
   if (!confirm(confirmMsg)) return;
   try {
