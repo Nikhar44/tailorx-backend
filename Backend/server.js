@@ -1157,7 +1157,7 @@ app.get('/admin', (req, res) => {
     <h2>🔐 Admin Access</h2>
     <p>Enter your admin secret key to manage boutique accounts.</p>
     <input type="password" id="secret-input" placeholder="Admin secret key" autocomplete="off" />
-    <button class="btn" id="login-btn">ENTER DASHBOARD</button>
+    <button class="btn" id="login-btn" onclick="doLogin()">ENTER DASHBOARD</button>
     <div class="error-msg" id="login-error">Invalid secret. Try again.</div>
   </div>
 </div>
@@ -1296,11 +1296,10 @@ function doLogin() {
   fetchBoutiques();
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('login-btn').addEventListener('click', doLogin);
-  document.getElementById('secret-input').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') doLogin();
-  });
+// Direct binding — script is at bottom of body so DOM is already ready
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('secret-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
 });
 
 async function fetchBoutiques() {
