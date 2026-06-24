@@ -58,9 +58,7 @@ class InvoicesScreenState extends State<InvoicesScreen>{
     final invNo='INV-${inv.id.toString().padLeft(4,'0')}';
     final date=inv.billDate!=null?DateFormat('dd MMM yyyy').format(DateTime.parse(inv.billDate!)):DateFormat('dd MMM yyyy').format(DateTime.now());
     showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,
-      builder:(ctx)=>Container(height:MediaQuery.of(ctx).size.height*0.9,
-        decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
-        child:Column(children:[
+      builder:(ctx)=>T.sheetScaffold(ctx,heightFraction:0.9,child:Column(children:[
           const SizedBox(height:12),
           Container(width:36,height:4,decoration:BoxDecoration(color:T.border,borderRadius:BorderRadius.circular(2))),
           Padding(padding:const EdgeInsets.fromLTRB(20,12,20,0),child:Row(children:[
@@ -183,9 +181,7 @@ class InvoicesScreenState extends State<InvoicesScreen>{
         final gstPctVal=gstChoice=='custom'?(double.tryParse(gstCustomCtrl.text)??0):(double.tryParse(gstChoice)??0);
         final gstAmt=gstOn?taxable*gstPctVal/100:0.0;
         final tot=taxable+gstAmt;final adv=double.tryParse(advCtrl.text)??_n(sel?.advance);final due=tot-adv;
-        return Container(height:MediaQuery.of(ctx).size.height*0.88,
-          decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
-          child:Column(children:[
+        return T.sheetScaffold(ctx,heightFraction:0.88,child:Column(children:[
             const SizedBox(height:12),Container(width:36,height:4,decoration:BoxDecoration(color:T.border,borderRadius:BorderRadius.circular(2))),
             Expanded(child:Form(key:fk,child:ListView(padding:EdgeInsets.fromLTRB(20,20,20,30+MediaQuery.of(ctx).viewInsets.bottom),children:[
               Text('Create Invoice',style:T.displayMd),const SizedBox(height:6),
@@ -309,7 +305,7 @@ class InvoicesScreenState extends State<InvoicesScreen>{
   void _pay(Invoice inv){
     final ac=TextEditingController(text:inv.dueAmount.toStringAsFixed(0));final fk=GlobalKey<FormState>();
     showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,
-      builder:(ctx)=>Container(decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
+      builder:(ctx)=>T.sheetWrap(ctx,Container(decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
         child:Padding(padding:EdgeInsets.only(bottom:MediaQuery.of(ctx).viewInsets.bottom,left:20,right:20,top:24),
           child:Form(key:fk,child:Column(mainAxisSize:MainAxisSize.min,crossAxisAlignment:CrossAxisAlignment.stretch,children:[
             Center(child:Container(width:36,height:4,decoration:BoxDecoration(color:T.border,borderRadius:BorderRadius.circular(2)))),
@@ -352,7 +348,7 @@ class InvoicesScreenState extends State<InvoicesScreen>{
                   }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));}},
                 borderRadius:BorderRadius.circular(T.rMd),
                 child:Center(child:Text(_lang.t('record_payment').toUpperCase(),style:T.btn.copyWith(color:T.accent)))))),
-            const SizedBox(height:20),])))));
+            const SizedBox(height:20),]))))));
   }
 
   void _share(Invoice inv){
@@ -361,12 +357,12 @@ class InvoicesScreenState extends State<InvoicesScreen>{
       'Total: ${_fmt.format(inv.totalAmount)}\nPaid: ${_fmt.format(inv.advance)}\n'
       'Balance: ${_fmt.format(inv.dueAmount)}\n\nThank you!';
     showModalBottomSheet(context:context,backgroundColor:Colors.transparent,
-      builder:(ctx)=>Container(decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
+      builder:(ctx)=>T.sheetWrap(ctx,Container(decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
         child:Padding(padding:const EdgeInsets.all(24),child:Column(mainAxisSize:MainAxisSize.min,children:[
           Text(_lang.t('share_bill'),style:T.displaySm),const SizedBox(height:24),
           Wrap(alignment:WrapAlignment.center,spacing:16,runSpacing:16,children:[
             _SBtn(Icons.chat_rounded,'WhatsApp',const Color(0xFF25D366),(){Navigator.pop(ctx);
-              launchUrl(Uri.parse('https://wa.me/91${inv.customerPhone??""} ?text=${Uri.encodeComponent(msg)}'),mode:LaunchMode.externalApplication);}),
+              launchUrl(Uri.parse('https://wa.me/91${inv.customerPhone??""}?text=${Uri.encodeComponent(msg)}'),mode:LaunchMode.externalApplication);}),
             _SBtn(Icons.sms_rounded,'SMS',T.info,(){Navigator.pop(ctx);
               launchUrl(Uri.parse('sms:${inv.customerPhone??""}?body=${Uri.encodeComponent(msg)}'));}),
             _SBtn(Icons.email_rounded,'Email',T.purple,(){Navigator.pop(ctx);
@@ -389,7 +385,7 @@ class InvoicesScreenState extends State<InvoicesScreen>{
                 boutiqueLogo: _api.boutiqueLogo,
                 termsAndConditions: _api.termsAndConditions);
             }),
-          ]),const SizedBox(height:20),]))));
+          ]),const SizedBox(height:20),])))));
   }
 
   void _downloadPdf(Invoice inv){

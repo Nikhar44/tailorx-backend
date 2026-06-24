@@ -71,17 +71,29 @@ class T {
     }
   }
 
-  // ─── Text Styles ──────────────────────────────────────────────
-  static TextStyle get display => GoogleFonts.prata(fontSize: 36, fontWeight: FontWeight.w400, color: text);
-  static TextStyle get displayMd => GoogleFonts.prata(fontSize: 30, fontWeight: FontWeight.w400, color: text);
-  static TextStyle get displaySm => GoogleFonts.prata(fontSize: 24, fontWeight: FontWeight.w400, color: text);
-  static TextStyle get heading => GoogleFonts.montserrat(fontSize: 22, fontWeight: FontWeight.w700, color: text);
-  static TextStyle get body => GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.w500, color: text);
-  static TextStyle get bodySm => GoogleFonts.montserrat(fontSize: 16, fontWeight: FontWeight.w500, color: text2);
-  static TextStyle get label => GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.w800, color: text2, letterSpacing: 2.0);
-  static TextStyle get btn => GoogleFonts.montserrat(fontSize: 18, fontWeight: FontWeight.w700, color: card, letterSpacing: 0.8);
-  static TextStyle get stat => GoogleFonts.prata(fontSize: 32, fontWeight: FontWeight.w400, color: text);
-  static TextStyle get statLabel => GoogleFonts.montserrat(fontSize: 12, fontWeight: FontWeight.w700, color: text3, letterSpacing: 1.8);
+  // ─── Text Styles (phone-first sizing) ────────────────────────
+  static TextStyle get display    => GoogleFonts.prata(fontSize: 28, fontWeight: FontWeight.w400, color: text);
+  static TextStyle get displayMd  => GoogleFonts.prata(fontSize: 22, fontWeight: FontWeight.w400, color: text);
+  static TextStyle get displaySm  => GoogleFonts.prata(fontSize: 18, fontWeight: FontWeight.w400, color: text);
+  static TextStyle get heading    => GoogleFonts.montserrat(fontSize: 17, fontWeight: FontWeight.w700, color: text);
+  static TextStyle get body       => GoogleFonts.montserrat(fontSize: 15, fontWeight: FontWeight.w500, color: text);
+  static TextStyle get bodySm     => GoogleFonts.montserrat(fontSize: 13, fontWeight: FontWeight.w500, color: text2);
+  static TextStyle get label      => GoogleFonts.montserrat(fontSize: 11, fontWeight: FontWeight.w800, color: text2, letterSpacing: 1.5);
+  static TextStyle get btn        => GoogleFonts.montserrat(fontSize: 14, fontWeight: FontWeight.w700, color: card, letterSpacing: 0.8);
+  static TextStyle get stat       => GoogleFonts.prata(fontSize: 26, fontWeight: FontWeight.w400, color: text);
+  static TextStyle get statLabel  => GoogleFonts.montserrat(fontSize: 11, fontWeight: FontWeight.w700, color: text3, letterSpacing: 1.5);
+
+  // ─── Responsive Text Styles (scale up on tablet) ──────────────
+  static TextStyle displayMdR(BuildContext ctx) => displayMd.copyWith(
+    fontSize: isLargeTablet(ctx) ? 28 : isTablet(ctx) ? 25 : 22);
+  static TextStyle displaySmR(BuildContext ctx) => displaySm.copyWith(
+    fontSize: isLargeTablet(ctx) ? 22 : isTablet(ctx) ? 20 : 18);
+  static TextStyle bodyR(BuildContext ctx) => body.copyWith(
+    fontSize: isTablet(ctx) ? 16 : 15);
+  static TextStyle bodySmR(BuildContext ctx) => bodySm.copyWith(
+    fontSize: isTablet(ctx) ? 14 : 13);
+  static TextStyle btnR(BuildContext ctx) => btn.copyWith(
+    fontSize: isTablet(ctx) ? 15 : 14);
 
   // ─── Responsive Helpers ───────────────────────────────────────
   static bool isTablet(BuildContext ctx) =>
@@ -112,6 +124,29 @@ class T {
     );
   }
 
+  /// Full bottom sheet container: rounded top corners, correct bg, centred on iPad.
+  /// Use this as the root widget inside showModalBottomSheet builder.
+  static Widget sheetScaffold(BuildContext ctx, {
+    required Widget child,
+    double heightFraction = 0.92,
+    Color? bg,
+  }) {
+    final h = MediaQuery.of(ctx).size.height * heightFraction;
+    final content = Container(
+      height: h,
+      decoration: BoxDecoration(
+        color: bg ?? T.bg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(T.rXl)),
+      ),
+      child: child,
+    );
+    return isTablet(ctx)
+        ? Center(child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: sheetMaxW(ctx)),
+            child: content))
+        : content;
+  }
+
   // ─── ThemeData ────────────────────────────────────────────────
   static ThemeData get theme => ThemeData(
     brightness: Brightness.light, scaffoldBackgroundColor: bg, primaryColor: headerDark,
@@ -122,18 +157,18 @@ class T {
       iconTheme: const IconThemeData(color: headerText, size: 24)),
     inputDecorationTheme: InputDecorationTheme(
       filled: true, fillColor: surface,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(rMd), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(rMd), borderSide: BorderSide.none),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(rMd), borderSide: const BorderSide(color: accent, width: 2.0)),
-      hintStyle: GoogleFonts.montserrat(fontSize: 18, color: text3)),
+      hintStyle: GoogleFonts.montserrat(fontSize: 15, color: text3)),
     elevatedButtonTheme: ElevatedButtonThemeData(style: ElevatedButton.styleFrom(
       backgroundColor: headerDark, foregroundColor: card, elevation: 0,
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rMd)))),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: headerDark, behavior: SnackBarBehavior.floating,
-      contentTextStyle: GoogleFonts.montserrat(fontSize: 16, color: card),
+      contentTextStyle: GoogleFonts.montserrat(fontSize: 14, color: card),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(rMd))),
     dividerTheme: const DividerThemeData(color: border, thickness: 1, space: 1),
     floatingActionButtonTheme: FloatingActionButtonThemeData(

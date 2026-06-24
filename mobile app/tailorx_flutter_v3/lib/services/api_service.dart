@@ -47,6 +47,41 @@ class Api {
     isTrialActive ||
     (boutiquePlan?.toLowerCase().contains('pro') == true);
 
+  // Pro Yearly = unlimited AI measurements (DB plan value 'pro')
+  bool get isProYearly => boutiquePlan == 'pro';
+
+  // Pro Monthly = capped AI measurements (DB plan value 'pro_monthly')
+  bool get isProMonthly => boutiquePlan == 'pro_monthly';
+
+  /// Fetches current AI Measurement Suggestion usage for this boutique.
+  /// Returns a map: { unlimited, used, limit, remaining }
+  Future<Map<String, dynamic>> getAIMeasurementUsage() async {
+    final res = await http.get(
+      Uri.parse('$_baseUrl/api/ai-measurements/usage'),
+      headers: {'Authorization': 'Bearer $_token'},
+    );
+    final data = jsonDecode(res.body);
+    if (res.statusCode != 200) {
+      throw Exception(data['error'] ?? 'Failed to fetch AI usage');
+    }
+    return data as Map<String, dynamic>;
+  }
+
+  /// Records one AI Measurement Suggestion use. Throws if the user has
+  /// hit their monthly cap (Pro Monthly) or doesn't have access (Basic).
+  /// Returns a map: { unlimited, used, limit, remaining }
+  Future<Map<String, dynamic>> recordAIMeasurementUsage() async {
+    final res = await http.post(
+      Uri.parse('$_baseUrl/api/ai-measurements/usage'),
+      headers: {'Authorization': 'Bearer $_token'},
+    );
+    final data = jsonDecode(res.body);
+    if (res.statusCode != 200) {
+      throw Exception(data['error'] ?? 'Failed to record AI usage');
+    }
+    return data as Map<String, dynamic>;
+  }
+
   // Returns how many days are left in the 15-day trial (0 if expired)
   int get trialDaysRemaining {
     final createdAt = _boutique?['created_at'];
@@ -132,7 +167,6 @@ class Api {
       if (bStr != null) _boutique = jsonDecode(bStr);
       await loadTermsAndConditions();
     } catch (e) {
-      print('Storage Init Error: $e');
     }
     return isLoggedIn;
   }
@@ -147,9 +181,11 @@ class Api {
   Future<Map<String, dynamic>> login(String email, String pass) async {
     try {
       final data = await _call('/api/auth/login', method: 'POST', body: {'email': email, 'password': pass});
-      _token = data['token'];
+      final token = data['token'] as String?;
+      if (token == null) throw Exception('Login failed — no token received from server');
+      _token = token;
       _boutique = data['boutique'];
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('tx_token', _token!);
       await prefs.setString('tx_boutique', jsonEncode(_boutique));
@@ -183,7 +219,9 @@ class Api {
     try {
       final data = await _call('/api/auth/verify-otp', method: 'POST',
           body: {'email': email, 'otp': otp});
-      _token    = data['token'];
+      final token = data['token'] as String?;
+      if (token == null) throw Exception('Verification failed — no token received from server');
+      _token    = token;
       _boutique = data['boutique'];
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('tx_token',    _token!);
@@ -207,13 +245,15 @@ class Api {
         if (city != null && city.isNotEmpty) 'city': city,
         if (address != null && address.isNotEmpty) 'address': address,
       });
-      _token = data['token'];
+      final token = data['token'] as String?;
+      if (token == null) throw Exception('Registration failed — no token received from server');
+      _token = token;
       _boutique = data['boutique'];
-      
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('tx_token', _token!);
       await prefs.setString('tx_boutique', jsonEncode(_boutique));
-      
+
       return {'success': true};
     } catch (e) {
       return {'success': false, 'message': _cleanMsg(e)};
@@ -282,7 +322,6 @@ class Api {
       }
     } catch (e) {
       // Silently fail — keep cached data
-      print('Profile refresh error: $e');
     }
   }
 
@@ -312,6 +351,62 @@ class Api {
         body: jsonEncode({'is_active': isActive}));
     if (res.statusCode == 403) throw Exception('Invalid admin secret');
     if (res.statusCode != 200) throw Exception('Failed to update account status');
+  }
+
+  Future<void> adminChangePlan(String secret, int boutiqueId, String plan) async {
+    final uri = Uri.parse('$_baseUrl/api/admin/boutiques/$boutiqueId/plan');
+    final res = await http.patch(uri,
+        headers: {'x-admin-secret': secret, 'Content-Type': 'application/json'},
+        body: jsonEncode({'plan': plan}));
+    if (res.statusCode == 403) throw Exception('Invalid admin secret');
+    if (res.statusCode == 400) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['error'] ?? 'Invalid plan');
+    }
+    if (res.statusCode != 200) throw Exception('Failed to change plan');
+  }
+
+  Future<void> adminToggleFree(String secret, int boutiqueId, bool isFree) async {
+    final uri = Uri.parse('$_baseUrl/api/admin/boutiques/$boutiqueId/free');
+    final res = await http.patch(uri,
+        headers: {'x-admin-secret': secret, 'Content-Type': 'application/json'},
+        body: jsonEncode({'is_free': isFree}));
+    if (res.statusCode == 403) throw Exception('Invalid admin secret');
+    if (res.statusCode != 200) throw Exception('Failed to toggle free access');
+  }
+
+  Future<void> adminRenew(String secret, int boutiqueId, int months, {double? amount}) async {
+    final uri = Uri.parse('$_baseUrl/api/admin/boutiques/$boutiqueId/renew');
+    final res = await http.patch(uri,
+        headers: {'x-admin-secret': secret, 'Content-Type': 'application/json'},
+        body: jsonEncode({'months': months, if (amount != null) 'amount': amount}));
+    if (res.statusCode == 403) throw Exception('Invalid admin secret');
+    if (res.statusCode == 400) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['error'] ?? 'Invalid renewal');
+    }
+    if (res.statusCode != 200) throw Exception('Failed to renew subscription');
+  }
+
+  Future<Map<String, dynamic>> adminGetStats(String secret, int boutiqueId) async {
+    final uri = Uri.parse('$_baseUrl/api/admin/boutiques/$boutiqueId/stats');
+    final res = await http.get(uri, headers: {'x-admin-secret': secret});
+    if (res.statusCode == 403) throw Exception('Invalid admin secret');
+    if (res.statusCode != 200) throw Exception('Failed to load stats');
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  Future<void> adminResetPassword(String secret, int boutiqueId, String newPassword) async {
+    final uri = Uri.parse('$_baseUrl/api/admin/boutiques/$boutiqueId/reset-password');
+    final res = await http.patch(uri,
+        headers: {'x-admin-secret': secret, 'Content-Type': 'application/json'},
+        body: jsonEncode({'newPassword': newPassword}));
+    if (res.statusCode == 403) throw Exception('Invalid admin secret');
+    if (res.statusCode == 400) {
+      final body = jsonDecode(res.body);
+      throw Exception(body['error'] ?? 'Invalid password');
+    }
+    if (res.statusCode != 200) throw Exception('Failed to reset password');
   }
 
   // ─── DASHBOARD ──────────────────────────────────────────────────
@@ -358,7 +453,6 @@ class Api {
         recentOrders: recentOrders,
       );
     } catch (e) {
-      print('Dashboard Error: $e');
       return DashboardData(recentOrders: []);
     }
   }
@@ -374,7 +468,6 @@ class Api {
       }
       return list;
     } catch (e) {
-      print('Customers Fetch Error: $e');
       return [];
     }
   }
@@ -383,9 +476,7 @@ class Api {
     final json = c.toJson();
     json.remove('id');
     json.remove('boutique_id');
-    print('🔵 SENDING CUSTOMER: $json');
     final data = await _call('/api/customers', method: 'POST', body: json);
-    print('🟢 CUSTOMER RETURNED: $data');
     return Customer.fromJson(data as Map<String, dynamic>);
   }
 
@@ -415,7 +506,6 @@ class Api {
       }
       return list;
     } catch (e) {
-      print('Orders Fetch Error: $e');
       return [];
     }
   }
@@ -424,9 +514,7 @@ class Api {
     final json = o.toJson();
     json.remove('id');
     json.remove('boutique_id');
-    print('🔵 SENDING ORDER: $json');
     final data = await _call('/api/orders', method: 'POST', body: json);
-    print('🟢 SERVER RETURNED: $data');
     return Order.fromJson(data);
   }
 
@@ -478,7 +566,6 @@ class Api {
       }
       return list;
     } catch (e) {
-      print('Invoices Fetch Error: $e');
       return [];
     }
   }
@@ -487,16 +574,13 @@ class Api {
     final json = inv.toJson();
     json.remove('id');
     json.remove('boutique_id');
-    print('🔵 SENDING INVOICE: $json');
     final data = await _call('/api/invoices', method: 'POST', body: json);
-    print('🟢 INVOICE RETURNED: $data');
     return Invoice.fromJson(data);
   }
 
   Future<Invoice> updateInvoicePayment(dynamic id, Invoice inv, double newAdvance) async {
     final newDue = (inv.totalAmount - newAdvance).clamp(0.0, double.infinity);
     final newStatus = newDue <= 0 ? 'paid' : (newAdvance > 0 ? 'partial' : 'unpaid');
-    print('🔵 UPDATING INVOICE PAYMENT: advance=$newAdvance due=$newDue status=$newStatus');
     final data = await _call('/api/invoices/$id', method: 'PUT', body: {
       'advance': newAdvance,
       'advance_paid': newAdvance,   // old server compat
@@ -511,7 +595,6 @@ class Api {
       'discount_amt': inv.discountAmt,
       'tax': inv.discountAmt,       // old server compat
     });
-    print('🟢 INVOICE PAYMENT RETURNED: $data');
     return Invoice.fromJson(data);
   }
 

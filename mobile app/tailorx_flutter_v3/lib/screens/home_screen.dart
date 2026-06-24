@@ -119,10 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _showSearchResults(String query) {
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.85,
-        decoration: BoxDecoration(color: T.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(28))),
-        child: Column(children: [
+      builder: (ctx) => T.sheetScaffold(ctx, heightFraction: 0.85, child: Column(children: [
           const SizedBox(height: 12),
           Container(width: 36, height: 4, decoration: BoxDecoration(color: T.border, borderRadius: BorderRadius.circular(2))),
           Padding(padding: const EdgeInsets.all(20), child: Row(children: [
@@ -385,10 +382,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _showNotif() {
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.75,
-        decoration: BoxDecoration(color: T.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(T.rXl))),
-        child: Column(children: [
+      builder: (ctx) => T.sheetScaffold(ctx, heightFraction: 0.75, child: Column(children: [
           const SizedBox(height: 12),
           Container(width: 36, height: 4, decoration: BoxDecoration(color: T.border, borderRadius: BorderRadius.circular(2))),
           Padding(padding: const EdgeInsets.all(20), child: Row(children: [

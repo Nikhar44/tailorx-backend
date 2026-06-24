@@ -78,7 +78,7 @@ class CustomersScreenState extends State<CustomersScreen> {
   Map<String, List<Customer>> get _groupedCustomers {
     final groups = <String, List<Customer>>{};
     for (var c in _filteredList) {
-      final char = c.name[0].toUpperCase();
+      final char = c.name.isNotEmpty ? c.name[0].toUpperCase() : '#';
       if (!groups.containsKey(char)) groups[char] = [];
       groups[char]!.add(c);
     }
@@ -101,10 +101,7 @@ class CustomersScreenState extends State<CustomersScreen> {
         .toList()
       ..sort((a, b) => (b.createdAt ?? '').compareTo(a.createdAt ?? ''));
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.92,
-        decoration: BoxDecoration(color: T.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(T.rXl))),
-        child: Column(children: [
+      builder: (ctx) => T.sheetScaffold(ctx, heightFraction: 0.92, child: Column(children: [
           Container(padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
             decoration: const BoxDecoration(gradient: T.headerGrad, borderRadius: BorderRadius.vertical(top: Radius.circular(T.rXl))),
             child: Column(children: [
@@ -383,7 +380,7 @@ class CustomersScreenState extends State<CustomersScreen> {
           GestureDetector(
             onTap: () async {
               Navigator.pop(ctx);
-              final uri = Uri.parse('https://wa.me/14373664452?text=Hi%2C%20I%20want%20to%20upgrade%20to%20Pro%20plan%20for%20AI%20Measurements%20feature');
+              final uri = Uri.parse('https://wa.me/918469696966?text=Hi%2C%20I%20want%20to%20upgrade%20to%20Pro%20plan%20for%20AI%20Measurements%20feature');
               try {
                 // ignore: deprecated_member_use
                 if (await canLaunchUrl(uri)) { await launchUrl(uri, mode: LaunchMode.externalApplication); }
@@ -426,7 +423,7 @@ class CustomersScreenState extends State<CustomersScreen> {
     List<String> customBottom,
     List<String> customTopBlouse,
     List<String> customTopDress,
-  ) {
+  ) async {
     // Local state for the AI input sheet
     double feet = 5, inches = 5, keyMeas = 36;
     String bodyType = AIMeasurements.average;
@@ -434,6 +431,16 @@ class CustomersScreenState extends State<CustomersScreen> {
     double heightCm = 165;
     Map<String, Map<String, double>>? suggestions;
     bool generated = false;
+
+    // Fetch current AI measurement usage (unlimited for Pro Yearly/trial/free,
+    // capped for Pro Monthly)
+    Map<String, dynamic>? aiUsage;
+    try {
+      aiUsage = await _api.getAIMeasurementUsage();
+    } catch (_) {
+      // If usage check fails, fall back to allowing generation —
+      // the record endpoint will still enforce the cap server-side.
+    }
 
     showModalBottomSheet(
       context: context,
@@ -468,6 +475,21 @@ class CustomersScreenState extends State<CustomersScreen> {
                 Text('Enter basics — we suggest everything',
                   style: T.bodySm.copyWith(fontSize: 12)),
               ]),
+              const Spacer(),
+              if (aiUsage != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: T.accentDark.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8)),
+                  child: Text(
+                    aiUsage!['unlimited'] == true
+                        ? 'Unlimited'
+                        : '${aiUsage!['remaining']}/${aiUsage!['limit']} left',
+                    style: T.bodySm.copyWith(
+                      fontSize: 11, fontWeight: FontWeight.w700,
+                      color: T.accentDark)),
+                ),
             ]),
             const SizedBox(height: 24),
 
@@ -559,7 +581,26 @@ class CustomersScreenState extends State<CustomersScreen> {
             // Generate button
             if (!generated)
               GestureDetector(
-                onTap: () {
+                onTap: () async {
+                  // Enforce Pro Monthly cap before generating
+                  if (aiUsage != null &&
+                      aiUsage!['unlimited'] != true &&
+                      (aiUsage!['remaining'] ?? 0) <= 0) {
+                    Navigator.pop(shCtx);
+                    _showUpgradeSheet(ctx);
+                    return;
+                  }
+
+                  // Record usage server-side (also enforces cap as a fallback)
+                  try {
+                    final updated = await _api.recordAIMeasurementUsage();
+                    shSt(() => aiUsage = updated);
+                  } catch (e) {
+                    Navigator.pop(shCtx);
+                    _showUpgradeSheet(ctx);
+                    return;
+                  }
+
                   final hCm = useMetric
                       ? heightCm
                       : AIMeasurements.feetToCm(feet, inches);
@@ -779,10 +820,7 @@ class CustomersScreenState extends State<CustomersScreen> {
 
     final fk = GlobalKey<FormState>();
     showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.92,
-        decoration: BoxDecoration(color: T.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(T.rXl))),
-        child: Column(children: [
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => T.sheetScaffold(ctx, heightFraction: 0.92, child: Column(children: [
           const SizedBox(height: 12),
           Container(width: 36, height: 4, decoration: BoxDecoration(color: T.border, borderRadius: BorderRadius.circular(2))),
           Expanded(child: Form(key: fk, child: ListView(padding: EdgeInsets.fromLTRB(20, 20, 20, 30 + MediaQuery.of(ctx).viewInsets.bottom), children: [

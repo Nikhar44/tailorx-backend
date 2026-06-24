@@ -95,6 +95,39 @@ class Customer {
   }
 }
 
+class OrderItem {
+  final String? garment;
+  final String? fabric;
+  final int? qty;
+  final double? price;
+  final String? clothPhotoUrl;
+  final String? designPhotoUrl;
+
+  OrderItem({this.garment, this.fabric, this.qty, this.price, this.clothPhotoUrl, this.designPhotoUrl});
+
+  double get total => (price ?? 0) * (qty ?? 1);
+
+  factory OrderItem.fromJson(Map<String, dynamic> j) => OrderItem(
+    garment: j['garment'],
+    fabric: j['fabric'],
+    qty: j['qty'] != null ? (j['qty'] as num).toInt() : null,
+    price: j['price'] != null ? (j['price'] as num).toDouble() : null,
+    clothPhotoUrl: j['cloth_photo_url'],
+    designPhotoUrl: j['design_photo_url'],
+  );
+
+  Map<String, dynamic> toJson() {
+    final m = <String, dynamic>{};
+    if (garment != null) m['garment'] = garment;
+    if (fabric != null) m['fabric'] = fabric;
+    if (qty != null && qty! > 1) m['qty'] = qty;
+    if (price != null && price! > 0) m['price'] = price;
+    if (clothPhotoUrl?.isNotEmpty == true) m['cloth_photo_url'] = clothPhotoUrl;
+    if (designPhotoUrl?.isNotEmpty == true) m['design_photo_url'] = designPhotoUrl;
+    return m;
+  }
+}
+
 class Order {
   final String? id;
   final String? boutiqueId;
@@ -106,6 +139,8 @@ class Order {
   final String? garment;
   final String? fabric;
   final String? dueDate;
+  final String? trialDate;
+  final List<OrderItem> items;
   final double amount;
   final double advance;
   final double balance;
@@ -120,7 +155,8 @@ class Order {
   Order({
     this.id, this.boutiqueId, this.customerId, this.customerName,
     this.customerPhone, this.city, this.address,
-    this.garment, this.fabric, this.dueDate,
+    this.garment, this.fabric, this.dueDate, this.trialDate,
+    this.items = const [],
     this.amount = 0, this.advance = 0, this.balance = 0,
     this.stage = 'Received', this.notify = true, this.notes,
     this.clothPhotoUrl, this.designPhotoUrl,
@@ -144,6 +180,8 @@ class Order {
     garment: j['garment'],
     fabric: j['fabric'],
     dueDate: j['due_date'] ?? j['delivery_date'],
+    trialDate: j['trial_date'],
+    items: _parseItems(j['items']),
     amount: _n(j['amount'] ?? j['total_amount']),
     advance: _n(j['advance'] ?? j['advance_paid']),
     balance: _n(j['balance'] ?? j['balance_due']),
@@ -173,11 +211,26 @@ class Order {
       'notify': notify,
     };
     if (dueDate != null) m['due_date'] = dueDate;
+    if (trialDate != null) m['trial_date'] = trialDate;
     if (notes?.isNotEmpty == true) m['notes'] = notes;
     if (clothPhotoUrl != null) m['cloth_photo_url'] = clothPhotoUrl;
     if (designPhotoUrl != null) m['design_photo_url'] = designPhotoUrl;
+    if (items.isNotEmpty) m['items'] = items.map((e) => e.toJson()).toList();
     return m;
   }
+}
+
+List<OrderItem> _parseItems(dynamic v) {
+  if (v == null) return [];
+  List<dynamic> list;
+  if (v is String && v.isNotEmpty) {
+    try { list = jsonDecode(v) as List<dynamic>; } catch (_) { return []; }
+  } else if (v is List) {
+    list = v;
+  } else {
+    return [];
+  }
+  return list.whereType<Map>().map((e) => OrderItem.fromJson(Map<String, dynamic>.from(e))).toList();
 }
 
 class Invoice {

@@ -7,6 +7,18 @@ import '../services/api_service.dart';
 import '../utils/theme.dart';
 import '../utils/lang.dart';
 import 'auth_screen.dart';
+import 'admin_panel_screen.dart';
+
+/// Returns the correct plan badge label for the current boutique account.
+String _planBadgeLabel(Api api) {
+  if (api.isFree) return 'FREE';
+  if (api.boutiquePlan == 'pro') return 'PRO YEARLY';
+  if (api.boutiquePlan == 'pro_monthly') return 'PRO MONTHLY';
+  if (api.boutiquePlan == 'basic_yearly') return 'BASIC YEARLY';
+  if (api.boutiquePlan == 'basic_monthly') return 'BASIC MONTHLY';
+  if (api.isTrialActive) return 'TRIAL';
+  return 'TRIAL ENDED';
+}
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,6 +29,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _api = Api();
   final _lang = AppLang();
+  int _logoTaps = 0;
 
   @override
   void initState() {
@@ -207,6 +220,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _showAdminEntry() async {
+    final ctrl = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: T.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          const Icon(Icons.admin_panel_settings_rounded, color: T.accent, size: 22),
+          const SizedBox(width: 8),
+          Text('Admin Access', style: T.heading.copyWith(fontSize: 18)),
+        ]),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Enter admin secret',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          onSubmitted: (_) => Navigator.pop(ctx),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: T.accent),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('ENTER', style: TextStyle(color: T.headerDark, fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    final secret = ctrl.text.trim();
+    if (secret.isEmpty) return;
+    if (!mounted) return;
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => AdminPanelScreen(adminSecret: secret),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.fromLTRB(18, 0, 18, 40), children: [
@@ -234,7 +287,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 6),
             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(color: T.accent.withOpacity(0.2), borderRadius: BorderRadius.circular(4)),
-              child: Text('PRO PLAN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
+              child: Text(_planBadgeLabel(_api), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700,
                 letterSpacing: 1.2, color: T.accent))),
           ])),
         ]),
@@ -382,7 +435,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           title: _lang.t('whatsapp_support'), sub: 'Fastest response — chat with us',
           trailing: const Icon(Icons.open_in_new_rounded, size: 14, color: T.text3),
           onTap: () => launchUrl(
-            Uri.parse('https://wa.me/14373664452?text=Hi, I need help with my TailorX account.'),
+            Uri.parse('https://wa.me/918469696966?text=${Uri.encodeComponent('Hi, I need help with my TailorX account.')}'),
             mode: LaunchMode.externalApplication)),
         _Divider(),
         _Row(icon: Icons.email_rounded, color: T.info,
@@ -443,12 +496,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       const SizedBox(height: 28),
 
-      // ── Branding footer ──
+      // ── Branding footer (tap TX logo 5× to open admin) ──
       Center(child: Column(children: [
-        Container(width: 44, height: 44,
-          decoration: BoxDecoration(gradient: T.accentGrad, borderRadius: BorderRadius.circular(10)),
-          child: Center(child: Text('TX', style: TextStyle(
-            fontSize: 16, fontWeight: FontWeight.w800, color: T.headerDark, letterSpacing: 1)))),
+        GestureDetector(
+          onTap: () {
+            setState(() => _logoTaps++);
+            if (_logoTaps >= 5) {
+              setState(() => _logoTaps = 0);
+              _showAdminEntry();
+            }
+          },
+          child: Container(width: 44, height: 44,
+            decoration: BoxDecoration(gradient: T.accentGrad, borderRadius: BorderRadius.circular(10)),
+            child: Center(child: Text('TX', style: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.w800, color: T.headerDark, letterSpacing: 1))))),
         const SizedBox(height: 8),
         Text('TAILORX', style: T.label.copyWith(fontSize: 18, letterSpacing: 4, color: T.text3)),
         const SizedBox(height: 3),
@@ -505,7 +566,7 @@ class _PlanBillingSection extends StatelessWidget {
 
   void _contactToUpgrade(BuildContext context) {
     launchUrl(
-      Uri.parse('https://wa.me/14373664452?text=Hi, I want to upgrade my TailorX plan.'),
+      Uri.parse('https://wa.me/918469696966?text=${Uri.encodeComponent('Hi, I want to upgrade my TailorX plan.')}'),
       mode: LaunchMode.externalApplication,
     );
   }
@@ -513,9 +574,17 @@ class _PlanBillingSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFree   = api.isFree;
-    final isPaid   = api.boutiquePlan == 'monthly' || api.boutiquePlan == 'yearly';
+    final isPaid   = const ['monthly', 'yearly', 'pro', 'pro_monthly']
+        .contains(api.boutiquePlan);
     final daysLeft = api.trialDaysRemaining;
     final isExpired = !isFree && !isPaid && daysLeft <= 0;
+
+    const planNames = {
+      'monthly': 'Monthly Plan',
+      'yearly': 'Yearly Plan',
+      'pro': 'Pro Yearly',
+      'pro_monthly': 'Pro Monthly',
+    };
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('PLAN & BILLING', style: T.label),
@@ -549,7 +618,7 @@ class _PlanBillingSection extends StatelessWidget {
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               isFree ? 'Free Account'
-                : isPaid ? (api.boutiquePlan == 'monthly' ? 'Monthly Plan' : 'Yearly Plan')
+                : isPaid ? (planNames[api.boutiquePlan] ?? 'Paid Plan')
                 : isExpired ? 'Trial Expired'
                 : 'Free Trial',
               style: const TextStyle(
@@ -579,6 +648,34 @@ class _PlanBillingSection extends StatelessWidget {
       ),
 
       const SizedBox(height: 12),
+
+      // ── AI Measurement usage (Pro plans) ──
+      if (api.boutiquePlan == 'pro' || api.boutiquePlan == 'pro_monthly')
+        FutureBuilder<Map<String, dynamic>>(
+          future: api.getAIMeasurementUsage(),
+          builder: (context, snap) {
+            if (!snap.hasData) return const SizedBox.shrink();
+            final u = snap.data!;
+            final unlimited = u['unlimited'] == true;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: T.card,
+                borderRadius: BorderRadius.circular(T.rMd),
+                boxShadow: T.shadowCard),
+              child: Row(children: [
+                const Text('✨', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 10),
+                Expanded(child: Text(
+                  unlimited
+                      ? 'AI Measurement Suggestions: Unlimited'
+                      : 'AI Measurement Suggestions: ${u['remaining']}/${u['limit']} left this month',
+                  style: T.bodySm.copyWith(fontWeight: FontWeight.w600))),
+              ]),
+            );
+          },
+        ),
 
       // ── Plan cards ──
       if (!isFree && !isPaid) ...[

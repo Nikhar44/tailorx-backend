@@ -151,7 +151,7 @@ class _AuthState extends State<AuthScreen> with SingleTickerProviderStateMixin {
               onTap: () {
                 Navigator.pop(ctx);
                 launchUrl(
-                  Uri.parse('https://wa.me/918469696966?text=Hi, I need help with my TailorX account.'),
+                  Uri.parse('https://wa.me/918469696966?text=${Uri.encodeComponent('Hi, I need help with my TailorX account.')}'),
                   mode: LaunchMode.externalApplication,
                 );
               },

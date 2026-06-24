@@ -96,9 +96,16 @@ class OrdersScreenState extends State<OrdersScreen> {
       final fileName = 'order_${DateTime.now().millisecondsSinceEpoch}.$ext';
       final storage = Supabase.instance.client.storage.from('order-photos');
       await storage.uploadBinary(fileName, bytes, fileOptions: FileOptions(contentType: mime, upsert: true));
-      return storage.getPublicUrl(fileName);
+      final url = storage.getPublicUrl(fileName);
+      return url;
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Photo upload failed: $e')));
+      if (mounted) {
+        showDialog(context: context, builder: (_) => AlertDialog(
+          title: const Text('Photo Upload Failed'),
+          content: Text('$e'),
+          actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+        ));
+      }
       return null;
     }
   }
@@ -106,9 +113,10 @@ class OrdersScreenState extends State<OrdersScreen> {
   void _showPhotoSourceOptions(BuildContext ctx, String title, void Function(ImageSource) onPick) {
     showModalBottomSheet(
       context: ctx, backgroundColor: Colors.transparent, useSafeArea: true, isScrollControlled: true,
+      useRootNavigator: true,
       builder: (sheetCtx) {
         final bottomPad = MediaQuery.of(sheetCtx).padding.bottom;
-        return Container(
+        return T.sheetWrap(sheetCtx, Container(
           decoration: BoxDecoration(color: T.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(T.rXl))),
           padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomPad),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -126,7 +134,7 @@ class OrdersScreenState extends State<OrdersScreen> {
               label: 'Take a Photo',
               onTap: () { Navigator.pop(sheetCtx); onPick(ImageSource.camera); }),
           ]),
-        );
+        ));
       },
     );
   }
@@ -165,6 +173,73 @@ class OrdersScreenState extends State<OrdersScreen> {
     );
   }
 
+  // Builds Garment/Fabric (+ optional reference photos) detail sections.
+  // If the order has per-item data (items list), renders one block per item;
+  // otherwise falls back to the legacy single garment/fabric/photo fields.
+  List<Widget> _itemsDetailWidgets(Order o) {
+    if (o.items.isNotEmpty) {
+      final widgets = <Widget>[];
+      for (var i = 0; i < o.items.length; i++) {
+        final it = o.items[i];
+        if (i > 0) widgets.add(const SizedBox(height: 10));
+        widgets.add(_DetailSection(
+          title: o.items.length > 1 ? 'Item ${i + 1}' : 'Garment',
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(it.garment?.isNotEmpty == true ? it.garment! : '—',
+              style: T.body.copyWith(fontSize: 17, fontWeight: FontWeight.w500)),
+            if (it.fabric?.isNotEmpty == true) ...[
+              const SizedBox(height: 4),
+              Text(it.fabric!, style: T.body.copyWith(fontSize: 15, color: T.text2)),
+            ],
+            if ((it.clothPhotoUrl?.isNotEmpty == true) || (it.designPhotoUrl?.isNotEmpty == true)) ...[
+              const SizedBox(height: 10),
+              Row(children: [
+                if (it.clothPhotoUrl?.isNotEmpty == true)
+                  Expanded(child: _DetailPhotoThumb(
+                    label: 'Cloth / Material', url: it.clothPhotoUrl!,
+                    onTap: () => _showFullPhoto(it.clothPhotoUrl!, 'Cloth / Material Photo'))),
+                if (it.clothPhotoUrl?.isNotEmpty == true && it.designPhotoUrl?.isNotEmpty == true)
+                  const SizedBox(width: 12),
+                if (it.designPhotoUrl?.isNotEmpty == true)
+                  Expanded(child: _DetailPhotoThumb(
+                    label: 'Design', url: it.designPhotoUrl!,
+                    onTap: () => _showFullPhoto(it.designPhotoUrl!, 'Design Photo'))),
+              ]),
+            ],
+          ]),
+        ));
+      }
+      return widgets;
+    }
+
+    // Legacy fallback (orders created before per-item photos)
+    return [
+      _DetailSection(title: 'Garment', child:
+        Text(o.garment?.isNotEmpty == true ? o.garment! : '—',
+          style: T.body.copyWith(fontSize: 17, fontWeight: FontWeight.w500))),
+      if (o.fabric?.isNotEmpty == true) ...[
+        const SizedBox(height: 10),
+        _DetailSection(title: 'Fabric', child: Text(o.fabric!, style: T.body.copyWith(fontSize: 16))),
+      ],
+      if ((o.clothPhotoUrl?.isNotEmpty == true) || (o.designPhotoUrl?.isNotEmpty == true)) ...[
+        const SizedBox(height: 10),
+        _DetailSection(title: 'Reference Photos', child:
+          Row(children: [
+            if (o.clothPhotoUrl?.isNotEmpty == true)
+              Expanded(child: _DetailPhotoThumb(
+                label: 'Cloth / Material', url: o.clothPhotoUrl!,
+                onTap: () => _showFullPhoto(o.clothPhotoUrl!, 'Cloth / Material Photo'))),
+            if (o.clothPhotoUrl?.isNotEmpty == true && o.designPhotoUrl?.isNotEmpty == true)
+              const SizedBox(width: 12),
+            if (o.designPhotoUrl?.isNotEmpty == true)
+              Expanded(child: _DetailPhotoThumb(
+                label: 'Design', url: o.designPhotoUrl!,
+                onTap: () => _showFullPhoto(o.designPhotoUrl!, 'Design Photo'))),
+          ])),
+      ],
+    ];
+  }
+
   // ─── NEW ORDER ──────────────────────────────────────────────────────────────
   void _newOrder({Customer? customer}) async {
     try { _custs = await _api.getCustomers(); } catch (_) {}
@@ -173,19 +248,25 @@ class OrdersScreenState extends State<OrdersScreen> {
     if (!mounted) return;
 
     Customer? sel = customer;
-    final items = <Map<String,dynamic>>[{'garment':null,'fabric':'','qty':1,'price':0.0}];
-    final advCtrl = TextEditingController(); final notesCtrl = TextEditingController();
-    DateTime? dueDate; final fk = GlobalKey<FormState>();
-    String? clothPhotoUrl; String? designPhotoUrl;
-    bool uploadingCloth = false; bool uploadingDesign = false;
-    double sub() { double t=0; for(final i in items) t+=(i['qty'] as int)*_n(i['price']); return t; }
+    Map<String,dynamic> mkItem() => {
+      '_key': UniqueKey(),
+      'garment': null,
+      'fabricCtrl': TextEditingController(),
+      'qtyCtrl': TextEditingController(text:'1'),
+      'priceCtrl': TextEditingController(),
+      'clothPhotoUrl': null,
+      'designPhotoUrl': null,
+      'uploadingCloth': false,
+      'uploadingDesign': false,
+    };
+    final items = <Map<String,dynamic>>[mkItem()];
+    final notesCtrl = TextEditingController();
+    final advCtrl = TextEditingController();
+    DateTime? dueDate; DateTime? trialDate; final fk = GlobalKey<FormState>();
 
     showModalBottomSheet(context:context,isScrollControlled:true,backgroundColor:Colors.transparent,
       builder:(ctx) => StatefulBuilder(builder:(ctx,setSt) {
-        final total=sub(); final adv=double.tryParse(advCtrl.text)??0; final bal=total-adv;
-        return Container(height:MediaQuery.of(ctx).size.height*0.93,
-          decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
-          child:Column(children:[
+        return T.sheetScaffold(ctx,heightFraction:0.93,child:Column(children:[
             const SizedBox(height:12),
             Container(width:36,height:4,decoration:BoxDecoration(color:T.border,borderRadius:BorderRadius.circular(2))),
             Expanded(child:Form(key:fk,child:ListView(padding:EdgeInsets.fromLTRB(20,20,20,30+MediaQuery.of(ctx).viewInsets.bottom),children:[
@@ -234,14 +315,13 @@ class OrdersScreenState extends State<OrdersScreen> {
               const SizedBox(height:18),
               Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
                 Text(_lang.t('order_items').toUpperCase(),style:T.label),
-                GestureDetector(onTap:()=>setSt(()=>items.add({'garment':null,'fabric':'','qty':1,'price':0.0})),
+                GestureDetector(onTap:()=>setSt(()=>items.add(mkItem())),
                   child:Container(padding:const EdgeInsets.symmetric(horizontal:10,vertical:5),
                     decoration:BoxDecoration(color:T.success.withOpacity(0.1),borderRadius:BorderRadius.circular(8)),
                     child:Text('+ Add Item',style:T.bodySm.copyWith(color:T.success,fontWeight:FontWeight.w600)))),]),
               const SizedBox(height:8),
               ...items.asMap().entries.map((entry){final idx=entry.key;final it=entry.value;
-                final itTotal=(it['qty']as int)*_n(it['price']);
-                return Container(margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.all(12),
+                return Container(key:it['_key'] as Key,margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.all(12),
                   decoration:BoxDecoration(color:T.card,borderRadius:BorderRadius.circular(T.rMd),boxShadow:T.shadowCard),
                   child:Column(children:[
                     Row(children:[
@@ -249,12 +329,11 @@ class OrdersScreenState extends State<OrdersScreen> {
                         decoration:BoxDecoration(gradient:T.accentGrad,borderRadius:BorderRadius.circular(6)),
                         child:Text('${idx+1}',style:const TextStyle(fontSize:12,fontWeight:FontWeight.w700,color:T.headerDark))),
                       const Spacer(),
-                      if(itTotal>0) Text(_fmt.format(itTotal),style:T.bodySm.copyWith(fontSize:18,fontWeight:FontWeight.w700,color:T.success)),
-                      if(items.length>1)...[const SizedBox(width:8),
+                      if(items.length>1)
                         GestureDetector(onTap:()=>setSt(()=>items.removeAt(idx)),
                           child:Container(padding:const EdgeInsets.all(4),
                             decoration:BoxDecoration(color:T.danger.withOpacity(0.1),borderRadius:BorderRadius.circular(6)),
-                            child:const Icon(Icons.close_rounded,size:18,color:T.danger)))],]),
+                            child:const Icon(Icons.close_rounded,size:18,color:T.danger))),]),
                     const SizedBox(height:10),
                     DropdownButtonFormField<String>(value:it['garment']as String?,
                       decoration:InputDecoration(hintText:_lang.t('garment'),contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:12)),
@@ -262,75 +341,80 @@ class OrdersScreenState extends State<OrdersScreen> {
                       onChanged:(v)=>setSt(()=>it['garment']=v),
                       validator:(v)=>v==null?'Select garment':null),
                     const SizedBox(height:8),
-                    TextFormField(initialValue:it['fabric']as String,style:T.body,
-                      decoration:InputDecoration(hintText:'${_lang.t("fabric")} (e.g. Silk)',contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:12)),
-                      onChanged:(v)=>it['fabric']=v),
+                    TextFormField(controller:it['fabricCtrl']as TextEditingController,style:T.body,
+                      decoration:InputDecoration(hintText:'${_lang.t("fabric")} (e.g. Silk)',contentPadding:const EdgeInsets.symmetric(horizontal:14,vertical:12))),
                     const SizedBox(height:8),
                     Row(children:[
-                      SizedBox(width:70,child:TextFormField(initialValue:'${it["qty"]}',keyboardType:TextInputType.number,style:T.body,
-                        decoration:InputDecoration(hintText:_lang.t('qty'),contentPadding:const EdgeInsets.symmetric(horizontal:12,vertical:12)),
-                        onChanged:(v)=>setSt(()=>it['qty']=int.tryParse(v)??1))),
+                      SizedBox(width:80,child:TextFormField(controller:it['qtyCtrl']as TextEditingController,style:T.body,keyboardType:TextInputType.number,
+                        decoration:const InputDecoration(hintText:'Qty',contentPadding:EdgeInsets.symmetric(horizontal:14,vertical:12)),
+                        validator:(v){if(v==null||v.trim().isEmpty)return 'Qty'; if(int.tryParse(v.trim())==null||int.parse(v.trim())<1)return 'Invalid'; return null;})),
                       const SizedBox(width:8),
-                      Expanded(child:TextFormField(initialValue:_n(it['price'])>0?_n(it['price']).toStringAsFixed(0):'',
-                        keyboardType:TextInputType.number,style:T.body,
-                        decoration:InputDecoration(hintText:'${_lang.t("price")} (₹)',contentPadding:const EdgeInsets.symmetric(horizontal:12,vertical:12)),
-                        onChanged:(v)=>setSt(()=>it['price']=double.tryParse(v)??0.0),
-                        validator:(v){if(v==null||v.isEmpty)return _lang.t('required');return null;})),]),]));
+                      Expanded(child:TextFormField(controller:it['priceCtrl']as TextEditingController,style:T.body,keyboardType:const TextInputType.numberWithOptions(decimal:true),
+                        decoration:const InputDecoration(hintText:'Price per item (₹)',prefixText:'₹ ',contentPadding:EdgeInsets.symmetric(horizontal:14,vertical:12)),
+                        validator:(v){if(v==null||v.trim().isEmpty)return 'Enter price'; if(double.tryParse(v.trim())==null)return 'Invalid'; return null;})),
+                    ]),
+                    const SizedBox(height:10),
+                    Text('REFERENCE PHOTOS (OPTIONAL)',style:T.label.copyWith(fontSize:10)),
+                    const SizedBox(height:6),
+                    Row(children:[
+                      Expanded(child:_OrderPhotoTile(
+                        label:'Cloth / Material', icon:Icons.checkroom_rounded, height:90,
+                        url:it['clothPhotoUrl']as String?, uploading:it['uploadingCloth']as bool,
+                        onTap:()=>_showPhotoSourceOptions(ctx,'Cloth / Material Photo',(src)async{
+                          setSt(()=>it['uploadingCloth']=true);
+                          final url=await _uploadOrderPhoto(src);
+                          setSt((){it['uploadingCloth']=false; if(url!=null) it['clothPhotoUrl']=url;});
+                        }),
+                        onRemove:()=>setSt(()=>it['clothPhotoUrl']=null))),
+                      const SizedBox(width:8),
+                      Expanded(child:_OrderPhotoTile(
+                        label:'Design', icon:Icons.brush_rounded, height:90,
+                        url:it['designPhotoUrl']as String?, uploading:it['uploadingDesign']as bool,
+                        onTap:()=>_showPhotoSourceOptions(ctx,'Design Photo',(src)async{
+                          setSt(()=>it['uploadingDesign']=true);
+                          final url=await _uploadOrderPhoto(src);
+                          setSt((){it['uploadingDesign']=false; if(url!=null) it['designPhotoUrl']=url;});
+                        }),
+                        onRemove:()=>setSt(()=>it['designPhotoUrl']=null))),
+                    ]),
+                    ]));
               }),
               const SizedBox(height:14),
-              Container(padding:const EdgeInsets.all(16),
-                decoration:BoxDecoration(color:T.card,borderRadius:BorderRadius.circular(T.rMd),boxShadow:T.shadowCard,
-                  border:Border.all(color:T.accent.withOpacity(0.2))),
-                child:Column(children:[
-                  Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
-                    Text('SUBTOTAL (${items.length} items)',style:T.label),
-                    Text(_fmt.format(total),style:T.heading),]),
-                  const SizedBox(height:12),
-                  TxField(label:_lang.t('advance_paid'),hint:'0',controller:advCtrl,keyboardType:TextInputType.number,
-                    onChanged:(_)=>setSt((){})),
-                  const SizedBox(height:10),
-                  Container(padding:const EdgeInsets.all(12),
-                    decoration:BoxDecoration(color:bal>0?T.danger.withOpacity(0.06):T.success.withOpacity(0.06),
-                      borderRadius:BorderRadius.circular(8)),
-                    child:Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[
-                      Text('BALANCE DUE',style:T.label.copyWith(fontWeight:FontWeight.w700)),
-                      Text(_fmt.format(bal),style:T.heading.copyWith(color:bal>0?T.danger:T.success)),])),])),
-              const SizedBox(height:14),
-              Text(_lang.t('delivery_date').toUpperCase(),style:T.label),
+              Text('ADVANCE PAID',style:T.label),
               const SizedBox(height:6),
-              GestureDetector(onTap:()async{
-                final d=await showDatePicker(context:ctx,initialDate:DateTime.now().add(const Duration(days:7)),
-                  firstDate:DateTime.now(),lastDate:DateTime.now().add(const Duration(days:365)));
-                if(d!=null)setSt(()=>dueDate=d);},
-                child:Container(padding:const EdgeInsets.symmetric(horizontal:14,vertical:14),
-                  decoration:BoxDecoration(color:T.surface,borderRadius:BorderRadius.circular(T.rMd)),
-                  child:Row(children:[
-                    const Icon(Icons.calendar_today_rounded,size:18,color:T.text3),const SizedBox(width:10),
-                    Text(dueDate!=null?DateFormat('dd MMM yyyy').format(dueDate!):_lang.t('select_date'),
-                      style:T.body.copyWith(fontSize:18,color:dueDate!=null?T.text:T.text3)),]))),
+              TextFormField(controller:advCtrl,style:T.body,keyboardType:const TextInputType.numberWithOptions(decimal:true),
+                decoration:const InputDecoration(hintText:'Advance amount (₹)',prefixText:'₹ ',contentPadding:EdgeInsets.symmetric(horizontal:14,vertical:12))),
               const SizedBox(height:14),
-              Text('REFERENCE PHOTOS',style:T.label),
-              const SizedBox(height:6),
-              Row(children:[
-                Expanded(child:_OrderPhotoTile(
-                  label:'Material / Cloth Photo', icon:Icons.checkroom_rounded,
-                  url:clothPhotoUrl, uploading:uploadingCloth,
-                  onTap:()=>_showPhotoSourceOptions(ctx,'Cloth / Material Photo',(src)async{
-                    setSt(()=>uploadingCloth=true);
-                    final url=await _uploadOrderPhoto(src);
-                    setSt((){uploadingCloth=false; if(url!=null) clothPhotoUrl=url;});
-                  }),
-                  onRemove:()=>setSt(()=>clothPhotoUrl=null))),
+              Row(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  Text('TRIAL DATE',style:T.label),
+                  const SizedBox(height:6),
+                  GestureDetector(onTap:()async{
+                    final d=await showDatePicker(context:ctx,initialDate:trialDate??DateTime.now().add(const Duration(days:3)),
+                      firstDate:DateTime.now(),lastDate:DateTime.now().add(const Duration(days:365)));
+                    if(d!=null)setSt(()=>trialDate=d);},
+                    child:Container(padding:const EdgeInsets.symmetric(horizontal:14,vertical:14),
+                      decoration:BoxDecoration(color:T.surface,borderRadius:BorderRadius.circular(T.rMd)),
+                      child:Row(children:[
+                        const Icon(Icons.calendar_today_rounded,size:18,color:T.text3),const SizedBox(width:10),
+                        Expanded(child:Text(trialDate!=null?DateFormat('dd MMM yyyy').format(trialDate!):_lang.t('select_date'),
+                          style:T.body.copyWith(fontSize:16,color:trialDate!=null?T.text:T.text3),overflow:TextOverflow.ellipsis)),]))),
+                ])),
                 const SizedBox(width:10),
-                Expanded(child:_OrderPhotoTile(
-                  label:'Design Photo', icon:Icons.brush_rounded,
-                  url:designPhotoUrl, uploading:uploadingDesign,
-                  onTap:()=>_showPhotoSourceOptions(ctx,'Design Photo',(src)async{
-                    setSt(()=>uploadingDesign=true);
-                    final url=await _uploadOrderPhoto(src);
-                    setSt((){uploadingDesign=false; if(url!=null) designPhotoUrl=url;});
-                  }),
-                  onRemove:()=>setSt(()=>designPhotoUrl=null))),
+                Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+                  Text(_lang.t('delivery_date').toUpperCase(),style:T.label),
+                  const SizedBox(height:6),
+                  GestureDetector(onTap:()async{
+                    final d=await showDatePicker(context:ctx,initialDate:dueDate??DateTime.now().add(const Duration(days:7)),
+                      firstDate:DateTime.now(),lastDate:DateTime.now().add(const Duration(days:365)));
+                    if(d!=null)setSt(()=>dueDate=d);},
+                    child:Container(padding:const EdgeInsets.symmetric(horizontal:14,vertical:14),
+                      decoration:BoxDecoration(color:T.surface,borderRadius:BorderRadius.circular(T.rMd)),
+                      child:Row(children:[
+                        const Icon(Icons.calendar_today_rounded,size:18,color:T.text3),const SizedBox(width:10),
+                        Expanded(child:Text(dueDate!=null?DateFormat('dd MMM yyyy').format(dueDate!):_lang.t('select_date'),
+                          style:T.body.copyWith(fontSize:16,color:dueDate!=null?T.text:T.text3),overflow:TextOverflow.ellipsis)),]))),
+                ])),
               ]),
               const SizedBox(height:14),
               TxField(label:_lang.t('notes'),hint:'Design notes...',controller:notesCtrl,maxLines:3),
@@ -341,13 +425,39 @@ class OrdersScreenState extends State<OrdersScreen> {
                   onTap:()async{
                     if(!fk.currentState!.validate()) return;
                     final parts=<String>[];
-                    for(final i in items){final g=i['garment']as String?;final f=i['fabric']as String?;final q=i['qty']as int;
-                      if(g==null||g.isEmpty)continue; String p=g; if(f!=null&&f.isNotEmpty)p+=' ($f)'; if(q>1)p+=' x$q'; parts.add(p);}
+                    for(final i in items){
+                      final g=i['garment']as String?;
+                      final f=(i['fabricCtrl']as TextEditingController).text;
+                      if(g==null||g.isEmpty)continue; String p=g; if(f.isNotEmpty)p+=' ($f)'; parts.add(p);}
+                    final orderItems=items.where((i)=>(i['garment']as String?)?.isNotEmpty==true).map((i)=>OrderItem(
+                      garment:i['garment']as String?,
+                      fabric:(i['fabricCtrl']as TextEditingController).text,
+                      qty:int.tryParse((i['qtyCtrl']as TextEditingController).text.trim())??1,
+                      price:double.tryParse((i['priceCtrl']as TextEditingController).text.trim()),
+                      clothPhotoUrl:i['clothPhotoUrl']as String?,designPhotoUrl:i['designPhotoUrl']as String?,
+                    )).toList();
+                    final total=orderItems.fold(0.0,(s,it)=>s+it.total);
+                    final adv=(double.tryParse(advCtrl.text.trim())??0).clamp(0,total).toDouble();
+                    final due=(total-adv).clamp(0.0,double.infinity);
                     final order=Order(customerId:sel!.id,customerName:sel!.name,
-                      garment:parts.join(', '),fabric:items.map((i)=>i['fabric']as String).where((f)=>f.isNotEmpty).join(', '),
-                      amount:total,advance:adv,dueDate:dueDate?.toIso8601String().split('T').first,notes:notesCtrl.text.trim(),
-                      clothPhotoUrl:clothPhotoUrl,designPhotoUrl:designPhotoUrl);
-                    try{await _api.createOrder(order);if(ctx.mounted)Navigator.pop(ctx);
+                      garment:parts.join(', '),
+                      fabric:orderItems.map((i)=>i.fabric??'').where((f)=>f.isNotEmpty).join(', '),
+                      amount:total,advance:adv,dueDate:dueDate?.toIso8601String().split('T').first,
+                      trialDate:trialDate?.toIso8601String().split('T').first,notes:notesCtrl.text.trim(),
+                      items:orderItems,
+                      clothPhotoUrl:orderItems.isNotEmpty?orderItems.first.clothPhotoUrl:null,
+                      designPhotoUrl:orderItems.isNotEmpty?orderItems.first.designPhotoUrl:null);
+                    try{
+                      final created=await _api.createOrder(order);
+                      final invStatus=due<=0?'paid':adv>0?'partial':'unpaid';
+                      await _api.createInvoice(Invoice(
+                        orderId:created.id,customerId:sel!.id,customerName:sel!.name,customerPhone:sel!.phone,
+                        garment:parts.join(', '),
+                        deliveryDate:dueDate?.toIso8601String().split('T').first,
+                        trialDate:trialDate?.toIso8601String().split('T').first,
+                        subtotal:total,advance:adv,dueAmount:due,status:invStatus,
+                      ));
+                      if(ctx.mounted)Navigator.pop(ctx);
                       if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(_lang.t('order_created'))));
                     }catch(e){if(mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('$e')));
                     }finally{_load();}},
@@ -375,10 +485,7 @@ class OrdersScreenState extends State<OrdersScreen> {
 
     showModalBottomSheet(
       context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.92,
-        decoration: BoxDecoration(color: T.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(T.rXl))),
-        child: Column(children: [
+      builder: (ctx) => T.sheetScaffold(ctx, heightFraction: 0.92, child: Column(children: [
           // ── Header ──
           Container(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
@@ -422,29 +529,7 @@ class OrdersScreenState extends State<OrdersScreen> {
                 Text(dueDate, style: T.body.copyWith(fontSize: 17, fontWeight: FontWeight.w700, color: T.danger))),
               const SizedBox(height: 10),
             ],
-            _DetailSection(title: 'Garment', child:
-              Text(o.garment?.isNotEmpty == true ? o.garment! : '—',
-                style: T.body.copyWith(fontSize: 17, fontWeight: FontWeight.w500))),
-            if (o.fabric?.isNotEmpty == true) ...[
-              const SizedBox(height: 10),
-              _DetailSection(title: 'Fabric', child: Text(o.fabric!, style: T.body.copyWith(fontSize: 16))),
-            ],
-            if ((o.clothPhotoUrl?.isNotEmpty == true) || (o.designPhotoUrl?.isNotEmpty == true)) ...[
-              const SizedBox(height: 10),
-              _DetailSection(title: 'Reference Photos', child:
-                Row(children: [
-                  if (o.clothPhotoUrl?.isNotEmpty == true)
-                    Expanded(child: _DetailPhotoThumb(
-                      label: 'Cloth / Material', url: o.clothPhotoUrl!,
-                      onTap: () => _showFullPhoto(o.clothPhotoUrl!, 'Cloth / Material Photo'))),
-                  if (o.clothPhotoUrl?.isNotEmpty == true && o.designPhotoUrl?.isNotEmpty == true)
-                    const SizedBox(width: 12),
-                  if (o.designPhotoUrl?.isNotEmpty == true)
-                    Expanded(child: _DetailPhotoThumb(
-                      label: 'Design', url: o.designPhotoUrl!,
-                      onTap: () => _showFullPhoto(o.designPhotoUrl!, 'Design Photo'))),
-                ])),
-            ],
+            ..._itemsDetailWidgets(o),
             const SizedBox(height: 10),
             _DetailSection(title: 'Customer Measurements', child:
               meas.isEmpty
@@ -475,10 +560,7 @@ class OrdersScreenState extends State<OrdersScreen> {
   void _viewOrder(Order o, int idx) {
     showModalBottomSheet(
       context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => Container(
-        height: MediaQuery.of(ctx).size.height * 0.92,
-        decoration: BoxDecoration(color: T.bg, borderRadius: const BorderRadius.vertical(top: Radius.circular(T.rXl))),
-        child: Column(children: [
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => T.sheetScaffold(ctx, heightFraction: 0.92, child: Column(children: [
           // ── Gradient header ──
           Container(
             padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
@@ -491,14 +573,6 @@ class OrdersScreenState extends State<OrdersScreen> {
                   GestureDetector(
                     onTap: () => _showJobCard(o),
                     child: const Icon(Icons.content_cut_rounded, size: 17, color: T.headerText)),
-                  const SizedBox(width: 16),
-                  GestureDetector(
-                    onTap: () { Navigator.pop(ctx);
-                      PdfHelper.generateAndPrintOrder(o,
-                        boutiqueName: _api.boutiqueName,
-                        boutiqueAddress: _api.boutiqueAddress,
-                        boutiquePhone: _api.boutiquePhone); },
-                    child: const Icon(Icons.print_rounded, size: 16, color: T.headerText)),
                   const SizedBox(width: 16),
                   GestureDetector(
                     onTap: () { Navigator.pop(ctx); _editOrder(o); },
@@ -518,7 +592,7 @@ class OrdersScreenState extends State<OrdersScreen> {
                     gradient: _ag(idx), borderRadius: BorderRadius.circular(18),
                     boxShadow: [BoxShadow(color: T.accent.withOpacity(0.35), blurRadius: 18, offset: const Offset(0, 8))]),
                   child: Center(child: Text(
-                    (o.customerName ?? '?')[0].toUpperCase(),
+                    (o.customerName?.isNotEmpty == true ? o.customerName! : '?')[0].toUpperCase(),
                     style: GoogleFonts.prata(fontSize: 32, fontWeight: FontWeight.w400, color: Colors.white)))),
                 const SizedBox(width: 14),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -558,33 +632,8 @@ class OrdersScreenState extends State<OrdersScreen> {
           // ── Scrollable body ──
           Expanded(child: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 80), children: [
 
-            // Garment & fabric
-            _DetailSection(title: 'Garment', child:
-              Text(o.garment?.isNotEmpty == true ? o.garment! : '—',
-                style: T.body.copyWith(fontSize: 17, fontWeight: FontWeight.w500))),
-            if (o.fabric?.isNotEmpty == true) ...[
-              const SizedBox(height: 10),
-              _DetailSection(title: 'Fabric', child:
-                Text(o.fabric!, style: T.body.copyWith(fontSize: 16))),
-            ],
-
-            // Reference photos
-            if ((o.clothPhotoUrl?.isNotEmpty == true) || (o.designPhotoUrl?.isNotEmpty == true)) ...[
-              const SizedBox(height: 10),
-              _DetailSection(title: 'Reference Photos', child:
-                Row(children: [
-                  if (o.clothPhotoUrl?.isNotEmpty == true)
-                    Expanded(child: _DetailPhotoThumb(
-                      label: 'Cloth / Material', url: o.clothPhotoUrl!,
-                      onTap: () => _showFullPhoto(o.clothPhotoUrl!, 'Cloth / Material Photo'))),
-                  if (o.clothPhotoUrl?.isNotEmpty == true && o.designPhotoUrl?.isNotEmpty == true)
-                    const SizedBox(width: 12),
-                  if (o.designPhotoUrl?.isNotEmpty == true)
-                    Expanded(child: _DetailPhotoThumb(
-                      label: 'Design', url: o.designPhotoUrl!,
-                      onTap: () => _showFullPhoto(o.designPhotoUrl!, 'Design Photo'))),
-                ])),
-            ],
+            // Garment, fabric & per-item reference photos
+            ..._itemsDetailWidgets(o),
             const SizedBox(height: 10),
 
             // Payment summary
@@ -605,16 +654,29 @@ class OrdersScreenState extends State<OrdersScreen> {
               ])),
             const SizedBox(height: 10),
 
-            // Delivery date
-            if (o.dueDate != null) ...[
-              _DetailSection(
-                title: 'Delivery Date',
-                child: Row(children: [
-                  Icon(Icons.calendar_today_rounded, size: 16, color: T.text2),
-                  const SizedBox(width: 8),
-                  Text(DateFormat('dd MMM yyyy').format(DateTime.parse(o.dueDate!)),
-                    style: T.body.copyWith(fontSize: 16, fontWeight: FontWeight.w500)),
-                ])),
+            // Trial & Delivery dates
+            if (o.trialDate != null || o.dueDate != null) ...[
+              Row(children: [
+                if (o.trialDate != null)
+                  Expanded(child: _DetailSection(
+                    title: 'Trial Date',
+                    child: Row(children: [
+                      Icon(Icons.calendar_today_rounded, size: 16, color: T.text2),
+                      const SizedBox(width: 8),
+                      Text(DateFormat('dd MMM yyyy').format(DateTime.parse(o.trialDate!)),
+                        style: T.body.copyWith(fontSize: 16, fontWeight: FontWeight.w500)),
+                    ]))),
+                if (o.trialDate != null && o.dueDate != null) const SizedBox(width: 12),
+                if (o.dueDate != null)
+                  Expanded(child: _DetailSection(
+                    title: 'Delivery Date',
+                    child: Row(children: [
+                      Icon(Icons.calendar_today_rounded, size: 16, color: T.text2),
+                      const SizedBox(width: 8),
+                      Text(DateFormat('dd MMM yyyy').format(DateTime.parse(o.dueDate!)),
+                        style: T.body.copyWith(fontSize: 16, fontWeight: FontWeight.w500)),
+                    ]))),
+              ]),
               const SizedBox(height: 10),
             ],
 
@@ -874,7 +936,7 @@ class OrdersScreenState extends State<OrdersScreen> {
   // ─── STATUS SHEET ───────────────────────────────────────────────────────────
   void _statusSheet(Order o) {
     showModalBottomSheet(context:context, isScrollControlled: true, backgroundColor:Colors.transparent,
-      builder:(ctx)=>Container(
+      builder:(ctx)=>T.sheetWrap(ctx,Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
         decoration:BoxDecoration(color:T.bg,borderRadius:const BorderRadius.vertical(top:Radius.circular(T.rXl))),
         child:Padding(padding:const EdgeInsets.all(24),child:Column(
@@ -926,7 +988,7 @@ class OrdersScreenState extends State<OrdersScreen> {
               ),
             ),
             const SizedBox(height:8),
-          ]))));
+          ]))))));
   }
 
   // ─── BUILD ──────────────────────────────────────────────────────────────────
@@ -1051,7 +1113,7 @@ class OrdersScreenState extends State<OrdersScreen> {
                           // Row 2: avatar + customer name + garment
                           Row(crossAxisAlignment:CrossAxisAlignment.center,children:[
                             Container(width:46,height:46,decoration:BoxDecoration(gradient:_ag(i),shape:BoxShape.circle),
-                              child:Center(child:Text((o.customerName??'?')[0].toUpperCase(),
+                              child:Center(child:Text((o.customerName?.isNotEmpty == true ? o.customerName! : '?')[0].toUpperCase(),
                                 style:GoogleFonts.prata(fontSize:22,fontWeight:FontWeight.w400,color:Colors.white)))),
                             const SizedBox(width:10),
                             Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
@@ -1181,9 +1243,11 @@ class _OrderPhotoTile extends StatelessWidget {
   final bool uploading;
   final VoidCallback onTap;
   final VoidCallback onRemove;
+  final double height;
   const _OrderPhotoTile({
     required this.label, required this.icon, required this.url,
     required this.uploading, required this.onTap, required this.onRemove,
+    this.height = 120,
   });
 
   @override
@@ -1192,7 +1256,7 @@ class _OrderPhotoTile extends StatelessWidget {
     return GestureDetector(
       onTap: uploading ? null : onTap,
       child: Container(
-        height: 120,
+        height: height,
         clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: T.card,

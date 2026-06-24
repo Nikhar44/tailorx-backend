@@ -20,16 +20,12 @@ class C {
     'Salwar Kameez','Shirt','Trouser','Dupatta','Petticoat','Gown','Jacket','Waistcoat','Other'];
   static const priorities = ['Normal','Urgent','Rush'];
 
-  static const maleTop = ['Chest','Shoulder','Neck','Sleeve','Shirt Length','Back Width'];
-  static const maleBottom = ['Waist','Hip','Inseam','Trouser Waist','Thigh','Knee','Ankle','Pant Length'];
-  static const femaleTop = ['Length','Front','Chest 1','Chest 2','Shoulder','Sleeve',
-    'Sleeve Bottom','Blouse Length','Back/Front Length','Neck Depth','Armhole'];
+  static const maleTop = ['Length','Chest','Waist','Seat','Sleeves','Shoulder','Collar','Cuff','Front 1','Front 2','Front 3'];
+  static const maleBottom = ['Length','Waist','Seat','Thigh','Knee','Bottom','In Length','Jolo','Fly'];
   // Separate blouse and dress field lists for female top
-  static const femaleTopBlouse = ['Length','Front','Chest 1','Chest 2','Shoulder','Sleeve',
-    'Sleeve Bottom','Back/Front Length','Neck Depth','Armhole'];
-  static const femaleTopDress  = ['Length','Chest 1','Chest 2','Waist','Shoulder','Sleeve',
-    'Sleeve Bottom','Back Length','Neck Depth','Armhole'];
-  static const femaleBottom = ['Salwar Length','Waist','Hip','Thigh','Knee'];
+  static const femaleTopBlouse = ['Length','Front','Chest 1','Chest 2','Waist','Shoulder','Sleeve','Sleeve Bottom'];
+  static const femaleTopDress  = ['Length','Front','Chest 1','Chest 2','Waist','Hips','Shoulder','Sleeve','Sleeve Bottom'];
+  static const femaleBottom = ['Length','Waist','Hips','Thigh','Knee','Bottom'];
 
   // Maps each measurement section + field display name to the illustration
   // asset key in assets/measurement_guides/<key>.png
@@ -37,20 +33,14 @@ class C {
     'maleTop': {
       'Chest': 'm_chest',
       'Shoulder': 'm_shoulder',
-      'Neck': 'm_neck',
-      'Sleeve': 'm_sleeve',
-      'Shirt Length': 'm_shirt_length',
-      'Back Width': 'm_back_width',
+      'Sleeves': 'm_sleeve',
+      'Length': 'm_shirt_length',
     },
     'maleBottom': {
       'Waist': 'b_waist',
-      'Hip': 'b_hip',
-      'Inseam': 'b_inseam',
-      'Trouser Waist': 'b_trouser_waist',
       'Thigh': 'b_thigh',
       'Knee': 'b_knee',
-      'Ankle': 'b_ankle',
-      'Pant Length': 'b_pant_length',
+      'Length': 'b_pant_length',
     },
     'femaleTopBlouse': {
       'Length': 'length',
@@ -60,26 +50,21 @@ class C {
       'Shoulder': 'shoulder',
       'Sleeve': 'sleeve',
       'Sleeve Bottom': 'sleeve_bottom',
-      'Back/Front Length': 'back_front_length',
-      'Neck Depth': 'neck_depth',
-      'Armhole': 'armhole',
     },
     'femaleTopDress': {
       'Length': 'length',
+      'Front': 'front',
       'Chest 1': 'chest_1',
       'Chest 2': 'chest_2',
       'Waist': 'waist',
       'Shoulder': 'shoulder',
       'Sleeve': 'sleeve',
       'Sleeve Bottom': 'sleeve_bottom',
-      'Back Length': 'back_length',
-      'Neck Depth': 'neck_depth',
-      'Armhole': 'armhole',
     },
     'femaleBottom': {
-      'Salwar Length': 'b_salwar_length',
+      'Length': 'b_salwar_length',
       'Waist': 'b_waist',
-      'Hip': 'b_hip',
+      'Hips': 'b_hip',
       'Thigh': 'b_thigh',
       'Knee': 'b_knee',
     },
